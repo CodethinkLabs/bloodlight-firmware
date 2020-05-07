@@ -14,26 +14,17 @@
  * limitations under the License.
  */
 
-#include <stdbool.h>
+#ifndef BL_USB_H
+#define BL_USB_H
 
-#include <libopencm3/stm32/rcc.h>
+/**
+ * Initialise the USB module.
+ */
+void bl_usb_init(void);
 
-#include "bl.h"
-#include "usb.h"
+/**
+ * Poll the USB.
+ */
+void bl_usb_poll(void);
 
-/* Exported function, documented in bl.h */
-void bl_init(void)
-{
-	rcc_clock_setup_pll(&rcc_hse8mhz_configs[RCC_CLOCK_HSE8_72MHZ]);
-
-	bl_usb_init();
-}
-
-int main(void)
-{
-	bl_init();
-
-	while (true) {
-		bl_usb_poll();
-	}
-}
+#endif
