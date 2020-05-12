@@ -18,6 +18,8 @@
 
 #include <libopencm3/stm32/rcc.h>
 
+#include "acq.h"
+#include "led.h"
 #include "bl.h"
 #include "usb.h"
 
@@ -27,6 +29,8 @@ void bl_init(void)
 	rcc_clock_setup_pll(&rcc_hse8mhz_configs[RCC_CLOCK_HSE8_72MHZ]);
 
 	bl_usb_init();
+	bl_led_init();
+	bl_acq_init();
 }
 
 int main(void)

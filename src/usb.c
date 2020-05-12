@@ -22,7 +22,9 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 
+#include "error.h"
 #include "util.h"
+#include "msg.h"
 #include "usb.h"
 
 struct {
@@ -213,9 +215,28 @@ static enum usbd_request_return_codes bl_usb__cdcacm_control_request(
 	return USBD_REQ_NOTSUPP;
 }
 
+static void bl_usb__send_response(
+		usbd_device *usbd_dev,
+		enum bl_msg_type response_to,
+		enum bl_error error)
+{
+	union bl_msg_data msg = {
+		.response = {
+			.type = BL_MSG_RESPONSE,
+			.response_to = response_to,
+			.error_code = error,
+		},
+	};
+
+	usbd_ep_write_packet(usbd_dev, 0x82,
+			&msg, bl_msg_type_to_len(msg.type));
+}
+
 static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 {
 	static uint8_t buf[BL_USB_BUF_LEN];
+	union bl_msg_data *msg;
+	enum bl_error error;
 	uint16_t len;
 
 	len = usbd_ep_read_packet(usbd_dev, ep, buf, sizeof(buf));
@@ -223,8 +244,16 @@ static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 		return;
 	}
 
-	usbd_ep_write_packet(usbd_dev, 0x82, buf, len);
-	buf[len] = 0;
+	msg = bl_msg_decode(buf, len);
+	if (msg == NULL) {
+		bl_usb__send_response(usbd_dev,
+				bl_msg_get_type(buf),
+				BL_ERROR_BAD_MESSAGE_LENGTH);
+		return;
+	}
+
+	error = bl_msg_handle(msg);
+	bl_usb__send_response(usbd_dev, msg->type, error);
 }
 
 static void bl_usb__cdcacm_set_config(usbd_device *usbd_dev, uint16_t wValue)

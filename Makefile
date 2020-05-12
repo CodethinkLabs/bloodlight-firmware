@@ -2,7 +2,10 @@ PROJECT = mpd-firmware
 BUILD_DIR = bin
 
 CFILES = \
+	src/acq.c \
+	src/led.c \
 	src/bl.c \
+	src/msg.c \
 	src/usb.c
 
 # TODO: Change for the actual board
