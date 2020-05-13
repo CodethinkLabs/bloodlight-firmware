@@ -21,6 +21,11 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <time.h>
+
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
 
 #include "../src/error.h"
 #include "../src/util.h"
@@ -144,13 +149,75 @@ static void bl_msg_print(union bl_msg_data *msg)
 	}
 }
 
-static int bl_cmd_read_message(FILE *device_node)
+static inline int64_t time_diff_ms(
+		struct timespec *time_start,
+		struct timespec *time_end)
+{
+	return ((time_end->tv_sec - time_start->tv_sec) * 1000 +
+		(time_end->tv_nsec - time_start->tv_nsec) / 1000000);
+}
+
+ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
+{
+	struct timespec time_start;
+	struct timespec time_end;
+	size_t total_read = 0;
+	int ret;
+
+	ret = clock_gettime(CLOCK_MONOTONIC, &time_start);
+	if (ret == -1) {
+		fprintf(stderr, "Failed to read time: %s\n",
+				strerror(errno));
+		return ret;
+	}
+
+	while (total_read != size) {
+		ssize_t chunk_read;
+		struct pollfd pfd = {
+			.fd = fd,
+			.events = POLLIN,
+		};
+
+		ret = poll(&pfd, 1, timeout_ms);
+		if (ret == -1) {
+			return ret;
+
+		} else if (ret == 0) {
+			int elapsed_ms;
+
+			ret = clock_gettime(CLOCK_MONOTONIC, &time_end);
+			if (ret == -1) {
+				fprintf(stderr, "Failed to read time: %s\n",
+						strerror(errno));
+				return ret;
+			}
+
+			elapsed_ms = time_diff_ms(&time_start, &time_end);
+			if (elapsed_ms >= timeout_ms) {
+				return -1;
+			}
+			timeout_ms -= elapsed_ms;
+		}
+
+		chunk_read = read(fd, (uint8_t *)data + total_read, size);
+		if (chunk_read == -1)
+			return -1;
+
+		total_read += chunk_read;
+	}
+
+	return total_read;
+}
+
+static int bl_cmd_read_message(int dev_fd)
 {
 	union bl_msg_data msg;
-	size_t read;
+	ssize_t expected_len;
+	ssize_t read_len;
 
-	read = fread(&msg.type, 1, 1, device_node);
-	if (read != 1) {
+	expected_len = sizeof(msg.type);
+	read_len = bl_read(dev_fd, &msg.type, expected_len, 500);
+	if (read_len != expected_len) {
 		fprintf(stderr, "Failed to read from device.\n");
 		return EXIT_FAILURE;
 	}
@@ -161,17 +228,19 @@ static int bl_cmd_read_message(FILE *device_node)
 		return EXIT_FAILURE;
 	}
 
-	read = fread(&msg.type + 1, bl_msg_type_to_len(msg.type) - 1, 1,
-			device_node);
-	if (read != 1) {
+	expected_len = bl_msg_type_to_len(msg.type) - sizeof(msg.type);
+	read_len = bl_read(dev_fd, &msg.type + sizeof(msg.type),
+			expected_len, 500);
+	if (read_len != expected_len) {
 		fprintf(stderr, "Failed to read from device.\n");
 		return EXIT_FAILURE;
 	}
 
 	if (msg.type == BL_MSG_SAMPLE_DATA) {
-		read = fread(&msg.sample_data.data, sizeof(uint16_t),
-				msg.sample_data.count, device_node);
-		if (read != msg.sample_data.count) {
+		expected_len = sizeof(uint16_t) * msg.sample_data.count;
+		read_len = bl_read(dev_fd, &msg.sample_data.data,
+				expected_len, 500);
+		if (read_len != expected_len) {
 			fprintf(stderr, "Failed to read from device.\n");
 			return EXIT_FAILURE;
 		}
@@ -186,30 +255,31 @@ static int bl_cmd_send(
 		const union bl_msg_data *msg,
 		const char *dev_path)
 {
-	FILE *device_node;
+	int dev_fd;
+	ssize_t written;
 	int ret = EXIT_SUCCESS;
-	size_t written;
 
-	device_node = fopen(dev_path, "r+");
-	if (device_node == NULL) {
+	dev_fd = open(dev_path, O_RDWR);
+	if (dev_fd == -1) {
 		fprintf(stderr, "Failed to open '%s': %s\n",
 				dev_path, strerror(errno));
 		return EXIT_FAILURE;
 	}
 
-	written = fwrite(msg, bl_msg_type_to_len(msg->type), 1, device_node);
-	if (written != 1) {
+	written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
+	if (written != bl_msg_type_to_len(msg->type)) {
 		fprintf(stderr, "Failed write message to '%s'\n", dev_path);
 		ret = EXIT_FAILURE;
 		goto cleanup;
 	}
 
-	if (bl_cmd_read_message(device_node) != EXIT_SUCCESS) {
-		return EXIT_FAILURE;
+	if (bl_cmd_read_message(dev_fd) != EXIT_SUCCESS) {
+		ret = EXIT_FAILURE;
+		goto cleanup;
 	}
 
 cleanup:
-	fclose(device_node);
+	close(dev_fd);
 	return ret;
 }
 
