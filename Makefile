@@ -1,7 +1,8 @@
 PROJECT = mpd-firmware
 BUILD_DIR = bin
 
-CFILES = src/main.c
+CFILES = \
+	src/bl.c
 
 # TODO: Change for the actual board
 DEVICE=stm32f303ZET6
