@@ -9,7 +9,7 @@ CFILES = \
 	src/usb.c
 
 # TODO: Change for the actual board
-DEVICE=stm32f303ZET6
+DEVICE=stm32f303CCT6
 OOCD_INTERFACE = stlink-v2-1
 OOCD_TARGET = stm32f3x
 
