@@ -278,11 +278,11 @@ static void bl_usb__setup(void)
 	/* Enable clocks for GPIO port A and USB peripheral. */
 	rcc_periph_clock_enable(RCC_USB);
 	rcc_periph_clock_enable(RCC_GPIOA);
-	rcc_periph_clock_enable(RCC_GPIOG);
+	rcc_periph_clock_enable(RCC_GPIOB);
 
 	/* Enable pull-up control. */
-	gpio_mode_setup(GPIOG, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO6);
-	gpio_set(GPIOG, GPIO6);
+	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO4);
+	gpio_set(GPIOB, GPIO4);
 
 	/* Setup GPIO pins for USB D+/D-. */
 	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
