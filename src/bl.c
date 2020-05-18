@@ -22,11 +22,26 @@
 #include "led.h"
 #include "bl.h"
 #include "usb.h"
+#include "error.h"
+
+const struct rcc_clock_scale rcc_hse16mhz_config = {
+	.pllsrc = RCC_CFGR_PLLSRC_HSE_PREDIV,
+	.pllmul = RCC_CFGR_PLLMUL_MUL9,
+	.plldiv = RCC_CFGR2_PREDIV_DIV2,
+	.usbdiv1 = false,
+	.flash_waitstates = 2,
+	.hpre = RCC_CFGR_HPRE_DIV_NONE,
+	.ppre1 = RCC_CFGR_PPRE1_DIV_2,
+	.ppre2 = RCC_CFGR_PPRE2_DIV_NONE,
+	.ahb_frequency = 72e6,
+	.apb1_frequency = 36e6,
+	.apb2_frequency = 72e6,
+};
 
 /* Exported function, documented in bl.h */
 void bl_init(void)
 {
-	rcc_clock_setup_pll(&rcc_hse8mhz_configs[RCC_CLOCK_HSE8_72MHZ]);
+	rcc_clock_setup_pll(&rcc_hse16mhz_config);
 
 	bl_usb_init();
 	bl_led_init();
