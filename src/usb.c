@@ -204,7 +204,7 @@ static enum usbd_request_return_codes bl_usb__cdcacm_control_request(
 		notif->wLength = 2;
 		local_buf[8] = req->wValue & 3;
 		local_buf[9] = 0;
-		// usbd_ep_write_packet(0x83, buf, 10);
+		usbd_ep_write_packet(usbd_dev, 0x83, buf, 10);
 		return USBD_REQ_HANDLED;
 		}
 	case USB_CDC_REQ_SET_LINE_CODING:
