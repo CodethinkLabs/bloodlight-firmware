@@ -24,6 +24,7 @@
 #include <time.h>
 
 #include <unistd.h>
+#include <termios.h>
 #include <fcntl.h>
 #include <poll.h>
 
@@ -275,6 +276,22 @@ static int bl_cmd_send(
 		fprintf(stderr, "Failed to open '%s': %s\n",
 				dev_path, strerror(errno));
 		return EXIT_FAILURE;
+	}
+
+	struct termios t;
+	if (tcgetattr(dev_fd, &t) == 0) {
+		t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+		t.c_oflag &= ~(OPOST);
+		t.c_cflag |=  (CS8);
+		t.c_lflag &= ~(ICANON | ISIG);
+
+		if (tcsetattr(dev_fd, TCSANOW, &t) != 0) {
+			fprintf(stderr, "Failed set terminal attributes"
+				" of '%s': %s\n", dev_path, strerror(errno));
+		}
+	} else {
+		fprintf(stderr, "Failed get terminal attributes"
+				" of '%s': %s\n", dev_path, strerror(errno));
 	}
 
 	written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
