@@ -168,7 +168,7 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 	if (ret == -1) {
 		fprintf(stderr, "Failed to read time: %s\n",
 				strerror(errno));
-		return ret;
+		return -errno;
 	}
 
 	while (total_read != size) {
@@ -180,7 +180,7 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 
 		ret = poll(&pfd, 1, timeout_ms);
 		if (ret == -1) {
-			return ret;
+			return -errno;
 
 		} else if (ret == 0) {
 			int elapsed_ms;
@@ -189,19 +189,21 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 			if (ret == -1) {
 				fprintf(stderr, "Failed to read time: %s\n",
 						strerror(errno));
-				return ret;
+				return -errno;
 			}
 
 			elapsed_ms = time_diff_ms(&time_start, &time_end);
 			if (elapsed_ms >= timeout_ms) {
-				return -1;
+				fprintf(stderr, "Timed out waiting for read\n");
+				return -ETIMEDOUT;
 			}
 			timeout_ms -= elapsed_ms;
 		}
 
 		chunk_read = read(fd, (uint8_t *)data + total_read, size);
-		if (chunk_read == -1)
-			return -1;
+		if (chunk_read == -1) {
+			return -errno;
+		}
 
 		total_read += chunk_read;
 	}
@@ -218,7 +220,10 @@ static int bl_cmd_read_message(int dev_fd)
 	expected_len = sizeof(msg.type);
 	read_len = bl_read(dev_fd, &msg.type, expected_len, 500);
 	if (read_len != expected_len) {
-		fprintf(stderr, "Failed to read from device.\n");
+		fprintf(stderr, "Failed to read message type from device");
+		if (read_len < 0)
+			fprintf(stderr, ": %s", strerror(-read_len));
+		fprintf(stderr, "\n");
 		return EXIT_FAILURE;
 	}
 
@@ -232,7 +237,10 @@ static int bl_cmd_read_message(int dev_fd)
 	read_len = bl_read(dev_fd, &msg.type + sizeof(msg.type),
 			expected_len, 500);
 	if (read_len != expected_len) {
-		fprintf(stderr, "Failed to read from device.\n");
+		fprintf(stderr, "Failed to read message body from device");
+		if (read_len < 0)
+			fprintf(stderr, ": %s", strerror(-read_len));
+		fprintf(stderr, "\n");
 		return EXIT_FAILURE;
 	}
 
@@ -241,7 +249,10 @@ static int bl_cmd_read_message(int dev_fd)
 		read_len = bl_read(dev_fd, &msg.sample_data.data,
 				expected_len, 500);
 		if (read_len != expected_len) {
-			fprintf(stderr, "Failed to read from device.\n");
+			fprintf(stderr, "Failed to read sample data from device");
+			if (read_len < 0)
+				fprintf(stderr, ": %s", strerror(-read_len));
+			fprintf(stderr, "\n");
 			return EXIT_FAILURE;
 		}
 	}
