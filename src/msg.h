@@ -144,6 +144,25 @@ static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 }
 
 /**
+ * Get full byte length of a message.
+ *
+ * Includes any sample data payload.
+ *
+ * \param[in]  msg  Message data to get length of.
+ * \return byte length of message type, or zero for invalid type.
+ */
+static inline uint8_t bl_msg_len(union bl_msg_data *msg)
+{
+	uint8_t len = bl_msg_type_to_len(msg->type);
+
+	if (msg->type == BL_MSG_SAMPLE_DATA) {
+		len += msg->sample_data.count * sizeof(uint16_t);
+	}
+
+	return len;
+}
+
+/**
  * Helper to get message type, even if we've not "decoded" yet.
  *
  * \param[in]  msg  Message data to extract type from.
