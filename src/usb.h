@@ -27,4 +27,11 @@ void bl_usb_init(void);
  */
 void bl_usb_poll(void);
 
+/**
+ * Send a message to the host.
+ *
+ * \param[in]  msg  Message to send to host.
+ */
+void usb_send_message(union bl_msg_data *msg);
+
 #endif

@@ -215,8 +215,13 @@ static enum usbd_request_return_codes bl_usb__cdcacm_control_request(
 	return USBD_REQ_NOTSUPP;
 }
 
+/* Exported function, documented in usb.h */
+void usb_send_message(union bl_msg_data *msg)
+{
+	usbd_ep_write_packet(usb_g.handle, 0x82, msg, bl_msg_len(msg));
+}
+
 static void bl_usb__send_response(
-		usbd_device *usbd_dev,
 		enum bl_msg_type response_to,
 		enum bl_error error)
 {
@@ -228,8 +233,7 @@ static void bl_usb__send_response(
 		},
 	};
 
-	usbd_ep_write_packet(usbd_dev, 0x82,
-			&msg, bl_msg_type_to_len(msg.type));
+	usb_send_message(&msg);
 }
 
 static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
@@ -246,14 +250,14 @@ static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 
 	msg = bl_msg_decode(buf, len);
 	if (msg == NULL) {
-		bl_usb__send_response(usbd_dev,
+		bl_usb__send_response(
 				bl_msg_get_type(buf),
 				BL_ERROR_BAD_MESSAGE_LENGTH);
 		return;
 	}
 
 	error = bl_msg_handle(msg);
-	bl_usb__send_response(usbd_dev, msg->type, error);
+	bl_usb__send_response(msg->type, error);
 }
 
 static void bl_usb__cdcacm_set_config(usbd_device *usbd_dev, uint16_t wValue)
