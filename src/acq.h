@@ -25,6 +25,18 @@ enum bl_error;
 #define BL_ACQ_PD__COUNT 4
 
 /**
+ * Acquisition sources.
+ */
+enum bl_acq_source {
+	BL_ACQ_PD1,
+	BL_ACQ_PD2,
+	BL_ACQ_PD3,
+	BL_ACQ_PD4,
+	BL_ACQ_3V3,
+	BL_ACQ_5V0,
+};
+
+/**
  * Initialise the acquisition module.
  */
 void bl_acq_init(void);
@@ -32,13 +44,17 @@ void bl_acq_init(void);
 /**
  * Handle the Sampling Setup message.
  *
- * \param[in]  msg  Message to handle.
+ * \param[in]  gain      Gain for all photodiodes.
+ * \param[in]  rate      Sampling rate in ms.
+ * \param[in]  samples   Number of samples per enabled LED.
+ * \param[in]  src_mask  Mask of sources to enable.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_setup(
+		uint8_t gain,
 		uint16_t rate,
 		uint16_t samples,
-		const uint8_t gain[BL_LED__COUNT][BL_ACQ_PD__COUNT]);
+		uint16_t src_mask);
 
 /**
  * Start an acquisition.
@@ -53,5 +69,10 @@ enum bl_error bl_acq_start(void);
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_abort(void);
+
+/**
+ * Poll the acquisition module.
+ */
+void bl_acq_poll(void);
 
 #endif

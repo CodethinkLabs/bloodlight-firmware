@@ -216,9 +216,11 @@ static enum usbd_request_return_codes bl_usb__cdcacm_control_request(
 }
 
 /* Exported function, documented in usb.h */
-void usb_send_message(union bl_msg_data *msg)
+bool usb_send_message(union bl_msg_data *msg)
 {
-	usbd_ep_write_packet(usb_g.handle, 0x82, msg, bl_msg_len(msg));
+	uint16_t len = bl_msg_len(msg);
+
+	return (len == usbd_ep_write_packet(usb_g.handle, 0x82, msg, len));
 }
 
 static void bl_usb__send_response(
@@ -233,7 +235,7 @@ static void bl_usb__send_response(
 		},
 	};
 
-	usb_send_message(&msg);
+	(void) usb_send_message(&msg);
 }
 
 static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)

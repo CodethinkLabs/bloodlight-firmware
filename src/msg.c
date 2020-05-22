@@ -42,9 +42,23 @@ static enum bl_error bl_msg_led_test(const union bl_msg_data *msg)
 static enum bl_error bl_msg_acq_setup(const union bl_msg_data *msg)
 {
 	return bl_acq_setup(
+			msg->acq_setup.gain,
 			msg->acq_setup.rate,
 			msg->acq_setup.samples,
-			msg->acq_setup.gain);
+			msg->acq_setup.src_mask);
+}
+
+/**
+ * Handle the Acquisition Setup message.
+ *
+ * \param[in]  msg  Message to handle.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+static enum bl_error bl_msg_acq_set_gains(const union bl_msg_data *msg)
+{
+	BL_UNUSED(msg);
+
+	return BL_ERROR_NONE;
 }
 
 /**
@@ -95,11 +109,12 @@ enum bl_error bl_msg_handle(const union bl_msg_data *msg)
 			const union bl_msg_data *msg);
 
 	static const bl_msg_handle_fn fns[] = {
-		[BL_MSG_LED_TEST]  = bl_msg_led_test,
-		[BL_MSG_ACQ_SETUP] = bl_msg_acq_setup,
-		[BL_MSG_ACQ_START] = bl_msg_acq_start,
-		[BL_MSG_ACQ_ABORT] = bl_msg_acq_abort,
-		[BL_MSG_RESET]     = bl_msg_reset,
+		[BL_MSG_LED_TEST]      = bl_msg_led_test,
+		[BL_MSG_ACQ_SETUP]     = bl_msg_acq_setup,
+		[BL_MSG_ACQ_SET_GAINS] = bl_msg_acq_set_gains,
+		[BL_MSG_ACQ_START]     = bl_msg_acq_start,
+		[BL_MSG_ACQ_ABORT]     = bl_msg_acq_abort,
+		[BL_MSG_RESET]         = bl_msg_reset,
 	};
 
 	if (msg->type >= BL_ARRAY_LEN(fns) || fns[msg->type] == NULL) {

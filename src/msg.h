@@ -27,6 +27,7 @@ enum bl_msg_type {
 	BL_MSG_RESPONSE,
 	BL_MSG_LED_TEST,
 	BL_MSG_ACQ_SETUP,
+	BL_MSG_ACQ_SET_GAINS,
 	BL_MSG_ACQ_START,
 	BL_MSG_ACQ_ABORT,
 	BL_MSG_RESET,
@@ -43,8 +44,7 @@ union bl_msg_data {
 	struct {
 		uint8_t  type;        /**< Must be \ref BL_MSG_RESPONSE */
 		uint8_t  response_to; /**< Type of message response is to. */
-		uint16_t reserved;    /**< Unused, must be zero. */
-		uint8_t  error_code;  /**< Result of command. */
+		uint16_t error_code;  /**< Result of command. */
 	} response;
 
 	/**
@@ -70,17 +70,22 @@ union bl_msg_data {
 	 */
 	struct {
 		uint8_t  type;     /**< Must be \ref BL_MSG_ACQ_SETUP */
+		uint8_t  gain;     /**< Gain for all photodiodes */
 		uint16_t rate;     /**< Sampling rate in ms. */
-		uint16_t samples;  /**< Number of samples per enabled LED/pd. */
-		/**
-		 * Gain per LED, per photodiode.
-		 *
-		 * A value of zero means the combination isn't recorded.
-		 * If all four gains for an LED are zero, the LED is not
-		 * turned on.
-		 */
-		uint8_t  gain[BL_LED__COUNT][BL_ACQ_PD__COUNT];
+		uint16_t samples;  /**< Number of samples per enabled LED. */
+		uint16_t src_mask; /**< Mask of sources to enable. */
 	} acq_setup;
+
+	/**
+	 * Data for \ref BL_MSG_ACQ_SET_GAINS.
+	 *
+	 * Set up specific gains for individual photodiodes.
+	 */
+	struct {
+		uint8_t  type;    /**< Must be \ref BL_MSG_ACQ_SET_GAINS */
+		uint16_t led_idx; /**< LED to set gains for. */
+		uint8_t  gain[BL_ACQ_PD__COUNT]; /**< Photodiode gains. */
+	} acq_set_gains;
 
 	/** Data for \ref BL_MSG_ACQ_START. */
 	struct {
@@ -101,7 +106,7 @@ union bl_msg_data {
 	struct {
 		uint8_t  type;     /**< Must be \ref BL_MSG_SAMPLE_DATA */
 		uint8_t  count;    /**< Number of samples in packet. */
-		uint16_t checksum; /**< Checksum for samples. */
+		uint16_t src_mask; /**< Mask of sources in this message. */
 		uint16_t data[];   /**< Sample data for \ref count samples. */
 	} sample_data;
 };
@@ -127,13 +132,14 @@ union bl_msg_data {
 static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 {
 	static const uint8_t len[BL_MSG__COUNT] = {
-		[BL_MSG_RESPONSE]    = BL_SIZEOF_MSG(response),
-		[BL_MSG_LED_TEST]    = BL_SIZEOF_MSG(led_test),
-		[BL_MSG_ACQ_SETUP]   = BL_SIZEOF_MSG(acq_setup),
-		[BL_MSG_ACQ_START]   = BL_SIZEOF_MSG(acq_start),
-		[BL_MSG_ACQ_ABORT]   = BL_SIZEOF_MSG(acq_abort),
-		[BL_MSG_RESET]       = BL_SIZEOF_MSG(reset),
-		[BL_MSG_SAMPLE_DATA] = BL_SIZEOF_MSG(sample_data),
+		[BL_MSG_RESPONSE]      = BL_SIZEOF_MSG(response),
+		[BL_MSG_LED_TEST]      = BL_SIZEOF_MSG(led_test),
+		[BL_MSG_ACQ_SETUP]     = BL_SIZEOF_MSG(acq_setup),
+		[BL_MSG_ACQ_SET_GAINS] = BL_SIZEOF_MSG(acq_set_gains),
+		[BL_MSG_ACQ_START]     = BL_SIZEOF_MSG(acq_start),
+		[BL_MSG_ACQ_ABORT]     = BL_SIZEOF_MSG(acq_abort),
+		[BL_MSG_RESET]         = BL_SIZEOF_MSG(reset),
+		[BL_MSG_SAMPLE_DATA]   = BL_SIZEOF_MSG(sample_data),
 	};
 
 	if (type >= BL_MSG__COUNT) {
