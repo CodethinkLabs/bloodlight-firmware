@@ -283,7 +283,7 @@ static int bl_cmd_send(
 		t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
 		t.c_oflag &= ~(OPOST);
 		t.c_cflag |=  (CS8);
-		t.c_lflag &= ~(ICANON | ISIG);
+		t.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
 		if (tcsetattr(dev_fd, TCSANOW, &t) != 0) {
 			fprintf(stderr, "Failed set terminal attributes"
