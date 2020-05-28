@@ -86,38 +86,64 @@ static inline const char *bl_msg_type_to_str(enum bl_msg_type type)
 	return types[type];
 }
 
-static void bl_msg_print(union bl_msg_data *msg)
+static void bl_msg_print(const union bl_msg_data *msg)
 {
 	if (bl_msg_type_to_str(msg->type) == NULL) {
-		fprintf(stderr, "- Type: Unknown (0x%x)\n",
+		fprintf(stderr, "- Unknown (0x%x)\n",
 				(unsigned) msg->type);
 		return;
 	}
 
-	fprintf(stdout, "- Type: %s\n", bl_msg_type_to_str(msg->type));
+	fprintf(stdout, "- %s:\n", bl_msg_type_to_str(msg->type));
 
 	switch (msg->type) {
 	case BL_MSG_RESPONSE:
 		if (bl_msg_type_to_str(msg->response.response_to) == NULL) {
-			fprintf(stderr, "- Response to: Unknown (0x%x)\n",
+			fprintf(stderr, "    Response to: Unknown (0x%x)\n",
 					(unsigned) msg->response.response_to);
 		} else {
-			fprintf(stdout, "  Response to: %s\n",
+			fprintf(stdout, "    Response to: %s\n",
 					bl_msg_type_to_str(
 						msg->response.response_to));
 		}
-		fprintf(stdout, "  Error code: %u\n",
+		fprintf(stdout, "    Error code: %u\n",
 				(unsigned) msg->response.error_code);
 		break;
 
+	case BL_MSG_LED_TEST:
+		fprintf(stdout, "    LED Mask: 0x%x\n",
+				(unsigned) msg->led_test.led_mask);
+		break;
+
+	case BL_MSG_ACQ_SETUP:
+		fprintf(stdout, "    Gain: %u\n",
+				(unsigned) msg->acq_setup.gain);
+		fprintf(stdout, "    Rate: %u\n",
+				(unsigned) msg->acq_setup.rate);
+		fprintf(stdout, "    Samples: %u\n",
+				(unsigned) msg->acq_setup.samples);
+		fprintf(stdout, "    Source Mask: 0x%x\n",
+				(unsigned) msg->acq_setup.src_mask);
+		break;
+
+	case BL_MSG_ACQ_SET_GAINS:
+		fprintf(stdout, "    LED Index: %u\n",
+				(unsigned) msg->acq_set_gains.led_idx);
+		fprintf(stdout, "    Gain:\n");
+		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+			fprintf(stdout, "    - %u\n",
+				(unsigned) msg->acq_set_gains.gain[i]);
+		}
+		break;
+
 	case BL_MSG_SAMPLE_DATA:
-		fprintf(stdout, "  Count: %u\n",
+		fprintf(stdout, "    Count: %u\n",
 				(unsigned) msg->sample_data.count);
-		fprintf(stdout, "  Source mask: 0x%x\n",
+		fprintf(stdout, "    Source mask: 0x%x\n",
 				(unsigned) msg->sample_data.src_mask);
-		fprintf(stdout, "  Data:\n");
+		fprintf(stdout, "    Data:\n");
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			fprintf(stdout, "  - %u\n",
+			fprintf(stdout, "    - %u\n",
 				(unsigned) msg->sample_data.data[i]);
 		}
 		break;
