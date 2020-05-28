@@ -241,12 +241,11 @@ static int bl_cmd_read_message(int dev_fd, int timeout_ms)
 
 static int bl_cmd_send(
 		const union bl_msg_data *msg,
-		const char *dev_path)
+		const char *dev_path, bool multi)
 {
 	int dev_fd;
 	ssize_t written;
 	int ret = EXIT_SUCCESS;
-	bool multiple_messages = msg->type == BL_MSG_ACQ_START;
 
 	dev_fd = open(dev_path, O_RDWR);
 	if (dev_fd == -1) {
@@ -271,11 +270,14 @@ static int bl_cmd_send(
 				" of '%s': %s\n", dev_path, strerror(errno));
 	}
 
-	written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
-	if (written != bl_msg_type_to_len(msg->type)) {
-		fprintf(stderr, "Failed write message to '%s'\n", dev_path);
-		ret = EXIT_FAILURE;
-		goto cleanup;
+	if (msg != NULL)
+	{
+		written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
+		if (written != bl_msg_type_to_len(msg->type)) {
+			fprintf(stderr, "Failed write message to '%s'\n", dev_path);
+			ret = EXIT_FAILURE;
+			goto cleanup;
+		}
 	}
 
 	do {
@@ -283,7 +285,7 @@ static int bl_cmd_send(
 			ret = EXIT_FAILURE;
 			goto cleanup;
 		}
-	} while (multiple_messages);
+	} while (multi);
 
 cleanup:
 	close(dev_fd);
@@ -328,7 +330,7 @@ static int bl_cmd_led_test(int argc, char *argv[])
 
 	msg.led_test.led_mask = led_mask;
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH]);
+	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
 }
 
 static int bl_cmd__no_params_helper(
@@ -353,7 +355,8 @@ static int bl_cmd__no_params_helper(
 		return EXIT_FAILURE;
 	}
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH]);
+	return bl_cmd_send(&msg, argv[ARG_DEV_PATH],
+		type == BL_MSG_ACQ_START);
 }
 
 static int bl_cmd_acq_setup(int argc, char *argv[])
@@ -436,7 +439,7 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 	msg.acq_setup.samples = samples;
 	msg.acq_setup.src_mask = src_mask;
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH]);
+	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
 }
 
 static int bl_cmd_acq_set_gains(int argc, char *argv[])
@@ -515,12 +518,31 @@ static int bl_cmd_acq_set_gains(int argc, char *argv[])
 		msg.acq_set_gains.gain[i] = gain;
 	}
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH]);
+	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
 }
 
 static int bl_cmd_acq_start(int argc, char *argv[])
 {
 	return bl_cmd__no_params_helper(argc, argv, BL_MSG_ACQ_START);
+}
+
+static int bl_cmd_acq_continue(int argc, char *argv[])
+{
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG__COUNT,
+	};
+
+	if (argc != ARG__COUNT) {
+		fprintf(stderr, "Usage:\n");
+		fprintf(stderr, "  %s %s <DEVICE_PATH>\n",
+				argv[ARG_PROG], argv[ARG_CMD]);
+		return EXIT_FAILURE;
+	}
+
+	return bl_cmd_send(NULL, argv[ARG_DEV_PATH], true);
 }
 
 static int bl_cmd_acq_abort(int argc, char *argv[])
@@ -557,6 +579,11 @@ static const struct bl_cmd {
 		.name = "acq-start",
 		.help = "Start an acquisition",
 		.fn = bl_cmd_acq_start,
+	},
+	{
+		.name = "acq-continue",
+		.help = "Continue an acquisition",
+		.fn = bl_cmd_acq_continue,
 	},
 	{
 		.name = "acq-abort",
