@@ -297,6 +297,7 @@ static int bl_cmd_send(
 
 	if (msg != NULL)
 	{
+		bl_msg_print(msg);
 		written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
 		if (written != bl_msg_type_to_len(msg->type)) {
 			fprintf(stderr, "Failed write message to '%s'\n", dev_path);
