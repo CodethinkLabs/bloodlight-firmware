@@ -22,6 +22,7 @@
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/dma.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/f3/nvic.h>
 
 #include "error.h"
@@ -148,6 +149,7 @@ void bl_acq_init(void)
 	rcc_periph_clock_enable(RCC_ADC12);
 	rcc_periph_clock_enable(RCC_DMA1);
 	rcc_periph_clock_enable(RCC_DMA2);
+	rcc_periph_clock_enable(RCC_TIM1);
 
 	/* TODO: Consider moving to setup and disabling on abort. */
 	nvic_enable_irq(NVIC_DMA1_CHANNEL1_IRQ);
@@ -161,9 +163,16 @@ void bl_acq_init(void)
 				acq_source_table[i].gpio_pin);
 	}
 
+	/* Prescaler of 71 (=72) means timer runs at 1MHz. */
+	timer_set_prescaler(TIM1, 71);
+	/* Timer will trigger TRGO every OC1 match (once per period). */
+	timer_set_oc_mode(TIM1, TIM_OC1, TIM_OCM_TOGGLE);
+	timer_set_master_mode(TIM1, TIM_CR2_MMS_COMPARE_OC1REF);
+	timer_enable_oc_output(TIM1, TIM_OC1);
+
 	/* Setup ADC masters. */
-	adc_set_clk_prescale(ADC1, ADC_CCR_CKMODE_DIV4);
-	adc_set_clk_prescale(ADC3, ADC_CCR_CKMODE_DIV4);
+	adc_set_clk_prescale(ADC1, ADC_CCR_CKMODE_DIV1);
+	adc_set_clk_prescale(ADC3, ADC_CCR_CKMODE_DIV1);
 	adc_set_multi_mode(ADC1, ADC_CCR_DUAL_INDEPENDENT);
 	adc_set_multi_mode(ADC3, ADC_CCR_DUAL_INDEPENDENT);
 
@@ -224,10 +233,16 @@ static void bl_acq__setup_adc(
 	adc_power_on(adc);
 	adc_enable_dma_circular_mode(adc);
 	adc_enable_dma(adc);
-	adc_set_continuous_conversion_mode(adc);
+	adc_set_single_conversion_mode(adc);
 	adc_set_sample_time_on_all_channels(adc, ADC_SMPR_SMP_601DOT5CYC);
 
 	adc_set_regular_sequence(adc, channel_count, channels);
+
+	/* TODO: Update libopencm3 to support this constant. */
+	uint32_t extsel_tim1_trgo = 9;
+	adc_enable_external_trigger_regular(adc,
+			ADC_CFGR1_EXTSEL_VAL(extsel_tim1_trgo),
+			ADC_CFGR1_EXTEN_BOTH_EDGES);
 	adc_start_conversion_regular(adc);
 }
 
@@ -282,40 +297,17 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 
 void dma1_channel1_isr(void)
 {
-	static unsigned count;
-
 	if (dma_get_interrupt_flag(DMA1, DMA_CHANNEL1, DMA_TCIF)) {
 		dma_clear_interrupt_flags(DMA1, DMA_CHANNEL1, DMA_TCIF);
-		if (acq_g.state == ACQ_STATE_ACTIVE) {
-			/* Rate limit sampling. */
-			if (count != acq_g.rate) {
-				count++;
-				return;
-			}
-
-			dma_interrupt_helper(&acq_adc_table[ACQ_ADC_1]);
-		}
-		count = 0;
+		dma_interrupt_helper(&acq_adc_table[ACQ_ADC_1]);
 	}
 }
 
 void dma2_channel1_isr(void)
 {
-	static unsigned count;
-
 	if (dma_get_interrupt_flag(DMA2, DMA_CHANNEL1, DMA_TCIF)) {
 		dma_clear_interrupt_flags(DMA2, DMA_CHANNEL1, DMA_TCIF);
-
-		if (acq_g.state == ACQ_STATE_ACTIVE) {
-			/* Rate limit sampling. */
-			if (count != acq_g.rate) {
-				count++;
-				return;
-			}
-
-			dma_interrupt_helper(&acq_adc_table[ACQ_ADC_2]);
-		}
-		count = 0;
+		dma_interrupt_helper(&acq_adc_table[ACQ_ADC_2]);
 	}
 }
 
@@ -352,6 +344,8 @@ enum bl_error bl_acq_setup(
 		}
 	}
 
+	timer_set_period(TIM1, acq_g.rate);
+
 	acq_g.state = ACQ_STATE_CONFIGURED;
 	return BL_ERROR_NONE;
 }
@@ -364,6 +358,9 @@ enum bl_error bl_acq_start(void)
 	}
 
 	acq_g.state = ACQ_STATE_ACTIVE;
+
+	/* Enabling the timer will start triggering ADC. */
+	timer_enable_counter(TIM1);
 	return BL_ERROR_NONE;
 }
 
@@ -374,6 +371,9 @@ enum bl_error bl_acq_abort(void)
 		/* No-op. */
 		return BL_ERROR_NONE;
 	}
+
+	/* Disabling the timer will stop any future conversions. */
+	timer_disable_counter(TIM1);
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		acq_adc_table[i].msg_ready = false;
