@@ -32,7 +32,7 @@
 #include "usb.h"
 
 #define ADC_MAX_CHANNELS 8
-#define ADC_DMA_SAMPLES 256
+#define ACQ_OVERSAMPLE_MAX 8
 
 enum acq_state {
 	ACQ_STATE_IDLE,
@@ -43,6 +43,7 @@ enum acq_state {
 struct {
 	enum acq_state state;
 
+	uint8_t  oversample;
 	uint16_t rate;
 	uint16_t samples;
 	uint8_t gain[BL_LED__COUNT][BL_ACQ_PD__COUNT];
@@ -64,7 +65,7 @@ static struct adc_table {
 	uint8_t channels[ADC_MAX_CHANNELS];
 
 	volatile bool msg_ready;
-	volatile uint16_t dma_buffer[ADC_MAX_CHANNELS * ADC_DMA_SAMPLES];
+	volatile uint16_t dma_buffer[ADC_MAX_CHANNELS << ACQ_OVERSAMPLE_MAX];
 
 	uint8_t msg_channels;
 	uint8_t msg_channels_max;
@@ -272,7 +273,8 @@ static void bl_acq__setup_adc_dma(
 	dma_set_memory_size(adc_info->dma_addr, DMA_CHANNEL1, DMA_CCR_MSIZE_16BIT);
 
 	dma_enable_transfer_complete_interrupt(adc_info->dma_addr, DMA_CHANNEL1);
-	dma_set_number_of_data(adc_info->dma_addr, DMA_CHANNEL1, adc_info->sample_count * ADC_DMA_SAMPLES);
+	dma_set_number_of_data(adc_info->dma_addr, DMA_CHANNEL1,
+			adc_info->sample_count << acq_g.oversample);
 	dma_enable_circular_mode(adc_info->dma_addr, DMA_CHANNEL1);
 	dma_enable_channel(adc_info->dma_addr, DMA_CHANNEL1);
 
@@ -284,9 +286,34 @@ static void bl_acq__setup_adc_dma(
 
 static inline void dma_interrupt_helper(struct adc_table *adc)
 {
-	memcpy(adc->msg.sample_data.data + adc->msg_channels,
-			(void *) adc->dma_buffer,
-			adc->sample_count * sizeof(uint16_t));
+	uint32_t sample[adc->sample_count];
+	memset(sample, 0x00, adc->sample_count * sizeof(*sample));
+
+	volatile uint16_t *p = adc->dma_buffer;
+	for (unsigned i = 0; i < (1U << acq_g.oversample); i++) {
+		for (unsigned j = 0; j < adc->sample_count; j++) {
+			sample[j] += *p++;
+		}
+	}
+
+	unsigned bits = 12 + acq_g.oversample;
+	if (bits < 16) {
+		unsigned shift = 16 - bits;
+		for (unsigned j = 0; j < adc->sample_count; j++) {
+			sample[j] = (sample[j] << shift)
+					| (sample[j] >> (bits - shift));
+		}
+	} else if (bits > 16) {
+		unsigned shift = bits - 16;
+		for (unsigned j = 0; j < adc->sample_count; j++) {
+			sample[j] >>= shift;
+		}
+	}
+
+	for (unsigned j = 0; j < adc->sample_count; j++) {
+		adc->msg.sample_data.data[adc->msg_channels + j] = sample[j];
+	}
+
 	adc->msg_channels += adc->sample_count;
 
 	if (adc->msg_channels == adc->msg_channels_max) {
@@ -324,6 +351,8 @@ enum bl_error bl_acq_setup(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
+	/* TODO: Add this to protocol. */
+	acq_g.oversample = 4;
 	acq_g.rate = rate;
 	acq_g.samples = samples;
 	for (unsigned i = 0; i < BL_LED__COUNT; i++) {
