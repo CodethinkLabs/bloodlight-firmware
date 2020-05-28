@@ -133,8 +133,13 @@ static void __attribute__((optimize("O0"))) delay(unsigned duration)
 static void bl_acq__adc_calibrate(uint32_t adc)
 {
 	adc_enable_regulator(adc);
+	/* TODO: Replace this with delay_us(10); */
 	delay(2);
+
+	/* TODO: Explicitly calibrate single ended by setting DIFSEL. */
 	adc_calibrate(adc);
+
+	adc_disable_regulator(adc);
 }
 
 /* Exported function, documented in acq.h */
@@ -156,15 +161,15 @@ void bl_acq_init(void)
 				acq_source_table[i].gpio_pin);
 	}
 
-	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
-		//bl_acq__adc_calibrate(acq_adc_table[i].adc_addr);
-	}
-
 	/* Setup ADC masters. */
 	adc_set_clk_prescale(ADC1, ADC_CCR_CKMODE_DIV4);
 	adc_set_clk_prescale(ADC3, ADC_CCR_CKMODE_DIV4);
 	adc_set_multi_mode(ADC1, ADC_CCR_DUAL_INDEPENDENT);
 	adc_set_multi_mode(ADC3, ADC_CCR_DUAL_INDEPENDENT);
+
+	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
+		bl_acq__adc_calibrate(acq_adc_table[i].adc_addr);
+	}
 }
 
 static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
