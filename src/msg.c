@@ -42,7 +42,6 @@ static enum bl_error bl_msg_led_test(const union bl_msg_data *msg)
 static enum bl_error bl_msg_acq_setup(const union bl_msg_data *msg)
 {
 	return bl_acq_setup(
-			msg->acq_setup.gain,
 			msg->acq_setup.rate,
 			msg->acq_setup.samples,
 			msg->acq_setup.src_mask);
@@ -56,9 +55,7 @@ static enum bl_error bl_msg_acq_setup(const union bl_msg_data *msg)
  */
 static enum bl_error bl_msg_acq_set_gains(const union bl_msg_data *msg)
 {
-	BL_UNUSED(msg);
-
-	return BL_ERROR_NONE;
+	return bl_acq_set_gains(msg->acq_set_gains.gain);
 }
 
 /**

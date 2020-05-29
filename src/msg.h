@@ -70,7 +70,6 @@ union bl_msg_data {
 	 */
 	struct {
 		uint8_t  type;     /**< Must be \ref BL_MSG_ACQ_SETUP */
-		uint8_t  gain;     /**< Gain for all photodiodes */
 		uint16_t rate;     /**< Sampling rate in ms. */
 		uint16_t samples;  /**< Number of samples per enabled LED. */
 		uint16_t src_mask; /**< Mask of sources to enable. */
@@ -83,7 +82,6 @@ union bl_msg_data {
 	 */
 	struct {
 		uint8_t  type;    /**< Must be \ref BL_MSG_ACQ_SET_GAINS */
-		uint16_t led_idx; /**< LED to set gains for. */
 		uint8_t  gain[BL_ACQ_PD__COUNT]; /**< Photodiode gains. */
 	} acq_set_gains;
 

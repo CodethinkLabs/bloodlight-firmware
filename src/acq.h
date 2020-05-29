@@ -44,17 +44,23 @@ void bl_acq_init(void);
 /**
  * Handle the Sampling Setup message.
  *
- * \param[in]  gain      Gain for all photodiodes.
  * \param[in]  rate      Sampling rate in ms.
  * \param[in]  samples   Number of samples per enabled LED.
  * \param[in]  src_mask  Mask of sources to enable.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_setup(
-		uint8_t gain,
 		uint16_t rate,
 		uint16_t samples,
 		uint16_t src_mask);
+
+/**
+ * Handle the Set Gains message.
+ *
+ * \param[in]  gain  Gain value for each photodiode.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT]);
 
 /**
  * Start an acquisition.

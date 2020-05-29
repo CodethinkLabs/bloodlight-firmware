@@ -46,7 +46,7 @@ struct {
 	uint8_t  oversample;
 	uint16_t rate;
 	uint16_t samples;
-	uint8_t gain[BL_LED__COUNT][BL_ACQ_PD__COUNT];
+	uint8_t gain[BL_ACQ_PD__COUNT];
 } acq_g;
 
 enum acq_adc {
@@ -340,7 +340,6 @@ void dma2_channel1_isr(void)
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_setup(
-		uint8_t gain,
 		uint16_t rate,
 		uint16_t samples,
 		uint16_t src_mask)
@@ -355,9 +354,9 @@ enum bl_error bl_acq_setup(
 	acq_g.oversample = 4;
 	acq_g.rate = rate;
 	acq_g.samples = samples;
-	for (unsigned i = 0; i < BL_LED__COUNT; i++) {
-		for (unsigned j = 0; j < BL_ACQ_PD__COUNT; j++) {
-			acq_g.gain[i][j] = gain;
+	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+		if (acq_g.gain[i] == 0) {
+			acq_g.gain[i] = 1;
 		}
 	}
 
@@ -376,6 +375,26 @@ enum bl_error bl_acq_setup(
 	timer_set_period(TIM1, acq_g.rate);
 
 	acq_g.state = ACQ_STATE_CONFIGURED;
+	return BL_ERROR_NONE;
+}
+
+/* Exported function, documented in acq.h */
+enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
+{
+	if (acq_g.state == ACQ_STATE_ACTIVE) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+
+	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+		if ((gain[i] < 1) || (gain[i] > 16)
+				|| (gain[i] & (gain[i] - 1))) {
+			return BL_ERROR_OUT_OF_RANGE;
+		}
+
+		/* TODO: Set opamp gain here and select adc source. */
+		acq_g.gain[i] = i;
+	}
+
 	return BL_ERROR_NONE;
 }
 

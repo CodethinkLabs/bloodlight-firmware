@@ -366,11 +366,9 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 			.type = BL_MSG_ACQ_SETUP,
 		}
 	};
-	unsigned arg_gain_count;
 	uint32_t src_mask;
 	uint32_t samples;
 	uint32_t rate;
-	uint32_t gain;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -381,26 +379,15 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		ARG__COUNT,
 	};
 
-	arg_gain_count = argc - ARG__COUNT;
-
-	if (argc < ARG__COUNT || arg_gain_count > 1) {
+	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
 				"  \t<RATE> \\\n"
 				"  \t<SAMPLES> \\\n"
-				"  \t<SRC_MASK> \\\n"
-				"  \t[GAIN]\n",
+				"  \t<SRC_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "If no GAIN value is provided, "
-				"a default will be used.\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "A GAIN value must be 0 or a power of two, "
-				"up to 16.\n");
-		fprintf(stderr, "A GAIN value of 0 prevents the corresponding "
-				"photodiode from being captured.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -418,23 +405,6 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (arg_gain_count == 0) {
-		gain = 1;
-	} else {
-		const char *arg_s = argv[ARG__COUNT];
-
-		if (!read_uint32_t(arg_s, &gain)) {
-			fprintf(stderr, "Failed to parse value.\n");
-			return EXIT_FAILURE;
-		}
-
-		if (!check_fit(gain, sizeof(gain))) {
-			fprintf(stderr, "Value too large for message.\n");
-			return EXIT_FAILURE;
-		}
-	}
-
-	msg.acq_setup.gain = gain;
 	msg.acq_setup.rate = rate;
 	msg.acq_setup.samples = samples;
 	msg.acq_setup.src_mask = src_mask;
@@ -450,12 +420,10 @@ static int bl_cmd_acq_set_gains(int argc, char *argv[])
 		}
 	};
 	unsigned arg_gain_count;
-	uint32_t led_idx;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
-		ARG_LED_IDX,
 		ARG__COUNT,
 	};
 
@@ -465,33 +433,20 @@ static int bl_cmd_acq_set_gains(int argc, char *argv[])
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
-				"  \t<LED_IDX> \\\n"
 				"  \t[GAIN]*\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
 		fprintf(stderr, "\n");
-		fprintf(stderr, "If no GAIN values are provided, "
-				"defaults will be used.\n");
+		fprintf(stderr, "GAIN values which are not provided, "
+				"will default to 1 (no amplification).\n");
 		fprintf(stderr, "\n");
-		fprintf(stderr, "A GAIN value must be 0 or a power of two, "
-				"up to 16.\n");
-		fprintf(stderr, "A GAIN value of 0 prevents the corresponding "
-				"photodiode from being captured.\n");
+		fprintf(stderr, "A GAIN value must be a power of two"
+				" up to 16.\n");
 		fprintf(stderr, "\n");
 		fprintf(stderr, "Up to %u GAIN values may be provided.\n",
 				(unsigned) BL_ACQ_PD__COUNT);
 		fprintf(stderr, "If a single GAIN value is given it is used "
 				"for all photodiodes.\n");
-		return EXIT_FAILURE;
-	}
-
-	if (read_uint32_t(argv[ARG_LED_IDX], &led_idx) == false) {
-		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
-	}
-
-	if (check_fit(led_idx, sizeof(msg.acq_set_gains.led_idx)) == false) {
-		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
 
