@@ -52,11 +52,14 @@ struct {
 enum acq_adc {
 	ACQ_ADC_1,
 	ACQ_ADC_2,
+	ACQ_ADC_3,
+	ACQ_ADC_4,
 };
 
 static struct adc_table {
 	const uint32_t adc_addr;
 	const uint32_t dma_addr;
+	const uint32_t dma_chan;
 
 	bool enabled;
 	uint16_t src_mask;
@@ -75,10 +78,22 @@ static struct adc_table {
 	[ACQ_ADC_1] = {
 		.adc_addr = ADC1,
 		.dma_addr = DMA1,
+		.dma_chan = DMA_CHANNEL1,
 	},
 	[ACQ_ADC_2] = {
 		.adc_addr = ADC2,
 		.dma_addr = DMA2,
+		.dma_chan = DMA_CHANNEL1,
+	},
+	[ACQ_ADC_3] = {
+		.adc_addr = ADC3,
+		.dma_addr = DMA2,
+		.dma_chan = DMA_CHANNEL5,
+	},
+	[ACQ_ADC_4] = {
+		.adc_addr = ADC4,
+		.dma_addr = DMA2,
+		.dma_chan = DMA_CHANNEL2,
 	},
 };
 
@@ -148,6 +163,7 @@ static void bl_acq__adc_calibrate(uint32_t adc)
 void bl_acq_init(void)
 {
 	rcc_periph_clock_enable(RCC_ADC12);
+	rcc_periph_clock_enable(RCC_ADC34);
 	rcc_periph_clock_enable(RCC_DMA1);
 	rcc_periph_clock_enable(RCC_DMA2);
 	rcc_periph_clock_enable(RCC_TIM1);
@@ -155,8 +171,12 @@ void bl_acq_init(void)
 	/* TODO: Consider moving to setup and disabling on abort. */
 	nvic_enable_irq(NVIC_DMA1_CHANNEL1_IRQ);
 	nvic_enable_irq(NVIC_DMA2_CHANNEL1_IRQ);
+	nvic_enable_irq(NVIC_DMA2_CHANNEL5_IRQ);
+	nvic_enable_irq(NVIC_DMA2_CHANNEL2_IRQ);
 	nvic_set_priority(NVIC_DMA1_CHANNEL1_IRQ, 1);
 	nvic_set_priority(NVIC_DMA2_CHANNEL1_IRQ, 1);
+	nvic_set_priority(NVIC_DMA2_CHANNEL5_IRQ, 1);
+	nvic_set_priority(NVIC_DMA2_CHANNEL2_IRQ, 1);
 
 	/* Note: For now all the GPIOs are on port A. */
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_source_table); i++) {
@@ -172,6 +192,7 @@ void bl_acq_init(void)
 	timer_enable_oc_output(TIM1, TIM_OC1);
 
 	/* Setup ADC masters. */
+	/* TODO: Fix these constants in libopencm3 so they're ADC12 and ADC34 */
 	adc_set_clk_prescale(ADC1, ADC_CCR_CKMODE_DIV1);
 	adc_set_clk_prescale(ADC3, ADC_CCR_CKMODE_DIV1);
 	adc_set_multi_mode(ADC1, ADC_CCR_DUAL_INDEPENDENT);
@@ -256,27 +277,28 @@ static void bl_acq__init_sample_message(
 	adc_info->msg_ready = false;
 }
 
-static void bl_acq__setup_adc_dma(
-		struct adc_table *adc_info)
+static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 {
-	dma_channel_reset(adc_info->dma_addr, DMA_CHANNEL1);
+	uint32_t addr = adc_info->dma_addr;
+	uint32_t chan = adc_info->dma_chan;
 
-	dma_set_peripheral_address(adc_info->dma_addr, DMA_CHANNEL1,
+	dma_channel_reset(addr, chan);
+
+	dma_set_peripheral_address(addr, chan,
 			(uint32_t) &ADC_DR(adc_info->adc_addr));
-	dma_set_memory_address(adc_info->dma_addr, DMA_CHANNEL1,
-			(uint32_t) adc_info->dma_buffer);
+	dma_set_memory_address(addr, chan, (uint32_t) adc_info->dma_buffer);
 
-	dma_enable_memory_increment_mode(adc_info->dma_addr, DMA_CHANNEL1);
+	dma_enable_memory_increment_mode(addr, chan);
 
-	dma_set_read_from_peripheral(adc_info->dma_addr, DMA_CHANNEL1);
-	dma_set_peripheral_size(adc_info->dma_addr, DMA_CHANNEL1, DMA_CCR_PSIZE_16BIT);
-	dma_set_memory_size(adc_info->dma_addr, DMA_CHANNEL1, DMA_CCR_MSIZE_16BIT);
+	dma_set_read_from_peripheral(addr, chan);
+	dma_set_peripheral_size(addr, chan, DMA_CCR_PSIZE_16BIT);
+	dma_set_memory_size(addr, chan, DMA_CCR_MSIZE_16BIT);
 
-	dma_enable_transfer_complete_interrupt(adc_info->dma_addr, DMA_CHANNEL1);
-	dma_set_number_of_data(adc_info->dma_addr, DMA_CHANNEL1,
+	dma_enable_transfer_complete_interrupt(addr, chan);
+	dma_set_number_of_data(addr, chan,
 			adc_info->sample_count << acq_g.oversample);
-	dma_enable_circular_mode(adc_info->dma_addr, DMA_CHANNEL1);
-	dma_enable_channel(adc_info->dma_addr, DMA_CHANNEL1);
+	dma_enable_circular_mode(addr, chan);
+	dma_enable_channel(addr, chan);
 
 	bl_acq__setup_adc(
 			adc_info->adc_addr,
@@ -335,6 +357,22 @@ void dma2_channel1_isr(void)
 	if (dma_get_interrupt_flag(DMA2, DMA_CHANNEL1, DMA_TCIF)) {
 		dma_clear_interrupt_flags(DMA2, DMA_CHANNEL1, DMA_TCIF);
 		dma_interrupt_helper(&acq_adc_table[ACQ_ADC_2]);
+	}
+}
+
+void dma2_channel5_isr(void)
+{
+	if (dma_get_interrupt_flag(DMA2, DMA_CHANNEL5, DMA_TCIF)) {
+		dma_clear_interrupt_flags(DMA2, DMA_CHANNEL5, DMA_TCIF);
+		dma_interrupt_helper(&acq_adc_table[ACQ_ADC_3]);
+	}
+}
+
+void dma2_channel2_isr(void)
+{
+	if (dma_get_interrupt_flag(DMA2, DMA_CHANNEL2, DMA_TCIF)) {
+		dma_clear_interrupt_flags(DMA2, DMA_CHANNEL2, DMA_TCIF);
+		dma_interrupt_helper(&acq_adc_table[ACQ_ADC_4]);
 	}
 }
 
@@ -432,8 +470,11 @@ enum bl_error bl_acq_abort(void)
 		adc_power_off(acq_adc_table[i].adc_addr);
 		adc_disable_dma(acq_adc_table[i].adc_addr);
 		dma_disable_transfer_complete_interrupt(
-				acq_adc_table[i].dma_addr, DMA_CHANNEL1);
-		dma_disable_channel(acq_adc_table[i].dma_addr, DMA_CHANNEL1);
+				acq_adc_table[i].dma_addr,
+				acq_adc_table[i].dma_chan);
+		dma_disable_channel(
+				acq_adc_table[i].dma_addr,
+				acq_adc_table[i].dma_chan);
 	}
 
 	acq_g.state = ACQ_STATE_IDLE;
