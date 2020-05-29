@@ -86,64 +86,64 @@ static inline const char *bl_msg_type_to_str(enum bl_msg_type type)
 	return types[type];
 }
 
-static void bl_msg_print(const union bl_msg_data *msg)
+static void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 {
 	if (bl_msg_type_to_str(msg->type) == NULL) {
-		fprintf(stderr, "- Unknown (0x%x)\n",
+		fprintf(file, "- Unknown (0x%x)\n",
 				(unsigned) msg->type);
 		return;
 	}
 
-	fprintf(stdout, "- %s:\n", bl_msg_type_to_str(msg->type));
+	fprintf(file, "- %s:\n", bl_msg_type_to_str(msg->type));
 
 	switch (msg->type) {
 	case BL_MSG_RESPONSE:
 		if (bl_msg_type_to_str(msg->response.response_to) == NULL) {
-			fprintf(stderr, "    Response to: Unknown (0x%x)\n",
+			fprintf(file, "    Response to: Unknown (0x%x)\n",
 					(unsigned) msg->response.response_to);
 		} else {
-			fprintf(stdout, "    Response to: %s\n",
+			fprintf(file, "    Response to: %s\n",
 					bl_msg_type_to_str(
 						msg->response.response_to));
 		}
-		fprintf(stdout, "    Error code: %u\n",
+		fprintf(file, "    Error code: %u\n",
 				(unsigned) msg->response.error_code);
 		break;
 
 	case BL_MSG_LED_TEST:
-		fprintf(stdout, "    LED Mask: 0x%x\n",
+		fprintf(file, "    LED Mask: 0x%x\n",
 				(unsigned) msg->led_test.led_mask);
 		break;
 
 	case BL_MSG_ACQ_SETUP:
-		fprintf(stdout, "    Gain: %u\n",
+		fprintf(file, "    Gain: %u\n",
 				(unsigned) msg->acq_setup.gain);
-		fprintf(stdout, "    Rate: %u\n",
+		fprintf(file, "    Rate: %u\n",
 				(unsigned) msg->acq_setup.rate);
-		fprintf(stdout, "    Samples: %u\n",
+		fprintf(file, "    Samples: %u\n",
 				(unsigned) msg->acq_setup.samples);
-		fprintf(stdout, "    Source Mask: 0x%x\n",
+		fprintf(file, "    Source Mask: 0x%x\n",
 				(unsigned) msg->acq_setup.src_mask);
 		break;
 
 	case BL_MSG_ACQ_SET_GAINS:
-		fprintf(stdout, "    LED Index: %u\n",
+		fprintf(file, "    LED Index: %u\n",
 				(unsigned) msg->acq_set_gains.led_idx);
-		fprintf(stdout, "    Gain:\n");
+		fprintf(file, "    Gain:\n");
 		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-			fprintf(stdout, "    - %u\n",
+			fprintf(file, "    - %u\n",
 				(unsigned) msg->acq_set_gains.gain[i]);
 		}
 		break;
 
 	case BL_MSG_SAMPLE_DATA:
-		fprintf(stdout, "    Count: %u\n",
+		fprintf(file, "    Count: %u\n",
 				(unsigned) msg->sample_data.count);
-		fprintf(stdout, "    Source mask: 0x%x\n",
+		fprintf(file, "    Source mask: 0x%x\n",
 				(unsigned) msg->sample_data.src_mask);
-		fprintf(stdout, "    Data:\n");
+		fprintf(file, "    Data:\n");
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			fprintf(stdout, "    - %u\n",
+			fprintf(file, "    - %u\n",
 				(unsigned) msg->sample_data.data[i]);
 		}
 		break;
@@ -259,7 +259,7 @@ static int bl_cmd_read_message(int dev_fd, int timeout_ms)
 		}
 	}
 
-	bl_msg_print(msg);
+	bl_msg_print(msg, stdout);
 
 	return EXIT_SUCCESS;
 }
@@ -297,7 +297,7 @@ static int bl_cmd_send(
 
 	if (msg != NULL)
 	{
-		bl_msg_print(msg);
+		bl_msg_print(msg, stdout);
 		written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
 		if (written != bl_msg_type_to_len(msg->type)) {
 			fprintf(stderr, "Failed write message to '%s'\n", dev_path);
