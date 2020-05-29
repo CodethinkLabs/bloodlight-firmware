@@ -69,10 +69,10 @@ union bl_msg_data {
 	 * of samples specified at the specified sampling rate.
 	 */
 	struct {
-		uint8_t  type;     /**< Must be \ref BL_MSG_ACQ_SETUP */
-		uint16_t rate;     /**< Sampling rate in ms. */
-		uint16_t samples;  /**< Number of samples per enabled LED. */
-		uint16_t src_mask; /**< Mask of sources to enable. */
+		uint8_t  type;       /**< Must be \ref BL_MSG_ACQ_SETUP */
+		uint8_t  oversample; /**< Number of bits to overample by. */
+		uint16_t rate;       /**< Sampling rate in ms. */
+		uint16_t src_mask;   /**< Mask of sources to enable. */
 	} acq_setup;
 
 	/**

@@ -45,7 +45,6 @@ struct {
 
 	uint8_t  oversample;
 	uint16_t rate;
-	uint16_t samples;
 	uint8_t gain[BL_ACQ_PD__COUNT];
 } acq_g;
 
@@ -379,19 +378,21 @@ void dma2_channel2_isr(void)
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_setup(
 		uint16_t rate,
-		uint16_t samples,
+		uint8_t  oversample,
 		uint16_t src_mask)
 {
 	enum bl_error error;
+
+	if (oversample > ACQ_OVERSAMPLE_MAX) {
+		return BL_ERROR_OUT_OF_RANGE;
+	}
 
 	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-	/* TODO: Add this to protocol. */
-	acq_g.oversample = 4;
+	acq_g.oversample = oversample;
 	acq_g.rate = rate;
-	acq_g.samples = samples;
 	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 		if (acq_g.gain[i] == 0) {
 			acq_g.gain[i] = 1;

@@ -367,14 +367,14 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		}
 	};
 	uint32_t src_mask;
-	uint32_t samples;
+	uint32_t oversample;
 	uint32_t rate;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
 		ARG_RATE,
-		ARG_SAMPLES,
+		ARG_OVERSAMPLE,
 		ARG_SRC_MASK,
 		ARG__COUNT,
 	};
@@ -384,29 +384,29 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
 				"  \t<RATE> \\\n"
-				"  \t<SAMPLES> \\\n"
+				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
 		return EXIT_FAILURE;
 	}
 
-	if (read_uint32_t(argv[ARG_SRC_MASK], &src_mask) == false ||
-	    read_uint32_t(argv[ARG_SAMPLES],  &samples)  == false ||
-	    read_uint32_t(argv[ARG_RATE],     &rate)     == false) {
+	if (read_uint32_t(argv[ARG_SRC_MASK],   &src_mask)   == false ||
+	    read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false ||
+	    read_uint32_t(argv[ARG_RATE],       &rate)       == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
 
-	if (check_fit(src_mask, sizeof(msg.acq_setup.src_mask)) == false ||
-	    check_fit(samples,  sizeof(msg.acq_setup.samples))  == false ||
-	    check_fit(rate,     sizeof(msg.acq_setup.rate))     == false) {
+	if (check_fit(src_mask,   sizeof(msg.acq_setup.src_mask))   == false ||
+	    check_fit(oversample, sizeof(msg.acq_setup.oversample)) == false ||
+	    check_fit(rate,       sizeof(msg.acq_setup.rate))       == false) {
 		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
 
 	msg.acq_setup.rate = rate;
-	msg.acq_setup.samples = samples;
+	msg.acq_setup.oversample = oversample;
 	msg.acq_setup.src_mask = src_mask;
 
 	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
