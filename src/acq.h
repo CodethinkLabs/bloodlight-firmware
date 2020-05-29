@@ -22,6 +22,7 @@
 union bl_msg_data;
 enum bl_error;
 
+#define BL_ACQ_OPAMP__COUNT 4
 #define BL_ACQ_PD__COUNT 4
 
 /**

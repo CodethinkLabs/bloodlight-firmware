@@ -22,6 +22,7 @@
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/dma.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/opamp.h>
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/f3/nvic.h>
 
@@ -43,9 +44,11 @@ enum acq_state {
 struct {
 	enum acq_state state;
 
+	uint16_t src_mask;
 	uint8_t  oversample;
 	uint16_t rate;
 	uint8_t gain[BL_ACQ_PD__COUNT];
+	uint8_t opamp[BL_ACQ_PD__COUNT];
 } acq_g;
 
 enum acq_adc {
@@ -53,6 +56,13 @@ enum acq_adc {
 	ACQ_ADC_2,
 	ACQ_ADC_3,
 	ACQ_ADC_4,
+};
+
+enum acq_opamp {
+	ACQ_OPAMP_1,
+	ACQ_OPAMP_2,
+	ACQ_OPAMP_3,
+	ACQ_OPAMP_4,
 };
 
 static struct adc_table {
@@ -103,36 +113,73 @@ static const struct source_table {
 	uint8_t adc;
 	uint8_t adc_channel;
 	uint8_t gpio_pin;
+	uint8_t opamp_mask;
 } acq_source_table[] = {
 	[BL_ACQ_PD1] = {
 		.adc = ACQ_ADC_2,
 		.adc_channel = 1,
 		.gpio_pin = GPIO4,
+		.opamp_mask = 0x8,
 	},
 	[BL_ACQ_PD2] = {
 		.adc = ACQ_ADC_1,
 		.adc_channel = 4,
 		.gpio_pin = GPIO3,
+		.opamp_mask = 0x1,
 	},
 	[BL_ACQ_PD3] = {
 		.adc = ACQ_ADC_2,
 		.adc_channel = 4,
 		.gpio_pin = GPIO7,
+		.opamp_mask = 0x3,
 	},
 	[BL_ACQ_PD4] = {
 		.adc = ACQ_ADC_2,
 		.adc_channel = 2,
 		.gpio_pin = GPIO5,
+		.opamp_mask = 0x5,
 	},
 	[BL_ACQ_3V3] = {
 		.adc = ACQ_ADC_1,
 		.adc_channel = 2,
 		.gpio_pin = GPIO1,
+		.opamp_mask = 0x0,
 	},
 	[BL_ACQ_5V0] = {
 		.adc = ACQ_ADC_1,
 		.adc_channel = 3,
 		.gpio_pin = GPIO2,
+		.opamp_mask = 0x5,
+	},
+};
+
+/**
+ * Source table for ADC OPAMP inputs we're interested in.
+ */
+static const struct opamp_source_table {
+	uint32_t opamp_addr;
+	uint8_t  adc;
+	uint8_t  adc_channel;
+} acq_opamp_source_table[] = {
+	[ACQ_OPAMP_1] = {
+		.opamp_addr = OPAMP1,
+		.adc = ACQ_ADC_1,
+		.adc_channel = 3,
+	},
+	[ACQ_OPAMP_2] = {
+		.opamp_addr = OPAMP2,
+		.adc = ACQ_ADC_2,
+		.adc_channel = 3,
+	},
+	[ACQ_OPAMP_3] = {
+		.opamp_addr = OPAMP3,
+		.adc = ACQ_ADC_3,
+		.adc_channel = 1,
+	},
+	[ACQ_OPAMP_4] = {
+		.opamp_addr = OPAMP4,
+		.adc = ACQ_ADC_4,
+		.adc_channel = 3,
 	},
 };
 
@@ -158,11 +205,19 @@ static void bl_acq__adc_calibrate(uint32_t adc)
 	adc_disable_regulator(adc);
 }
 
+static void bl_acq__opamp_calibrate(uint32_t opamp)
+{
+	(void)opamp;
+	/* TODO: Implement OPAMP trimming. */
+}
+
 /* Exported function, documented in acq.h */
 void bl_acq_init(void)
 {
 	rcc_periph_clock_enable(RCC_ADC12);
 	rcc_periph_clock_enable(RCC_ADC34);
+	/* TODO: Find out whether SYSCFG needs enabling for the opamps. */
+	rcc_periph_clock_enable(RCC_SYSCFG);
 	rcc_periph_clock_enable(RCC_DMA1);
 	rcc_periph_clock_enable(RCC_DMA2);
 	rcc_periph_clock_enable(RCC_TIM1);
@@ -200,6 +255,10 @@ void bl_acq_init(void)
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		bl_acq__adc_calibrate(acq_adc_table[i].adc_addr);
 	}
+
+	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_opamp_source_table); i++) {
+		bl_acq__opamp_calibrate(acq_opamp_source_table[i].opamp_addr);
+	}
 }
 
 static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
@@ -222,6 +281,14 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 			uint8_t adc = acq_source_table[i].adc;
 			uint8_t channel = acq_source_table[i].adc_channel;
 			uint8_t channels = acq_adc_table[adc].channel_count;
+
+			if ((i < BL_ARRAY_LEN(acq_g.gain))
+					&& (acq_g.gain[i] > 1)) {
+				adc = acq_opamp_source_table[
+					acq_g.opamp[i]].adc;
+				channel = acq_opamp_source_table[
+					acq_g.opamp[i]].adc_channel;
+			}
 
 			enabled = true;
 			acq_adc_table[adc].enabled = true;
@@ -403,6 +470,7 @@ enum bl_error bl_acq_setup(
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}
+	acq_g.src_mask = src_mask;
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		if (acq_adc_table[i].enabled) {
@@ -424,14 +492,129 @@ enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
+	uint8_t opamp_avail_mask = 0xf;
+	uint8_t opamp_alloc_mask= 0x0;
+
+	/* We can't use OPAMP1 unless 3V3 divider is desoldered. */
+	opamp_avail_mask &= ~(1U << ACQ_OPAMP_1);
+
+	/* We can't use OPAMP3 because it clashes with LED1. */
+	opamp_avail_mask &= ~(1U << ACQ_OPAMP_3);
+
+	uint8_t  opamp_alloc[BL_ACQ_PD__COUNT];
+	uint8_t  opamp_gain[BL_ACQ_OPAMP__COUNT];
+	uint32_t opamp_vpsel[BL_ACQ_OPAMP__COUNT];
+
+	static const uint32_t vpsel_matrix
+			[BL_ACQ_OPAMP__COUNT][BL_ACQ_PD__COUNT] = {
+		[ACQ_OPAMP_1] = {
+			0,
+			OPAMP1_CSR_VP_SEL_PA3,
+			OPAMP1_CSR_VP_SEL_PA7,
+			OPAMP1_CSR_VP_SEL_PA5 },
+		[ACQ_OPAMP_2] = {
+			0,
+			0,
+			OPAMP2_CSR_VP_SEL_PA7,
+			0 },
+		[ACQ_OPAMP_3] = {
+			0,
+			0,
+			0,
+			OPAMP3_CSR_VP_SEL_PA5 },
+		[ACQ_OPAMP_4] = {
+			OPAMP4_CSR_VP_SEL_PA4,
+			0,
+			0,
+			0 },
+	};
+
 	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 		if ((gain[i] < 1) || (gain[i] > 16)
 				|| (gain[i] & (gain[i] - 1))) {
 			return BL_ERROR_OUT_OF_RANGE;
 		}
 
-		/* TODO: Set opamp gain here and select adc source. */
-		acq_g.gain[i] = i;
+		opamp_alloc[i] = 0;
+		if (gain[i] > 1) {
+			uint8_t opamp_mask = acq_source_table[i].opamp_mask;
+			opamp_mask &= opamp_avail_mask;
+
+			if (opamp_mask == 0) {
+				return BL_ERROR_OUT_OF_RANGE;
+			}
+
+			/* Pick the first available opamp. */
+			for (unsigned j = 0; j < BL_ACQ_OPAMP__COUNT; j++) {
+				if ((opamp_mask & (1U << j)) == 0) {
+					continue;
+				}
+
+				opamp_alloc[i] = j;
+				opamp_gain[j]  = gain[i];
+				opamp_vpsel[j] = vpsel_matrix[j][i];
+				break;
+			}
+			opamp_avail_mask &= ~(1U << opamp_alloc[i]);
+			opamp_alloc_mask |=  (1U << opamp_alloc[i]);
+		}
+	}
+
+	for (unsigned i = 0; i < BL_ACQ_OPAMP__COUNT; i++) {
+		uint32_t opamp = acq_opamp_source_table[i].opamp_addr;
+
+		if ((opamp_alloc_mask & (1U << i)) == 0) {
+			opamp_disable(opamp);
+			continue;
+		}
+
+		opamp_enable(opamp);
+
+		uint32_t raw_gain;
+		switch (opamp_gain[i]) {
+		case 2:
+			raw_gain = OPAMP_CSR_PGA_GAIN_2;
+			break;
+
+		case 4:
+			raw_gain = OPAMP_CSR_PGA_GAIN_4;
+			break;
+
+		case 8:
+			raw_gain = OPAMP_CSR_PGA_GAIN_8;
+			break;
+
+		default:
+			raw_gain = OPAMP_CSR_PGA_GAIN_16;
+			break;
+		}
+
+		opamp_pga_gain_select(opamp, raw_gain);
+
+		opamp_vm_select(opamp, OPAMP_CSR_VM_SEL_PGA_MODE);
+		opamp_vp_select(opamp, opamp_vpsel[i]);
+	}
+
+	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+		acq_g.gain[i]  = gain[i];
+		acq_g.opamp[i] = opamp_alloc[i];
+	}
+
+	if (acq_g.state == ACQ_STATE_IDLE) {
+		return BL_ERROR_NONE;
+	}
+
+	/* We need to resetup the ADCs as the inputs may have changed. */
+	enum bl_error error = bl_acq__setup_adc_table(acq_g.src_mask);
+	if (error != BL_ERROR_NONE) {
+		return error;
+	}
+
+	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
+		if (acq_adc_table[i].enabled) {
+			bl_acq__init_sample_message(&acq_adc_table[i]);
+			bl_acq__setup_adc_dma(&acq_adc_table[i]);
+		}
 	}
 
 	return BL_ERROR_NONE;
