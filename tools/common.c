@@ -65,8 +65,8 @@ static void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 	case BL_MSG_ACQ_SETUP:
 		fprintf(file, "    Oversample: %u\n",
 				(unsigned) msg->acq_setup.oversample);
-		fprintf(file, "    Rate: %u\n",
-				(unsigned) msg->acq_setup.rate);
+		fprintf(file, "    Period: %u\n",
+				(unsigned) msg->acq_setup.period);
 		fprintf(file, "    Source Mask: 0x%x\n",
 				(unsigned) msg->acq_setup.src_mask);
 		fprintf(file, "    Gain:\n");

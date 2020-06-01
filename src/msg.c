@@ -42,7 +42,7 @@ static enum bl_error bl_msg_led_test(const union bl_msg_data *msg)
 static enum bl_error bl_msg_acq_setup(const union bl_msg_data *msg)
 {
 	return bl_acq_setup(
-			msg->acq_setup.rate,
+			msg->acq_setup.period,
 			msg->acq_setup.oversample,
 			msg->acq_setup.src_mask,
 			msg->acq_setup.gain);

@@ -320,12 +320,12 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 	uint32_t src_mask;
 	uint32_t oversample;
 	unsigned arg_gain_count;
-	uint32_t rate;
+	uint32_t period;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
-		ARG_RATE,
+		ARG_PERIOD,
 		ARG_OVERSAMPLE,
 		ARG_SRC_MASK,
 		ARG__COUNT,
@@ -337,7 +337,7 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
-				"  \t<RATE> \\\n"
+				"  \t<PERIOD> \\\n"
 				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n"
 				"  \t[GAIN]*\n",
@@ -359,14 +359,14 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 
 	if (read_uint32_t(argv[ARG_SRC_MASK],   &src_mask)   == false ||
 	    read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false ||
-	    read_uint32_t(argv[ARG_RATE],       &rate)       == false) {
+	    read_uint32_t(argv[ARG_PERIOD],     &period)     == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
 
 	if (check_fit(src_mask,   sizeof(msg.acq_setup.src_mask))   == false ||
 	    check_fit(oversample, sizeof(msg.acq_setup.oversample)) == false ||
-	    check_fit(rate,       sizeof(msg.acq_setup.rate))       == false) {
+	    check_fit(period,     sizeof(msg.acq_setup.period))     == false) {
 		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
@@ -394,7 +394,7 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		msg.acq_setup.gain[i] = gain;
 	}
 
-	msg.acq_setup.rate = rate;
+	msg.acq_setup.period = period;
 	msg.acq_setup.oversample = oversample;
 	msg.acq_setup.src_mask = src_mask;
 

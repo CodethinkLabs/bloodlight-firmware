@@ -45,7 +45,7 @@ struct {
 	enum acq_state state;
 
 	uint8_t  oversample;
-	uint16_t rate;
+	uint16_t period;
 	uint8_t gain[BL_ACQ_PD__COUNT];
 	uint8_t opamp[BL_ACQ_PD__COUNT];
 } acq_g;
@@ -562,7 +562,7 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_setup(
-		uint16_t rate,
+		uint16_t period,
 		uint8_t  oversample,
 		uint16_t src_mask,
 		const uint8_t gain[BL_ACQ_PD__COUNT])
@@ -578,7 +578,6 @@ enum bl_error bl_acq_setup(
 	}
 
 	acq_g.oversample = oversample;
-	acq_g.rate = rate;
 	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 		if (acq_g.gain[i] == 0) {
 			acq_g.gain[i] = 1;
@@ -602,7 +601,7 @@ enum bl_error bl_acq_setup(
 		}
 	}
 
-	timer_set_period(TIM1, acq_g.rate);
+	timer_set_period(TIM1, period);
 
 	acq_g.state = ACQ_STATE_CONFIGURED;
 	return BL_ERROR_NONE;

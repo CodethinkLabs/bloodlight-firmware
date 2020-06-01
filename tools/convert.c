@@ -174,7 +174,7 @@ static bool read_message(union bl_msg_data *msg)
 
 	case BL_MSG_ACQ_SETUP:
 		msg->acq_setup.oversample = read_unsigned(&ok, "Oversample");
-		msg->acq_setup.rate = read_unsigned(&ok, "Rate");
+		msg->acq_setup.period = read_unsigned(&ok, "Period");
 		msg->acq_setup.src_mask = read_hex(&ok, "Source Mask");
 		ok |= (scanf("    Gain:\n") == 0);
 		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
@@ -371,7 +371,7 @@ int bl_cmd_wav(int argc, char *argv[])
 
 		if (!had_setup && msg->type == BL_MSG_ACQ_SETUP) {
 			wave_format.sample_rate = bl_msg_get_sample_rate(
-					msg->acq_setup.rate,
+					msg->acq_setup.period,
 					msg->acq_setup.oversample);
 			wave_format.num_channels = bl_msg_get_num_channels(
 					msg->acq_setup.src_mask);
