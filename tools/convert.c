@@ -309,7 +309,7 @@ int bl_cmd_wav(int argc, char *argv[])
 	} riff_header = {
 		.chunk_id = { 'R', 'I', 'F', 'F' },
 		.format   = { 'W', 'A', 'V', 'E' },
-		.chunk_size= 0xffffffff,
+		.chunk_size= 0xffffffff, /* Trick value for "streaming" samples */
 	};
 	struct {
 		char subchunk_id[4];
@@ -332,6 +332,7 @@ int bl_cmd_wav(int argc, char *argv[])
 		int16_t data[MAX_SAMPLES * MAX_CHANNELS];
 	} wave_data = {
 		.subchunk_id = { 'd', 'a', 't', 'a' },
+		.subchunk_size = 0xffffffff, /* Trick value for "streaming" samples */
 	};
 
 	if (argc < ARG_PATH || argc > ARG__COUNT) {
@@ -383,6 +384,11 @@ int bl_cmd_wav(int argc, char *argv[])
 				fprintf(stderr, "Failed to write wave_format header\n");
 				goto cleanup;
 			}
+			written = fwrite(&wave_data, 8, 1, file);
+			if (written != 1) {
+				fprintf(stderr, "Failed to write wave_data header\n");
+				goto cleanup;
+			}
 		}
 
 		/* If the message isn't sample data, print to stderr, so
@@ -400,12 +406,11 @@ int bl_cmd_wav(int argc, char *argv[])
 		samples_copied = bl_msg_copy_samples(msg, acq_src_mask,
 				wave_data.data, channel_counter);
 		if (samples_copied > 0) {
-			wave_data.subchunk_size =
-					bl_msg_get_num_channels(acq_src_mask) *
-					samples_copied * sizeof(int16_t);
-			written = fwrite(&wave_data,
-					8 + wave_data.subchunk_size, 1, file);
-			if (written != 1) {
+			unsigned count = bl_msg_get_num_channels(acq_src_mask) *
+					samples_copied;
+			written = fwrite(wave_data.data, sizeof(int16_t),
+					count, file);
+			if (written != count) {
 				fprintf(stderr, "Failed to write wave_data\n");
 				goto cleanup;
 			}
