@@ -23,8 +23,9 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <unistd.h>
 #include <termios.h>
+#include <signal.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
 
@@ -34,6 +35,9 @@
 
 /* Common helper functionality. */
 #include "common.c"
+
+/* Whether we've had a `ctrl-c`. */
+volatile bool killed;
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -148,7 +152,7 @@ static int bl_cmd_read_message(int dev_fd, int timeout_ms)
 		if (read_len < 0)
 			fprintf(stderr, ": %s", strerror(-read_len));
 		fprintf(stderr, "\n");
-		return EXIT_FAILURE;
+		return -read_len;
 	}
 
 	expected_len = bl_msg_type_to_len(msg->type) - sizeof(msg->type);
@@ -159,7 +163,7 @@ static int bl_cmd_read_message(int dev_fd, int timeout_ms)
 		if (read_len < 0)
 			fprintf(stderr, ": %s", strerror(-read_len));
 		fprintf(stderr, "\n");
-		return EXIT_FAILURE;
+		return -read_len;
 	}
 
 	if (msg->type == BL_MSG_SAMPLE_DATA) {
@@ -172,13 +176,13 @@ static int bl_cmd_read_message(int dev_fd, int timeout_ms)
 			if (read_len < 0)
 				fprintf(stderr, ": %s", strerror(-read_len));
 			fprintf(stderr, "\n");
-			return EXIT_FAILURE;
+			return -read_len;
 		}
 	}
 
 	bl_msg_print(msg, stdout);
 
-	return EXIT_SUCCESS;
+	return 0;
 }
 
 static int bl_cmd_send(
@@ -224,11 +228,15 @@ static int bl_cmd_send(
 	}
 
 	do {
-		if (bl_cmd_read_message(dev_fd, 1000) != EXIT_SUCCESS) {
+		ret = bl_cmd_read_message(dev_fd, 1000);
+		if (ret == EINTR) {
+			killed = true;
+
+		} else if (ret != 0) {
 			ret = EXIT_FAILURE;
 			goto cleanup;
 		}
-	} while (multi);
+	} while (multi && !killed);
 
 cleanup:
 	close(dev_fd);
@@ -499,6 +507,44 @@ static bl_cmd_fn bl_cmd_lookup(const char *cmd_name)
 	return NULL;
 }
 
+static void bl_ctrl_c_handler(int sig)
+{
+	if (sig == SIGINT) {
+		killed = true;
+	}
+}
+
+static int bl_setup_signal_handler(void)
+{
+	struct sigaction act = {
+		.sa_handler = bl_ctrl_c_handler,
+	};
+	int ret;
+
+	ret = sigemptyset(&act.sa_mask);
+	if (ret == -1) {
+		fprintf(stderr, "sigemptyset call failed: %s\n",
+				strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	ret = sigaddset(&act.sa_mask, SIGINT);
+	if (ret == -1) {
+		fprintf(stderr, "sigaddset call failed: %s\n",
+				strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	ret = sigaction(SIGINT, &act, NULL);
+	if (ret == -1) {
+		fprintf(stderr, "Failed to set SIGINT handler: %s\n",
+				strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[])
 {
 	bl_cmd_fn cmd_fn;
@@ -516,6 +562,10 @@ int main(int argc, char *argv[])
 	cmd_fn = bl_cmd_lookup(argv[ARG_CMD]);
 	if (cmd_fn == NULL) {
 		bl_cmd_help(argv[ARG_PROG]);
+		return EXIT_FAILURE;
+	}
+
+	if (bl_setup_signal_handler() != EXIT_SUCCESS) {
 		return EXIT_FAILURE;
 	}
 

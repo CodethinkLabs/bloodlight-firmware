@@ -22,12 +22,17 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include <signal.h>
+
 #include "../src/error.h"
 #include "../src/util.h"
 #include "../src/msg.h"
 
 /* Common helper functionality. */
 #include "common.c"
+
+/* Whether we've had a `ctrl-c`. */
+volatile bool killed;
 
 #define MAX_SAMPLES 64
 #define MAX_CHANNELS 16
@@ -361,7 +366,7 @@ int bl_cmd_wav(int argc, char *argv[])
 		goto cleanup;
 	}
 
-	while (read_message(msg)) {
+	while (!killed && read_message(msg)) {
 		unsigned samples_copied;
 
 		if (!had_setup && msg->type == BL_MSG_ACQ_SETUP) {
@@ -443,7 +448,7 @@ int bl_cmd_relay(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	while (read_message(msg)) {
+	while (!killed && read_message(msg)) {
 		bl_msg_print(msg, stdout);
 	}
 
@@ -502,6 +507,44 @@ static bl_cmd_fn bl_cmd_lookup(const char *cmd_name)
 	return NULL;
 }
 
+static void bl_ctrl_c_handler(int sig)
+{
+	if (sig == SIGINT) {
+		killed = true;
+	}
+}
+
+static int bl_setup_signal_handler(void)
+{
+	struct sigaction act = {
+		.sa_handler = bl_ctrl_c_handler,
+	};
+	int ret;
+
+	ret = sigemptyset(&act.sa_mask);
+	if (ret == -1) {
+		fprintf(stderr, "sigemptyset call failed: %s\n",
+				strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	ret = sigaddset(&act.sa_mask, SIGINT);
+	if (ret == -1) {
+		fprintf(stderr, "sigaddset call failed: %s\n",
+				strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	ret = sigaction(SIGINT, &act, NULL);
+	if (ret == -1) {
+		fprintf(stderr, "Failed to set SIGINT handler: %s\n",
+				strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[])
 {
 	bl_cmd_fn cmd_fn;
@@ -519,6 +562,10 @@ int main(int argc, char *argv[])
 	cmd_fn = bl_cmd_lookup(argv[ARG_CMD]);
 	if (cmd_fn == NULL) {
 		bl_cmd_help(argv[ARG_PROG]);
+		return EXIT_FAILURE;
+	}
+
+	if (bl_setup_signal_handler() != EXIT_SUCCESS) {
 		return EXIT_FAILURE;
 	}
 
