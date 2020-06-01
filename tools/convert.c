@@ -193,9 +193,9 @@ static bool read_message(union bl_msg_data *msg)
 	return ok;
 }
 
-static uint32_t bl_msg_get_sample_rate(uint32_t period_us)
+static uint32_t bl_msg_get_sample_rate(uint32_t period_us, uint32_t oversample)
 {
-	return (1 * 1000 * 1000) / period_us;
+	return (1 * 1000 * 1000) / period_us / (1 << oversample);
 }
 
 static uint16_t bl_msg_get_num_channels(uint16_t src_mask)
@@ -366,7 +366,8 @@ int bl_cmd_wav(int argc, char *argv[])
 
 		if (!had_setup && msg->type == BL_MSG_ACQ_SETUP) {
 			wave_format.sample_rate = bl_msg_get_sample_rate(
-					msg->acq_setup.rate);
+					msg->acq_setup.rate,
+					msg->acq_setup.oversample);
 			wave_format.num_channels = bl_msg_get_num_channels(
 					msg->acq_setup.src_mask);
 			wave_format.byte_rate =
