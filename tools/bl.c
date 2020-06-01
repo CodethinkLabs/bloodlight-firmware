@@ -70,14 +70,13 @@ static inline bool check_fit(uint32_t value, size_t target_size)
 static inline const char *bl_msg_type_to_str(enum bl_msg_type type)
 {
 	static const char *types[] = {
-		[BL_MSG_RESPONSE]      = "Response",
-		[BL_MSG_LED_TEST]      = "LED Test",
-		[BL_MSG_ACQ_SETUP]     = "Acq Setup",
-		[BL_MSG_ACQ_SET_GAINS] = "Acq Set Gains",
-		[BL_MSG_ACQ_START]     = "Acq Start",
-		[BL_MSG_ACQ_ABORT]     = "Acq Abort",
-		[BL_MSG_RESET]         = "Reset",
-		[BL_MSG_SAMPLE_DATA]   = "Sample Data",
+		[BL_MSG_RESPONSE]    = "Response",
+		[BL_MSG_LED_TEST]    = "LED Test",
+		[BL_MSG_ACQ_SETUP]   = "Acq Setup",
+		[BL_MSG_ACQ_START]   = "Acq Start",
+		[BL_MSG_ACQ_ABORT]   = "Acq Abort",
+		[BL_MSG_RESET]       = "Reset",
+		[BL_MSG_SAMPLE_DATA] = "Sample Data",
 	};
 
 	if (type > BL_ARRAY_LEN(types)) {
@@ -368,6 +367,7 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 	};
 	uint32_t src_mask;
 	uint32_t oversample;
+	unsigned arg_gain_count;
 	uint32_t rate;
 	enum {
 		ARG_PROG,
@@ -379,60 +379,15 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		ARG__COUNT,
 	};
 
-	if (argc != ARG__COUNT) {
-		fprintf(stderr, "Usage:\n");
-		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
-				"  \t<RATE> \\\n"
-				"  \t<OVERSAMPLE> \\\n"
-				"  \t<SRC_MASK>\n",
-				argv[ARG_PROG],
-				argv[ARG_CMD]);
-		return EXIT_FAILURE;
-	}
-
-	if (read_uint32_t(argv[ARG_SRC_MASK],   &src_mask)   == false ||
-	    read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false ||
-	    read_uint32_t(argv[ARG_RATE],       &rate)       == false) {
-		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
-	}
-
-	if (check_fit(src_mask,   sizeof(msg.acq_setup.src_mask))   == false ||
-	    check_fit(oversample, sizeof(msg.acq_setup.oversample)) == false ||
-	    check_fit(rate,       sizeof(msg.acq_setup.rate))       == false) {
-		fprintf(stderr, "Value too large for message.\n");
-		return EXIT_FAILURE;
-	}
-
-	msg.acq_setup.rate = rate;
-	msg.acq_setup.oversample = oversample;
-	msg.acq_setup.src_mask = src_mask;
-
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
-}
-
-static int bl_cmd_acq_set_gains(int argc, char *argv[])
-{
-	union bl_msg_data msg = {
-		.acq_setup = {
-			.type = BL_MSG_ACQ_SET_GAINS,
-		}
-	};
-	unsigned arg_gain_count;
-	enum {
-		ARG_PROG,
-		ARG_CMD,
-		ARG_DEV_PATH,
-		ARG__COUNT,
-	};
-
 	arg_gain_count = argc - ARG__COUNT;
 
 	if (argc < ARG__COUNT || arg_gain_count > BL_ACQ_PD__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
+				"  \t<RATE> \\\n"
+				"  \t<OVERSAMPLE> \\\n"
+				"  \t<SRC_MASK>\n"
 				"  \t[GAIN]*\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
@@ -447,6 +402,20 @@ static int bl_cmd_acq_set_gains(int argc, char *argv[])
 				(unsigned) BL_ACQ_PD__COUNT);
 		fprintf(stderr, "If a single GAIN value is given it is used "
 				"for all photodiodes.\n");
+		return EXIT_FAILURE;
+	}
+
+	if (read_uint32_t(argv[ARG_SRC_MASK],   &src_mask)   == false ||
+	    read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false ||
+	    read_uint32_t(argv[ARG_RATE],       &rate)       == false) {
+		fprintf(stderr, "Failed to parse value.\n");
+		return EXIT_FAILURE;
+	}
+
+	if (check_fit(src_mask,   sizeof(msg.acq_setup.src_mask))   == false ||
+	    check_fit(oversample, sizeof(msg.acq_setup.oversample)) == false ||
+	    check_fit(rate,       sizeof(msg.acq_setup.rate))       == false) {
+		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -470,8 +439,12 @@ static int bl_cmd_acq_set_gains(int argc, char *argv[])
 			}
 		}
 
-		msg.acq_set_gains.gain[i] = gain;
+		msg.acq_setup.gain[i] = gain;
 	}
+
+	msg.acq_setup.rate = rate;
+	msg.acq_setup.oversample = oversample;
+	msg.acq_setup.src_mask = src_mask;
 
 	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
 }
@@ -524,11 +497,6 @@ static const struct bl_cmd {
 		.name = "acq-setup",
 		.help = "Set up an acquisition",
 		.fn = bl_cmd_acq_setup,
-	},
-	{
-		.name = "acq-set-gains",
-		.help = "Set up to 4 gains for given LED",
-		.fn = bl_cmd_acq_set_gains,
 	},
 	{
 		.name = "acq-start",

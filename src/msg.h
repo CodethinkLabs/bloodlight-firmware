@@ -27,7 +27,6 @@ enum bl_msg_type {
 	BL_MSG_RESPONSE,
 	BL_MSG_LED_TEST,
 	BL_MSG_ACQ_SETUP,
-	BL_MSG_ACQ_SET_GAINS,
 	BL_MSG_ACQ_START,
 	BL_MSG_ACQ_ABORT,
 	BL_MSG_RESET,
@@ -50,7 +49,8 @@ union bl_msg_data {
 	/**
 	 * Data for \ref BL_MSG_LED_TEST.
 	 *
-	 * Mostly intended for debug, this simply turns LEDs on and off.
+	 * This simply turns LEDs on and off.
+	 *
 	 * While the interface allows multiple LEDs to be on simultaniously,
 	 * it may not be possible to achieve on the hardware, due to power
 	 * limitations.  Setting a value of 0x00 turns all LEDs off.  The
@@ -63,27 +63,14 @@ union bl_msg_data {
 
 	/**
 	 * Data for \ref BL_MSG_ACQ_SETUP.
-	 *
-	 * An aquisition will sample from each LED in turn (unless disabled
-	 * by a configuration of zero gain for all photodiodes) for the number
-	 * of samples specified at the specified sampling rate.
 	 */
 	struct {
 		uint8_t  type;       /**< Must be \ref BL_MSG_ACQ_SETUP */
 		uint8_t  oversample; /**< Number of bits to overample by. */
 		uint16_t rate;       /**< Sampling rate in ms. */
 		uint16_t src_mask;   /**< Mask of sources to enable. */
-	} acq_setup;
-
-	/**
-	 * Data for \ref BL_MSG_ACQ_SET_GAINS.
-	 *
-	 * Set up specific gains for individual photodiodes.
-	 */
-	struct {
-		uint8_t  type;    /**< Must be \ref BL_MSG_ACQ_SET_GAINS */
 		uint8_t  gain[BL_ACQ_PD__COUNT]; /**< Photodiode gains. */
-	} acq_set_gains;
+	} acq_setup;
 
 	/** Data for \ref BL_MSG_ACQ_START. */
 	struct {
@@ -130,14 +117,13 @@ union bl_msg_data {
 static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 {
 	static const uint8_t len[BL_MSG__COUNT] = {
-		[BL_MSG_RESPONSE]      = BL_SIZEOF_MSG(response),
-		[BL_MSG_LED_TEST]      = BL_SIZEOF_MSG(led_test),
-		[BL_MSG_ACQ_SETUP]     = BL_SIZEOF_MSG(acq_setup),
-		[BL_MSG_ACQ_SET_GAINS] = BL_SIZEOF_MSG(acq_set_gains),
-		[BL_MSG_ACQ_START]     = BL_SIZEOF_MSG(acq_start),
-		[BL_MSG_ACQ_ABORT]     = BL_SIZEOF_MSG(acq_abort),
-		[BL_MSG_RESET]         = BL_SIZEOF_MSG(reset),
-		[BL_MSG_SAMPLE_DATA]   = BL_SIZEOF_MSG(sample_data),
+		[BL_MSG_RESPONSE]    = BL_SIZEOF_MSG(response),
+		[BL_MSG_LED_TEST]    = BL_SIZEOF_MSG(led_test),
+		[BL_MSG_ACQ_SETUP]   = BL_SIZEOF_MSG(acq_setup),
+		[BL_MSG_ACQ_START]   = BL_SIZEOF_MSG(acq_start),
+		[BL_MSG_ACQ_ABORT]   = BL_SIZEOF_MSG(acq_abort),
+		[BL_MSG_RESET]       = BL_SIZEOF_MSG(reset),
+		[BL_MSG_SAMPLE_DATA] = BL_SIZEOF_MSG(sample_data),
 	};
 
 	if (type >= BL_MSG__COUNT) {

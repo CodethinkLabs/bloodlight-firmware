@@ -44,7 +44,6 @@ enum acq_state {
 struct {
 	enum acq_state state;
 
-	uint16_t src_mask;
 	uint8_t  oversample;
 	uint16_t rate;
 	uint8_t gain[BL_ACQ_PD__COUNT];
@@ -442,56 +441,14 @@ void dma2_channel2_isr(void)
 	}
 }
 
-/* Exported function, documented in acq.h */
-enum bl_error bl_acq_setup(
-		uint16_t rate,
-		uint8_t  oversample,
-		uint16_t src_mask)
+/**
+ * Set up the photodiode gains.
+ *
+ * \param[in]  gain  Gain value for each photodiode.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 {
-	enum bl_error error;
-
-	if (oversample > ACQ_OVERSAMPLE_MAX) {
-		return BL_ERROR_OUT_OF_RANGE;
-	}
-
-	if (acq_g.state == ACQ_STATE_ACTIVE) {
-		return BL_ERROR_ACTIVE_ACQUISITION;
-	}
-
-	acq_g.oversample = oversample;
-	acq_g.rate = rate;
-	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-		if (acq_g.gain[i] == 0) {
-			acq_g.gain[i] = 1;
-		}
-	}
-
-	error = bl_acq__setup_adc_table(src_mask);
-	if (error != BL_ERROR_NONE) {
-		return error;
-	}
-	acq_g.src_mask = src_mask;
-
-	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
-		if (acq_adc_table[i].enabled) {
-			bl_acq__init_sample_message(&acq_adc_table[i]);
-			bl_acq__setup_adc_dma(&acq_adc_table[i]);
-		}
-	}
-
-	timer_set_period(TIM1, acq_g.rate);
-
-	acq_g.state = ACQ_STATE_CONFIGURED;
-	return BL_ERROR_NONE;
-}
-
-/* Exported function, documented in acq.h */
-enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
-{
-	if (acq_g.state == ACQ_STATE_ACTIVE) {
-		return BL_ERROR_ACTIVE_ACQUISITION;
-	}
-
 	uint8_t opamp_avail_mask = 0xf;
 	uint8_t opamp_alloc_mask= 0x0;
 
@@ -600,12 +557,40 @@ enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 		acq_g.opamp[i] = opamp_alloc[i];
 	}
 
-	if (acq_g.state == ACQ_STATE_IDLE) {
-		return BL_ERROR_NONE;
+	return BL_ERROR_NONE;
+}
+
+/* Exported function, documented in acq.h */
+enum bl_error bl_acq_setup(
+		uint16_t rate,
+		uint8_t  oversample,
+		uint16_t src_mask,
+		const uint8_t gain[BL_ACQ_PD__COUNT])
+{
+	enum bl_error error;
+
+	if (oversample > ACQ_OVERSAMPLE_MAX) {
+		return BL_ERROR_OUT_OF_RANGE;
 	}
 
-	/* We need to resetup the ADCs as the inputs may have changed. */
-	enum bl_error error = bl_acq__setup_adc_table(acq_g.src_mask);
+	if (acq_g.state == ACQ_STATE_ACTIVE) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+
+	acq_g.oversample = oversample;
+	acq_g.rate = rate;
+	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+		if (acq_g.gain[i] == 0) {
+			acq_g.gain[i] = 1;
+		}
+	}
+
+	error = bl_acq_set_gains(gain);
+	if (error != BL_ERROR_NONE) {
+		return error;
+	}
+
+	error = bl_acq__setup_adc_table(src_mask);
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}
@@ -617,6 +602,9 @@ enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 		}
 	}
 
+	timer_set_period(TIM1, acq_g.rate);
+
+	acq_g.state = ACQ_STATE_CONFIGURED;
 	return BL_ERROR_NONE;
 }
 

@@ -48,20 +48,14 @@ void bl_acq_init(void);
  * \param[in]  rate        Sampling rate in ms.
  * \param[in]  oversample  Number of bits to oversample by.
  * \param[in]  src_mask    Mask of sources to enable.
+ * \param[in]  gain        Gain value for each photodiode.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_setup(
 		uint16_t rate,
 		uint8_t  oversample,
-		uint16_t src_mask);
-
-/**
- * Handle the Set Gains message.
- *
- * \param[in]  gain  Gain value for each photodiode.
- * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
- */
-enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT]);
+		uint16_t src_mask,
+		const uint8_t gain[BL_ACQ_PD__COUNT]);
 
 /**
  * Start an acquisition.
