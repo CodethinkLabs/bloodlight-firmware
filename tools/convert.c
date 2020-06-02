@@ -198,12 +198,12 @@ static bool read_message(union bl_msg_data *msg)
 	return ok;
 }
 
-static uint32_t bl_msg_get_sample_rate(uint32_t period_us, uint32_t oversample)
+static uint32_t bl_get_sample_rate(uint32_t period_us, uint32_t oversample)
 {
 	return (1 * 1000 * 1000) / period_us / (1 << oversample);
 }
 
-static uint16_t bl_msg_get_num_channels(uint16_t src_mask)
+static uint16_t bl_count_channels(uint16_t src_mask)
 {
 	uint16_t bit_count = 0;
 
@@ -250,8 +250,8 @@ static unsigned bl_msg_copy_samples(
 		int16_t data[MAX_SAMPLES * MAX_CHANNELS],
 		uint16_t channel_counter[MAX_CHANNELS])
 {
-	uint16_t msg_channel_count = bl_msg_get_num_channels(msg->sample_data.src_mask);
-	uint16_t acq_channel_count = bl_msg_get_num_channels(acq_src_mask);
+	uint16_t msg_channel_count = bl_count_channels(msg->sample_data.src_mask);
+	uint16_t acq_channel_count = bl_count_channels(acq_src_mask);
 	uint16_t msg_sample_count = msg->sample_data.count;
 	uint16_t msg_src_mask = msg->sample_data.src_mask;
 	uint16_t acq_idx = 0;
@@ -293,20 +293,9 @@ union {
 	uint8_t samples[sizeof(union bl_msg_data) + sizeof(uint16_t) * MAX_SAMPLES];
 } input;
 
-int bl_cmd_wav(int argc, char *argv[])
+int bl_cmd_wav_write_riff_header(FILE *file)
 {
-	uint16_t channel_counter[MAX_CHANNELS] = { 0 };
-	union bl_msg_data *msg = &input.msg;
-	bool had_setup = false;
-	uint16_t acq_src_mask;
 	size_t written;
-	FILE *file;
-	enum {
-		ARG_PROG,
-		ARG_CMD,
-		ARG_PATH,
-		ARG__COUNT,
-	};
 	struct {
 		char chunk_id[4];
 		uint32_t chunk_size;
@@ -316,6 +305,23 @@ int bl_cmd_wav(int argc, char *argv[])
 		.format   = { 'W', 'A', 'V', 'E' },
 		.chunk_size= 0xffffffff, /* Trick value for "streaming" samples */
 	};
+
+	written = fwrite(&riff_header, sizeof(riff_header), 1, file);
+	if (written != 1) {
+		fprintf(stderr, "Failed to write riff_header header\n");
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int bl_cmd_wav_write_format_header(
+		FILE *file,
+		uint16_t period,
+		uint16_t src_mask,
+		uint8_t  oversample)
+{
+	size_t written;
 	struct {
 		char subchunk_id[4];
 		uint32_t subchunk_size;
@@ -330,14 +336,83 @@ int bl_cmd_wav(int argc, char *argv[])
 		.subchunk_size = 16, /* For PCM format. */
 		.audio_format = 1, /* PCM format. */
 		.bits_per_sample = 16,
+		.sample_rate = bl_get_sample_rate(period, oversample),
+		.num_channels = bl_count_channels(src_mask),
 	};
+
+	wave_format.byte_rate = wave_format.sample_rate *
+			wave_format.num_channels *
+			wave_format.bits_per_sample;
+	wave_format.block_align = wave_format.num_channels *
+			wave_format.bits_per_sample / 8;
+
+	written = fwrite(&wave_format, sizeof(wave_format), 1, file);
+	if (written != 1) {
+		fprintf(stderr, "Failed to write wave_format header\n");
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int bl_cmd_wav_write_data_header(FILE *file)
+{
+	size_t written;
 	struct {
 		char subchunk_id[4];
 		uint32_t subchunk_size;
-		int16_t data[MAX_SAMPLES * MAX_CHANNELS];
 	} wave_data = {
 		.subchunk_id = { 'd', 'a', 't', 'a' },
 		.subchunk_size = 0xffffffff, /* Trick value for "streaming" samples */
+	};
+
+	written = fwrite(&wave_data, sizeof(wave_data), 1, file);
+	if (written != 1) {
+		fprintf(stderr, "Failed to write wave_data header\n");
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int bl_sample_msg_to_file(
+		FILE *file,
+		uint16_t acq_src_mask,
+		union bl_msg_data *msg,
+		uint16_t channel_counter[MAX_CHANNELS],
+		int16_t data[MAX_SAMPLES * MAX_CHANNELS])
+{
+	unsigned samples_copied;
+
+	samples_copied = bl_msg_copy_samples(msg, acq_src_mask, data, channel_counter);
+	if (samples_copied > 0) {
+		size_t written;
+		unsigned count = bl_count_channels(acq_src_mask) * samples_copied;
+		written = fwrite(data, sizeof(int16_t), count, file);
+		if (written != count) {
+			fprintf(stderr, "Failed to write wave_data\n");
+			return EXIT_FAILURE;
+		}
+		memset(channel_counter, 0, sizeof(uint16_t) * MAX_CHANNELS);
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int bl_samples_to_file(int argc, char *argv[], bool wav)
+{
+	uint16_t channel_counter[MAX_CHANNELS] = { 0 };
+	int16_t data[MAX_SAMPLES * MAX_CHANNELS];
+	union bl_msg_data *msg = &input.msg;
+	bool had_setup = false;
+	uint16_t acq_src_mask;
+	FILE *file;
+	int ret;
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_PATH,
+		ARG__COUNT,
 	};
 
 	if (argc < ARG_PATH || argc > ARG__COUNT) {
@@ -345,7 +420,7 @@ int bl_cmd_wav(int argc, char *argv[])
 		fprintf(stderr, "  %s %s [PATH]\n",
 				argv[ARG_PROG], argv[ARG_CMD]);
 		fprintf(stderr, "\n");
-		fprintf(stderr, "If no PATH is given, WAVE data will be written to stdout.\n");
+		fprintf(stderr, "If no PATH is given, data will be written to stdout.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -360,40 +435,40 @@ int bl_cmd_wav(int argc, char *argv[])
 		file = stdout;
 	}
 
-	written = fwrite(&riff_header, sizeof(riff_header), 1, file);
-	if (written != 1) {
-		fprintf(stderr, "Failed to write riff_header header\n");
-		goto cleanup;
+	if (wav) {
+		ret = bl_cmd_wav_write_riff_header(file);
+		if (ret != EXIT_SUCCESS) {
+			goto cleanup;
+		}
 	}
 
 	while (!killed && read_message(msg)) {
-		unsigned samples_copied;
-
 		if (!had_setup && msg->type == BL_MSG_ACQ_SETUP) {
-			wave_format.sample_rate = bl_msg_get_sample_rate(
-					msg->acq_setup.period,
-					msg->acq_setup.oversample);
-			wave_format.num_channels = bl_msg_get_num_channels(
-					msg->acq_setup.src_mask);
-			wave_format.byte_rate =
-					wave_format.sample_rate *
-					wave_format.num_channels *
-					wave_format.bits_per_sample;
-			wave_format.block_align =
-					wave_format.num_channels *
-					wave_format.bits_per_sample / 8;
 			acq_src_mask = msg->acq_setup.src_mask;
 			had_setup = true;
 
-			written = fwrite(&wave_format, sizeof(wave_format), 1, file);
-			if (written != 1) {
-				fprintf(stderr, "Failed to write wave_format header\n");
-				goto cleanup;
-			}
-			written = fwrite(&wave_data, 8, 1, file);
-			if (written != 1) {
-				fprintf(stderr, "Failed to write wave_data header\n");
-				goto cleanup;
+			if (wav) {
+				ret = bl_cmd_wav_write_format_header(file,
+						msg->acq_setup.period,
+						msg->acq_setup.src_mask,
+						msg->acq_setup.oversample);
+				if (ret != EXIT_SUCCESS) {
+					goto cleanup;
+				}
+				ret = bl_cmd_wav_write_data_header(file);
+				if (ret != EXIT_SUCCESS) {
+					goto cleanup;
+				}
+			} else {
+				fprintf(stderr, "- RAW output format:\n");
+				fprintf(stderr, "    Samples: 16-bit signed\n");
+				fprintf(stderr, "    Channels: %u\n",
+						(unsigned) bl_count_channels(
+							msg->acq_setup.src_mask));
+				fprintf(stderr, "    Frequency: %u Hz\n",
+						(unsigned) bl_get_sample_rate(
+							msg->acq_setup.period,
+							msg->acq_setup.oversample));
 			}
 		}
 
@@ -409,18 +484,10 @@ int bl_cmd_wav(int argc, char *argv[])
 			goto cleanup;
 		}
 
-		samples_copied = bl_msg_copy_samples(msg, acq_src_mask,
-				wave_data.data, channel_counter);
-		if (samples_copied > 0) {
-			unsigned count = bl_msg_get_num_channels(acq_src_mask) *
-					samples_copied;
-			written = fwrite(wave_data.data, sizeof(int16_t),
-					count, file);
-			if (written != count) {
-				fprintf(stderr, "Failed to write wave_data\n");
-				goto cleanup;
-			}
-			memset(channel_counter, 0, sizeof(channel_counter));
+		bl_sample_msg_to_file(file, acq_src_mask, msg,
+				channel_counter, data);
+		if (ret != EXIT_SUCCESS) {
+			goto cleanup;
 		}
 	}
 
@@ -430,6 +497,16 @@ cleanup:
 	}
 
 	return EXIT_SUCCESS;
+}
+
+int bl_cmd_wav(int argc, char *argv[])
+{
+	return bl_samples_to_file(argc, argv, true);
+}
+
+int bl_cmd_raw(int argc, char *argv[])
+{
+	return bl_samples_to_file(argc, argv, false);
 }
 
 int bl_cmd_relay(int argc, char *argv[])
@@ -464,6 +541,11 @@ static const struct bl_cmd {
 		.name = "wav",
 		.help = "Convert to WAVE format",
 		.fn = bl_cmd_wav,
+	},
+	{
+		.name = "raw",
+		.help = "Convert to RAW binary data",
+		.fn = bl_cmd_raw,
 	},
 	{
 		.name = "relay",
