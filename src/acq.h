@@ -22,11 +22,17 @@
 union bl_msg_data;
 enum bl_error;
 
+/** OpAmp count */
 #define BL_ACQ_OPAMP__COUNT 4
+
+/** Photodiode count */
 #define BL_ACQ_PD__COUNT 4
 
 /**
  * Acquisition sources.
+ *
+ * These are the four photodiodes and anything else we want to sample for
+ * debug / reference.
  */
 enum bl_acq_source {
 	BL_ACQ_PD1,
@@ -35,6 +41,7 @@ enum bl_acq_source {
 	BL_ACQ_PD4,
 	BL_ACQ_3V3,
 	BL_ACQ_5V0,
+	/* TODO: Add temparature sensor: BL_ACQ_TMP. */
 };
 
 /**

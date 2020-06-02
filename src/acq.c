@@ -33,14 +33,31 @@
 #include "usb.h"
 
 #define ADC_MAX_CHANNELS 8
+
+/**
+ * Bits to oversample by.
+ *
+ * The samples from the ADC are 12-bit.  We always convert to a 16 bit value.
+ *
+ * With an oversample of 0, the samples are effectively multiplied up to be
+ * 16-bit, however they will still have 12-bit precision.
+ *
+ * With an oversample of 4, 2^4=16 12-bit values are read from the ADC and
+ * used to build a single 16-bit sample.
+ *
+ * With an oversample of more than 4, even more samples are taken, giving
+ * a 16-bit value with less noise.
+ */
 #define ACQ_OVERSAMPLE_MAX 8
 
+/** Current acquisition state. */
 enum acq_state {
 	ACQ_STATE_IDLE,
 	ACQ_STATE_CONFIGURED,
 	ACQ_STATE_ACTIVE,
 };
 
+/** Acquisition globals. */
 struct {
 	enum acq_state state;
 
@@ -64,6 +81,7 @@ enum acq_opamp {
 	ACQ_OPAMP_4,
 };
 
+/** Per ADC globals. */
 static struct adc_table {
 	const uint32_t adc_addr;
 	const uint32_t dma_addr;
@@ -150,6 +168,7 @@ static const struct source_table {
 		.gpio_pin = GPIO2,
 		.opamp_mask = 0x5,
 	},
+	/* TODO: Add temparature sensor. */
 };
 
 /**
@@ -182,6 +201,12 @@ static const struct opamp_source_table {
 	},
 };
 
+/**
+ * Cause the device to busy loop.
+ *
+ * TODO: Change the implementation to allow more controlled delay in
+ *       micro seconds.
+ */
 static void __attribute__((optimize("O0"))) delay(unsigned duration)
 {
 	unsigned j;
@@ -192,6 +217,11 @@ static void __attribute__((optimize("O0"))) delay(unsigned duration)
 	}
 }
 
+/**
+ * Make an ADC auto-calibrate.
+ *
+ * \param[in]  adc  The ADC to get to calibrate.
+ */
 static void bl_acq__adc_calibrate(uint32_t adc)
 {
 	adc_enable_regulator(adc);
@@ -204,6 +234,11 @@ static void bl_acq__adc_calibrate(uint32_t adc)
 	adc_disable_regulator(adc);
 }
 
+/**
+ * Make an OpAmp auto-calibrate.
+ *
+ * \param[in]  opamp  The ADC to get to calibrate.
+ */
 static void bl_acq__opamp_calibrate(uint32_t opamp)
 {
 	(void)opamp;
@@ -260,6 +295,12 @@ void bl_acq_init(void)
 	}
 }
 
+/**
+ * Set up the adc table for the current acquisition.
+ *
+ * \param[in]  src_mask  Mask of sampling sources enabled for this acquisition.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
 static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 {
 	bool enabled = false;
@@ -371,6 +412,11 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 			adc_info->channel_count);
 }
 
+/**
+ * DMA interrupt handler helper
+ *
+ * \param[in]  adc  ADC table entry for the ADC that the DMA interrupt is for.
+ */
 static inline void dma_interrupt_helper(struct adc_table *adc)
 {
 	uint32_t sample[adc->sample_count];
@@ -409,6 +455,7 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	}
 }
 
+/** DMA interrupt handler */
 void dma1_channel1_isr(void)
 {
 	if (dma_get_interrupt_flag(DMA1, DMA_CHANNEL1, DMA_TCIF)) {
@@ -417,6 +464,7 @@ void dma1_channel1_isr(void)
 	}
 }
 
+/** DMA interrupt handler */
 void dma2_channel1_isr(void)
 {
 	if (dma_get_interrupt_flag(DMA2, DMA_CHANNEL1, DMA_TCIF)) {
@@ -425,6 +473,7 @@ void dma2_channel1_isr(void)
 	}
 }
 
+/** DMA interrupt handler */
 void dma2_channel5_isr(void)
 {
 	if (dma_get_interrupt_flag(DMA2, DMA_CHANNEL5, DMA_TCIF)) {
@@ -433,6 +482,7 @@ void dma2_channel5_isr(void)
 	}
 }
 
+/** DMA interrupt handler */
 void dma2_channel2_isr(void)
 {
 	if (dma_get_interrupt_flag(DMA2, DMA_CHANNEL2, DMA_TCIF)) {
