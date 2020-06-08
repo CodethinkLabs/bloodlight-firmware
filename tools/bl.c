@@ -342,6 +342,7 @@ static int bl_cmd_start(int argc, char *argv[])
 	uint32_t frequency;
 	uint32_t prescale;
 	uint32_t period;
+	int ret;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -425,7 +426,15 @@ static int bl_cmd_start(int argc, char *argv[])
 	msg.start.oversample = oversample;
 	msg.start.src_mask = src_mask;
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], true);
+	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], true);
+
+	if (killed) {
+		bl_cmd__no_params_helper(
+				ARG_DEV_PATH + 1, argv,
+				BL_MSG_ABORT);
+	}
+
+	return ret;
 }
 
 static int bl_cmd_continue(int argc, char *argv[])
