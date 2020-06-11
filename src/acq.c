@@ -99,7 +99,6 @@ static struct adc_table {
 
 	bool enabled;
 	uint16_t src_mask;
-	uint8_t sample_count;
 	uint8_t channel_count;
 	uint8_t channels[ADC_MAX_CHANNELS];
 
@@ -350,7 +349,6 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 		const uint8_t channels = acq_adc_table[i].channel_count;
 
 		acq_adc_table[i].msg_channels_max = (max / channels) * channels;
-		acq_adc_table[i].sample_count = channels;
 	}
 
 	return BL_ERROR_NONE;
@@ -405,7 +403,7 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 
 	dma_enable_transfer_complete_interrupt(addr, chan);
 	dma_set_number_of_data(addr, chan,
-			adc_info->sample_count << acq_g.oversample);
+			adc_info->channel_count << acq_g.oversample);
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
 
@@ -422,12 +420,12 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
  */
 static inline void dma_interrupt_helper(struct adc_table *adc)
 {
-	uint32_t sample[adc->sample_count];
-	memset(sample, 0x00, adc->sample_count * sizeof(*sample));
+	uint32_t sample[adc->channel_count];
+	memset(sample, 0x00, adc->channel_count * sizeof(*sample));
 
 	volatile uint16_t *p = adc->dma_buffer;
 	for (unsigned i = 0; i < (1U << acq_g.oversample); i++) {
-		for (unsigned j = 0; j < adc->sample_count; j++) {
+		for (unsigned j = 0; j < adc->channel_count; j++) {
 			sample[j] += *p++;
 		}
 	}
@@ -435,22 +433,22 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	unsigned bits = 12 + acq_g.oversample;
 	if (bits < 16) {
 		unsigned shift = 16 - bits;
-		for (unsigned j = 0; j < adc->sample_count; j++) {
+		for (unsigned j = 0; j < adc->channel_count; j++) {
 			sample[j] = (sample[j] << shift)
 					| (sample[j] >> (bits - shift));
 		}
 	} else if (bits > 16) {
 		unsigned shift = bits - 16;
-		for (unsigned j = 0; j < adc->sample_count; j++) {
+		for (unsigned j = 0; j < adc->channel_count; j++) {
 			sample[j] >>= shift;
 		}
 	}
 
-	for (unsigned j = 0; j < adc->sample_count; j++) {
+	for (unsigned j = 0; j < adc->channel_count; j++) {
 		adc->msg.sample_data.data[adc->msg_channels + j] = sample[j];
 	}
 
-	adc->msg_channels += adc->sample_count;
+	adc->msg_channels += adc->channel_count;
 
 	if (adc->msg_channels == adc->msg_channels_max) {
 		adc->msg_ready = true;
