@@ -138,10 +138,13 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 
 static uint16_t bl_response_data[sizeof(union bl_msg_data) / 2 + 1 + 64];
 
-static int bl_cmd_read_message(int dev_fd, int timeout_ms)
+static int bl_cmd_read_message(
+		int dev_fd,
+		int timeout_ms,
+		union bl_msg_data ** response)
 {
 	union bl_msg_data * const msg = (void *) &bl_response_data[0];
-
+	(*response) = msg;
 	ssize_t expected_len;
 	ssize_t read_len;
 
@@ -180,24 +183,25 @@ static int bl_cmd_read_message(int dev_fd, int timeout_ms)
 		}
 	}
 
+	return 0;
+}
+
+int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
+{
+	union bl_msg_data * msg = NULL;
+	bl_cmd_read_message(dev_fd, timeout_ms, &msg);
 	bl_msg_print(msg, stdout);
 
 	return 0;
 }
 
-static int bl_cmd_send(
-		const union bl_msg_data *msg,
-		const char *dev_path, bool multi)
+static int bl_open_device(const char *dev_path)
 {
-	int dev_fd;
-	ssize_t written;
-	int ret = EXIT_SUCCESS;
-
-	dev_fd = open(dev_path, O_RDWR);
+	int dev_fd = open(dev_path, O_RDWR);
 	if (dev_fd == -1) {
 		fprintf(stderr, "Failed to open '%s': %s\n",
 				dev_path, strerror(errno));
-		return EXIT_FAILURE;
+		return -1;
 	}
 
 	struct termios t;
@@ -210,36 +214,36 @@ static int bl_cmd_send(
 		if (tcsetattr(dev_fd, TCSANOW, &t) != 0) {
 			fprintf(stderr, "Failed set terminal attributes"
 				" of '%s': %s\n", dev_path, strerror(errno));
+			return -1;
 		}
 	} else {
 		fprintf(stderr, "Failed get terminal attributes"
 				" of '%s': %s\n", dev_path, strerror(errno));
+		return -1;
 	}
+	return dev_fd;
+}
 
-	if (msg != NULL)
-	{
-		bl_msg_print(msg, stdout);
-		written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
-		if (written != bl_msg_type_to_len(msg->type)) {
-			fprintf(stderr, "Failed write message to '%s'\n", dev_path);
-			ret = EXIT_FAILURE;
-			goto cleanup;
-		}
+static void bl_close_device(int dev_fd)
+{
+	if(dev_fd >= 0) {/* Maybe we should ignore 0, 1 and 2 */
+		close(dev_fd);
 	}
+}
 
-	do {
-		ret = bl_cmd_read_message(dev_fd, 10000);
-		if (ret == EINTR) {
-			killed = true;
+static int bl_cmd_send(
+		const union bl_msg_data *msg,
+		const char *dev_path, int dev_fd)
+{
+	ssize_t written;
+	int ret = EXIT_SUCCESS;
 
-		} else if (ret != 0) {
-			ret = EXIT_FAILURE;
-			goto cleanup;
-		}
-	} while (multi && !killed);
-
-cleanup:
-	close(dev_fd);
+	written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
+	if (written != bl_msg_type_to_len(msg->type)) {
+		fprintf(stderr, "Failed write message to '%s'\n", dev_path);
+		ret = EXIT_FAILURE;
+	}
+	
 	return ret;
 }
 
@@ -251,6 +255,8 @@ static int bl_cmd_led(int argc, char *argv[])
 			.type = BL_MSG_LED,
 		}
 	};
+	int ret;
+	int dev_fd;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -280,8 +286,21 @@ static int bl_cmd_led(int argc, char *argv[])
 	}
 
 	msg.led.led_mask = led_mask;
+	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
+	bl_msg_print(&msg, stdout);
+	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
+	if (ret != EXIT_SUCCESS) {
+		bl_close_device(dev_fd);
+		return ret;
+	}
+	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+	bl_close_device(dev_fd);
+	return ret;
+	
 }
 
 static int bl_cmd__no_params_helper(
@@ -292,6 +311,8 @@ static int bl_cmd__no_params_helper(
 	union bl_msg_data msg = {
 		.type = type,
 	};
+	int ret;
+	int dev_fd;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -306,7 +327,19 @@ static int bl_cmd__no_params_helper(
 		return EXIT_FAILURE;
 	}
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
+	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+	bl_msg_print(&msg, stdout);
+	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
+	if (ret != EXIT_SUCCESS) {
+		bl_close_device(dev_fd);
+		return ret;
+	}
+	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+	bl_close_device(dev_fd);
+	return ret;
 }
 
 /* Division rounding to nearest integer. */
@@ -329,7 +362,31 @@ static void bl_frequency_to_acq_params(
 	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
 }
 
-static int bl_cmd_start(int argc, char *argv[])
+int bl_cmd_receive_and_print_loop(int dev_fd)
+{
+	int ret = EXIT_SUCCESS;
+	do {
+		ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+		if (ret == EINTR) {
+			killed = true;
+
+		} else if (ret != 0) {
+			ret = EXIT_FAILURE;
+		}
+	} while (!killed);
+	return ret;
+}
+
+typedef enum bl_data_presentation
+{
+	HUMAN_READABLE,
+	X_Y,
+} bl_data_presentation;
+
+static int bl_cmd_start_stream(
+		int argc,
+		char *argv[],
+		bl_data_presentation present)
 {
 	union bl_msg_data msg = {
 		.start = {
@@ -343,6 +400,7 @@ static int bl_cmd_start(int argc, char *argv[])
 	uint32_t prescale;
 	uint32_t period;
 	int ret;
+	int dev_fd;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -426,19 +484,51 @@ static int bl_cmd_start(int argc, char *argv[])
 	msg.start.oversample = oversample;
 	msg.start.src_mask = src_mask;
 
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], true);
+	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+	if (present == HUMAN_READABLE) {
+		bl_msg_print(&msg, stdout);
+	}
+	
+	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
 
-	if (killed) {
-		bl_cmd__no_params_helper(
-				ARG_DEV_PATH + 1, argv,
-				BL_MSG_ABORT);
+	if (ret != BL_ERROR_NONE) {
+		bl_close_device(dev_fd);
+		return EXIT_FAILURE;
 	}
 
+	ret = bl_cmd_receive_and_print_loop(dev_fd);
+	/* Send abort after ctrl+c */
+	if (killed) {
+		union bl_msg_data abort_msg = {
+			.type = BL_MSG_ABORT,
+		};
+		bl_cmd_send(&abort_msg, argv[ARG_DEV_PATH],dev_fd);
+		if (present == HUMAN_READABLE) {
+			bl_cmd_read_and_print_message(dev_fd, 10000);
+		} else if (present == X_Y)
+		{
+			/* TODO */
+		}
+	}
+
+	bl_close_device(dev_fd);
 	return ret;
+
 }
+
+int bl_cmd_start(int argc, char *argv[])
+{
+	return bl_cmd_start_stream(argc, argv, HUMAN_READABLE);
+}
+
 
 static int bl_cmd_continue(int argc, char *argv[])
 {
+	int dev_fd;
+	int ret;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -453,7 +543,14 @@ static int bl_cmd_continue(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	return bl_cmd_send(NULL, argv[ARG_DEV_PATH], true);
+	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+	ret = bl_cmd_receive_and_print_loop(dev_fd);
+
+	bl_close_device(dev_fd);
+	return ret;
 }
 
 static int bl_cmd_abort(int argc, char *argv[])
