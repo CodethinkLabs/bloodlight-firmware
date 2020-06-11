@@ -61,6 +61,11 @@
  */
 #define ACQ_OVERSAMPLE_MAX 8
 
+/**
+ * Maximum number of channels a message can contain.
+ */
+#define MSG_CHANNELS_MAX 16
+
 /** Current acquisition state. */
 enum acq_state {
 	ACQ_STATE_IDLE,
@@ -103,12 +108,11 @@ static struct adc_table {
 	uint8_t channels[ADC_MAX_CHANNELS];
 
 	volatile bool msg_ready;
-	volatile uint16_t dma_buffer[ADC_MAX_CHANNELS << ACQ_OVERSAMPLE_MAX];
+	volatile uint16_t dma_buffer[MSG_CHANNELS_MAX << ACQ_OVERSAMPLE_MAX];
 
-	uint8_t msg_channels;
 	uint8_t msg_channels_max;
 	union bl_msg_data msg;
-	uint16_t sample_data[16];
+	uint16_t sample_data[MSG_CHANNELS_MAX];
 } acq_adc_table[] = {
 	[ACQ_ADC_1] = {
 		.adc_addr = ADC1,
@@ -312,7 +316,6 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 		acq_adc_table[i].enabled = false;
 		acq_adc_table[i].src_mask = 0;
 		acq_adc_table[i].channel_count = 0;
-		acq_adc_table[i].msg_channels = 0;
 	}
 
 	/* Set up ADC table acording to sources enabled by `src_mask`. */
@@ -403,7 +406,7 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 
 	dma_enable_transfer_complete_interrupt(addr, chan);
 	dma_set_number_of_data(addr, chan,
-			adc_info->channel_count << acq_g.oversample);
+			adc_info->msg_channels_max << acq_g.oversample);
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
 
@@ -420,12 +423,12 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
  */
 static inline void dma_interrupt_helper(struct adc_table *adc)
 {
-	uint32_t sample[adc->channel_count];
-	memset(sample, 0x00, adc->channel_count * sizeof(*sample));
+	uint32_t sample[MSG_CHANNELS_MAX];
+	memset(sample, 0x00, MSG_CHANNELS_MAX * sizeof(*sample));
 
 	volatile uint16_t *p = adc->dma_buffer;
 	for (unsigned i = 0; i < (1U << acq_g.oversample); i++) {
-		for (unsigned j = 0; j < adc->channel_count; j++) {
+		for (unsigned j = 0; j < adc->msg_channels_max; j++) {
 			sample[j] += *p++;
 		}
 	}
@@ -433,27 +436,22 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	unsigned bits = 12 + acq_g.oversample;
 	if (bits < 16) {
 		unsigned shift = 16 - bits;
-		for (unsigned j = 0; j < adc->channel_count; j++) {
+		for (unsigned j = 0; j < adc->msg_channels_max; j++) {
 			sample[j] = (sample[j] << shift)
 					| (sample[j] >> (bits - shift));
 		}
 	} else if (bits > 16) {
 		unsigned shift = bits - 16;
-		for (unsigned j = 0; j < adc->channel_count; j++) {
+		for (unsigned j = 0; j < adc->msg_channels_max; j++) {
 			sample[j] >>= shift;
 		}
 	}
 
-	for (unsigned j = 0; j < adc->channel_count; j++) {
-		adc->msg.sample_data.data[adc->msg_channels + j] = sample[j];
+	for (unsigned j = 0; j < adc->msg_channels_max; j++) {
+		adc->msg.sample_data.data[j] = sample[j];
 	}
 
-	adc->msg_channels += adc->channel_count;
-
-	if (adc->msg_channels == adc->msg_channels_max) {
-		adc->msg_ready = true;
-		adc->msg_channels = 0;
-	}
+	adc->msg_ready = true;
 }
 
 /** DMA interrupt handler */
@@ -728,7 +726,6 @@ enum bl_error bl_acq_abort(void)
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		acq_adc_table[i].msg_ready = false;
-		acq_adc_table[i].msg_channels = 0;
 	}
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
