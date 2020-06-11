@@ -415,6 +415,8 @@ int bl_sample_msg_to_file(
 			}
 		}
 		memset(channel_counter, 0, sizeof(uint16_t) * MAX_CHANNELS);
+
+		fflush(file);
 	}
 
 	return EXIT_SUCCESS;
