@@ -25,11 +25,9 @@ enum bl_error;
 /** Message type. */
 enum bl_msg_type {
 	BL_MSG_RESPONSE,
-	BL_MSG_LED_TEST,
-	BL_MSG_ACQ_SETUP,
-	BL_MSG_ACQ_START,
-	BL_MSG_ACQ_ABORT,
-	BL_MSG_RESET,
+	BL_MSG_LED,
+	BL_MSG_START,
+	BL_MSG_ABORT,
 	BL_MSG_SAMPLE_DATA,
 	BL_MSG__COUNT,
 };
@@ -47,7 +45,7 @@ union bl_msg_data {
 	} response;
 
 	/**
-	 * Data for \ref BL_MSG_LED_TEST.
+	 * Data for \ref BL_MSG_LED.
 	 *
 	 * This simply turns LEDs on and off.
 	 *
@@ -57,35 +55,26 @@ union bl_msg_data {
 	 * least significant bit is \ref BL_LED_ID_0.
 	 */
 	struct {
-		uint8_t  type;     /**< Must be \ref BL_MSG_LED_TEST */
+		uint8_t  type;     /**< Must be \ref BL_MSG_LED */
 		uint16_t led_mask; /**< One bit per LED. */
-	} led_test;
+	} led;
 
 	/**
-	 * Data for \ref BL_MSG_ACQ_SETUP.
+	 * Data for \ref BL_MSG_SETUP.
 	 */
 	struct {
-		uint8_t  type;       /**< Must be \ref BL_MSG_ACQ_SETUP */
+		uint8_t  type;       /**< Must be \ref BL_MSG_SETUP */
 		uint8_t  oversample; /**< Number of bits to overample by. */
-		uint16_t period;     /**< Sample period in us. */
+		uint16_t period;     /**< Sampling timer period. */
+		uint16_t prescale;   /**< Sampling timer clock prescale. */
 		uint16_t src_mask;   /**< Mask of sources to enable. */
 		uint8_t  gain[BL_ACQ_PD__COUNT]; /**< Photodiode gains. */
-	} acq_setup;
+	} start;
 
-	/** Data for \ref BL_MSG_ACQ_START. */
+	/** Data for \ref BL_MSG_ABORT. */
 	struct {
-		uint8_t type; /**< Must be \ref BL_MSG_ACQ_START */
-	} acq_start;
-
-	/** Data for \ref BL_MSG_ACQ_ABORT. */
-	struct {
-		uint8_t type; /**< Must be \ref BL_MSG_ACQ_ABORT */
-	} acq_abort;
-
-	/** Data for \ref BL_MSG_RESET. */
-	struct {
-		uint8_t type; /**< Must be \ref BL_MSG_RESET */
-	} reset;
+		uint8_t type; /**< Must be \ref BL_MSG_ABORT */
+	} abort;
 
 	/** Data for \ref BL_MSG_SAMPLE_DATA. */
 	struct {
@@ -118,11 +107,9 @@ static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 {
 	static const uint8_t len[BL_MSG__COUNT] = {
 		[BL_MSG_RESPONSE]    = BL_SIZEOF_MSG(response),
-		[BL_MSG_LED_TEST]    = BL_SIZEOF_MSG(led_test),
-		[BL_MSG_ACQ_SETUP]   = BL_SIZEOF_MSG(acq_setup),
-		[BL_MSG_ACQ_START]   = BL_SIZEOF_MSG(acq_start),
-		[BL_MSG_ACQ_ABORT]   = BL_SIZEOF_MSG(acq_abort),
-		[BL_MSG_RESET]       = BL_SIZEOF_MSG(reset),
+		[BL_MSG_LED]         = BL_SIZEOF_MSG(led),
+		[BL_MSG_START]       = BL_SIZEOF_MSG(start),
+		[BL_MSG_ABORT]       = BL_SIZEOF_MSG(abort),
 		[BL_MSG_SAMPLE_DATA] = BL_SIZEOF_MSG(sample_data),
 	};
 

@@ -228,7 +228,7 @@ static int bl_cmd_send(
 	}
 
 	do {
-		ret = bl_cmd_read_message(dev_fd, 1000);
+		ret = bl_cmd_read_message(dev_fd, 10000);
 		if (ret == EINTR) {
 			killed = true;
 
@@ -243,12 +243,12 @@ cleanup:
 	return ret;
 }
 
-static int bl_cmd_led_test(int argc, char *argv[])
+static int bl_cmd_led(int argc, char *argv[])
 {
 	uint32_t led_mask;
 	union bl_msg_data msg = {
-		.led_test = {
-			.type = BL_MSG_LED_TEST,
+		.led = {
+			.type = BL_MSG_LED,
 		}
 	};
 	enum {
@@ -274,12 +274,12 @@ static int bl_cmd_led_test(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (check_fit(led_mask, sizeof(msg.led_test.led_mask)) == false) {
+	if (check_fit(led_mask, sizeof(msg.led.led_mask)) == false) {
 		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
 
-	msg.led_test.led_mask = led_mask;
+	msg.led.led_mask = led_mask;
 
 	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
 }
@@ -306,26 +306,47 @@ static int bl_cmd__no_params_helper(
 		return EXIT_FAILURE;
 	}
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH],
-		type == BL_MSG_ACQ_START);
+	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
 }
 
-static int bl_cmd_acq_setup(int argc, char *argv[])
+/* Division rounding to nearest integer. */
+#define DIV_NEAREST(_num, _den) (((_num) + (_den) / 2) / (_den))
+
+static void bl_frequency_to_acq_params(
+		uint32_t frequency,
+		uint32_t oversample,
+		uint32_t *prescale_out,
+		uint32_t *period_out)
+{
+	const uint32_t device_clock_speed = (72 * 1000 * 1000);
+	uint32_t samples_per_second;
+	uint32_t ticks_per_sample;
+
+	samples_per_second = (1 << oversample) * frequency;
+	ticks_per_sample = DIV_NEAREST(device_clock_speed, samples_per_second);
+
+	*prescale_out = 1 + (ticks_per_sample >> 16);
+	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
+}
+
+static int bl_cmd_start(int argc, char *argv[])
 {
 	union bl_msg_data msg = {
-		.acq_setup = {
-			.type = BL_MSG_ACQ_SETUP,
+		.start = {
+			.type = BL_MSG_START,
 		}
 	};
 	uint32_t src_mask;
 	uint32_t oversample;
 	unsigned arg_gain_count;
+	uint32_t frequency;
+	uint32_t prescale;
 	uint32_t period;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
-		ARG_PERIOD,
+		ARG_FREQUENCY,
 		ARG_OVERSAMPLE,
 		ARG_SRC_MASK,
 		ARG__COUNT,
@@ -337,7 +358,7 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
-				"  \t<PERIOD> \\\n"
+				"  \t<FREQUENCY> \\\n"
 				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n"
 				"  \t[GAIN]*\n",
@@ -354,19 +375,24 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 				(unsigned) BL_ACQ_PD__COUNT);
 		fprintf(stderr, "If a single GAIN value is given it is used "
 				"for all photodiodes.\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "FREQUENCY is the sampling rate in Hz.\n");
 		return EXIT_FAILURE;
 	}
 
 	if (read_uint32_t(argv[ARG_SRC_MASK],   &src_mask)   == false ||
 	    read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false ||
-	    read_uint32_t(argv[ARG_PERIOD],     &period)     == false) {
+	    read_uint32_t(argv[ARG_FREQUENCY],  &frequency)  == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
 
-	if (check_fit(src_mask,   sizeof(msg.acq_setup.src_mask))   == false ||
-	    check_fit(oversample, sizeof(msg.acq_setup.oversample)) == false ||
-	    check_fit(period,     sizeof(msg.acq_setup.period))     == false) {
+	bl_frequency_to_acq_params(frequency, oversample, &prescale, &period);
+
+	if (check_fit(src_mask,   sizeof(msg.start.src_mask))   == false ||
+	    check_fit(oversample, sizeof(msg.start.oversample)) == false ||
+	    check_fit(period,     sizeof(msg.start.period))     == false ||
+	    check_fit(prescale,   sizeof(msg.start.prescale))   == false) {
 		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
@@ -391,22 +417,18 @@ static int bl_cmd_acq_setup(int argc, char *argv[])
 			}
 		}
 
-		msg.acq_setup.gain[i] = gain;
+		msg.start.gain[i] = gain;
 	}
 
-	msg.acq_setup.period = period;
-	msg.acq_setup.oversample = oversample;
-	msg.acq_setup.src_mask = src_mask;
+	msg.start.period = period;
+	msg.start.prescale = prescale;
+	msg.start.oversample = oversample;
+	msg.start.src_mask = src_mask;
 
-	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], false);
+	return bl_cmd_send(&msg, argv[ARG_DEV_PATH], true);
 }
 
-static int bl_cmd_acq_start(int argc, char *argv[])
-{
-	return bl_cmd__no_params_helper(argc, argv, BL_MSG_ACQ_START);
-}
-
-static int bl_cmd_acq_continue(int argc, char *argv[])
+static int bl_cmd_continue(int argc, char *argv[])
 {
 	enum {
 		ARG_PROG,
@@ -425,14 +447,9 @@ static int bl_cmd_acq_continue(int argc, char *argv[])
 	return bl_cmd_send(NULL, argv[ARG_DEV_PATH], true);
 }
 
-static int bl_cmd_acq_abort(int argc, char *argv[])
+static int bl_cmd_abort(int argc, char *argv[])
 {
-	return bl_cmd__no_params_helper(argc, argv, BL_MSG_ACQ_ABORT);
-}
-
-static int bl_cmd_reset(int argc, char *argv[])
-{
-	return bl_cmd__no_params_helper(argc, argv, BL_MSG_RESET);
+	return bl_cmd__no_params_helper(argc, argv, BL_MSG_ABORT);
 }
 
 static const struct bl_cmd {
@@ -441,34 +458,24 @@ static const struct bl_cmd {
 	const bl_cmd_fn fn;
 } cmds[] = {
 	{
-		.name = "led-test",
+		.name = "led",
 		.help = "Turn LEDs on/off",
-		.fn = bl_cmd_led_test,
+		.fn = bl_cmd_led,
 	},
 	{
-		.name = "acq-setup",
-		.help = "Set up an acquisition",
-		.fn = bl_cmd_acq_setup,
-	},
-	{
-		.name = "acq-start",
+		.name = "start",
 		.help = "Start an acquisition",
-		.fn = bl_cmd_acq_start,
+		.fn = bl_cmd_start,
 	},
 	{
-		.name = "acq-continue",
+		.name = "continue",
 		.help = "Continue an acquisition",
-		.fn = bl_cmd_acq_continue,
+		.fn = bl_cmd_continue,
 	},
 	{
-		.name = "acq-abort",
+		.name = "abort",
 		.help = "Abort an acquisition",
-		.fn = bl_cmd_acq_abort,
-	},
-	{
-		.name = "reset",
-		.help = "Reset the device",
-		.fn = bl_cmd_reset,
+		.fn = bl_cmd_abort,
 	},
 };
 

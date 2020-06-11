@@ -32,6 +32,17 @@
 #include "msg.h"
 #include "usb.h"
 
+/**
+ * \file
+ * \brief Acquisition implementation.
+ *
+ * Acquisition is driven by a timer, which triggers the ADC, which triggers DMA,
+ * which causes an interrupt.  In the interrupt handlers for each ADC a per-ADC
+ * \ref BL_MSG_SAMPLE_DATA message is filled up.  When the message buffer is
+ * filled, the message is marked as ready, and it is sent over USB when
+ * \ref bl_acq_poll is called.
+ */
+
 #define ADC_MAX_CHANNELS 8
 
 /**
@@ -39,7 +50,7 @@
  *
  * The samples from the ADC are 12-bit.  We always convert to a 16 bit value.
  *
- * With an oversample of 0, the samples are effectively multiplied up to be
+ * With an oversample of 0, the samples are effectively summed up to be
  * 16-bit, however they will still have 12-bit precision.
  *
  * With an oversample of 4, 2^4=16 12-bit values are read from the ADC and
@@ -53,7 +64,6 @@
 /** Current acquisition state. */
 enum acq_state {
 	ACQ_STATE_IDLE,
-	ACQ_STATE_CONFIGURED,
 	ACQ_STATE_ACTIVE,
 };
 
@@ -271,13 +281,6 @@ void bl_acq_init(void)
 		gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE,
 				acq_source_table[i].gpio_pin);
 	}
-
-	/* Prescaler of 71 (=72) means timer runs at 1MHz. */
-	timer_set_prescaler(TIM1, 71);
-	/* Timer will trigger TRGO every OC1 match (once per period). */
-	timer_set_oc_mode(TIM1, TIM_OC1, TIM_OCM_TOGGLE);
-	timer_set_master_mode(TIM1, TIM_CR2_MMS_COMPARE_OC1REF);
-	timer_enable_oc_output(TIM1, TIM_OC1);
 
 	/* Setup ADC masters. */
 	/* TODO: Fix these constants in libopencm3 so they're ADC12 and ADC34 */
@@ -610,9 +613,42 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 	return BL_ERROR_NONE;
 }
 
-/* Exported function, documented in acq.h */
-enum bl_error bl_acq_setup(
+/**
+ * Set the hardware up for an acquisition.
+ *
+ * \param[in]  period      Sample period in us.
+ * \param[in]  prescale    Sample timer prescale.
+ */
+static enum bl_error bl_acq_setup_timer(
 		uint16_t period,
+		uint16_t prescale)
+{
+	/* Prescale of 72 (set as 71) means timer runs at 1MHz. */
+	timer_set_prescaler(TIM1, prescale - 1);
+
+	/* Timer will trigger TRGO every OC1 match (once per period). */
+	timer_set_oc_mode(TIM1, TIM_OC1, TIM_OCM_TOGGLE);
+	timer_set_master_mode(TIM1, TIM_CR2_MMS_COMPARE_OC1REF);
+	timer_enable_oc_output(TIM1, TIM_OC1);
+
+	timer_set_period(TIM1, period - 1);
+
+	return BL_ERROR_NONE;
+}
+
+/**
+ * Set the hardware up for an acquisition.
+ *
+ * \param[in]  period      Sample period in us.
+ * \param[in]  prescale    Sample timer prescale.
+ * \param[in]  oversample  Number of bits to oversample by.
+ * \param[in]  src_mask    Mask of sources to enable.
+ * \param[in]  gain        Gain value for each photodiode.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+static enum bl_error bl_acq_setup(
+		uint16_t period,
+		uint16_t prescale,
 		uint8_t  oversample,
 		uint16_t src_mask,
 		const uint8_t gain[BL_ACQ_PD__COUNT])
@@ -623,15 +659,16 @@ enum bl_error bl_acq_setup(
 		return BL_ERROR_OUT_OF_RANGE;
 	}
 
-	if (acq_g.state == ACQ_STATE_ACTIVE) {
-		return BL_ERROR_ACTIVE_ACQUISITION;
-	}
-
 	acq_g.oversample = oversample;
 	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 		if (acq_g.gain[i] == 0) {
 			acq_g.gain[i] = 1;
 		}
+	}
+
+	error = bl_acq_setup_timer(period, prescale);
+	if (error != BL_ERROR_NONE) {
+		return error;
 	}
 
 	error = bl_acq_set_gains(gain);
@@ -651,17 +688,26 @@ enum bl_error bl_acq_setup(
 		}
 	}
 
-	timer_set_period(TIM1, period);
-
-	acq_g.state = ACQ_STATE_CONFIGURED;
 	return BL_ERROR_NONE;
 }
 
 /* Exported function, documented in acq.h */
-enum bl_error bl_acq_start(void)
+enum bl_error bl_acq_start(
+		uint16_t period,
+		uint16_t prescale,
+		uint8_t  oversample,
+		uint16_t src_mask,
+		const uint8_t gain[BL_ACQ_PD__COUNT])
 {
-	if (acq_g.state != ACQ_STATE_CONFIGURED) {
-		return BL_ERROR_ACQ_NOT_CONFIGURED;
+	enum bl_error error;
+
+	if (acq_g.state != ACQ_STATE_IDLE) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+
+	error = bl_acq_setup(period, prescale, oversample, src_mask, gain);
+	if (error != BL_ERROR_NONE) {
+		return error;
 	}
 
 	acq_g.state = ACQ_STATE_ACTIVE;

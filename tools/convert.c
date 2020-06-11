@@ -48,11 +48,9 @@ static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
 {
 	static const char *types[] = {
 		[BL_MSG_RESPONSE]    = "Response",
-		[BL_MSG_LED_TEST]    = "LED Test",
-		[BL_MSG_ACQ_SETUP]   = "Acq Setup",
-		[BL_MSG_ACQ_START]   = "Acq Start",
-		[BL_MSG_ACQ_ABORT]   = "Acq Abort",
-		[BL_MSG_RESET]       = "Reset",
+		[BL_MSG_LED]         = "LED",
+		[BL_MSG_START]       = "Acq Start",
+		[BL_MSG_ABORT]       = "Acq Abort",
 		[BL_MSG_SAMPLE_DATA] = "Sample Data",
 	};
 
@@ -168,17 +166,17 @@ static bool read_message(union bl_msg_data *msg)
 		msg->response.error_code = read_unsigned(&ok, "Error code");
 		break;
 
-	case BL_MSG_LED_TEST:
-		msg->led_test.led_mask = read_hex(&ok, "LED Mask");
+	case BL_MSG_LED:
+		msg->led.led_mask = read_hex(&ok, "LED Mask");
 		break;
 
-	case BL_MSG_ACQ_SETUP:
-		msg->acq_setup.oversample = read_unsigned(&ok, "Oversample");
-		msg->acq_setup.period = read_unsigned(&ok, "Period");
-		msg->acq_setup.src_mask = read_hex(&ok, "Source Mask");
+	case BL_MSG_START:
+		msg->start.oversample = read_unsigned(&ok, "Oversample");
+		msg->start.period = read_unsigned(&ok, "Period");
+		msg->start.src_mask = read_hex(&ok, "Source Mask");
 		ok |= (scanf("    Gain:\n") == 0);
 		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-			msg->acq_setup.gain[i] = read_unsigned_no_field(&ok);
+			msg->start.gain[i] = read_unsigned_no_field(&ok);
 		}
 		break;
 
@@ -443,15 +441,15 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 	}
 
 	while (!killed && read_message(msg)) {
-		if (!had_setup && msg->type == BL_MSG_ACQ_SETUP) {
-			acq_src_mask = msg->acq_setup.src_mask;
+		if (!had_setup && msg->type == BL_MSG_START) {
+			acq_src_mask = msg->start.src_mask;
 			had_setup = true;
 
 			if (wav) {
 				ret = bl_cmd_wav_write_format_header(file,
-						msg->acq_setup.period,
-						msg->acq_setup.src_mask,
-						msg->acq_setup.oversample);
+						msg->start.period,
+						msg->start.src_mask,
+						msg->start.oversample);
 				if (ret != EXIT_SUCCESS) {
 					goto cleanup;
 				}
@@ -464,11 +462,11 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 				fprintf(stderr, "    Samples: 16-bit signed\n");
 				fprintf(stderr, "    Channels: %u\n",
 						(unsigned) bl_count_channels(
-							msg->acq_setup.src_mask));
+							msg->start.src_mask));
 				fprintf(stderr, "    Frequency: %u Hz\n",
 						(unsigned) bl_get_sample_rate(
-							msg->acq_setup.period,
-							msg->acq_setup.oversample));
+							msg->start.period,
+							msg->start.oversample));
 			}
 		}
 

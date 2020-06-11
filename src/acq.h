@@ -50,26 +50,21 @@ enum bl_acq_source {
 void bl_acq_init(void);
 
 /**
- * Handle the Sampling Setup message.
+ * Start an acquisition.
  *
- * \param[in]  period      Sample period in us.
+ * \param[in]  period      Sample timer perieod.
+ * \param[in]  prescale    Sample timer prescale.
  * \param[in]  oversample  Number of bits to oversample by.
  * \param[in]  src_mask    Mask of sources to enable.
  * \param[in]  gain        Gain value for each photodiode.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
-enum bl_error bl_acq_setup(
+enum bl_error bl_acq_start(
 		uint16_t period,
+		uint16_t prescale,
 		uint8_t  oversample,
 		uint16_t src_mask,
 		const uint8_t gain[BL_ACQ_PD__COUNT]);
-
-/**
- * Start an acquisition.
- *
- * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
- */
-enum bl_error bl_acq_start(void);
 
 /**
  * Abort an acquisition.

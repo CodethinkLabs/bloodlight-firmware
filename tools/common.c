@@ -18,11 +18,9 @@ static inline const char *bl_msg_type_to_str(enum bl_msg_type type)
 {
 	static const char *types[] = {
 		[BL_MSG_RESPONSE]    = "Response",
-		[BL_MSG_LED_TEST]    = "LED Test",
-		[BL_MSG_ACQ_SETUP]   = "Acq Setup",
-		[BL_MSG_ACQ_START]   = "Acq Start",
-		[BL_MSG_ACQ_ABORT]   = "Acq Abort",
-		[BL_MSG_RESET]       = "Reset",
+		[BL_MSG_LED]         = "LED",
+		[BL_MSG_START]       = "Start",
+		[BL_MSG_ABORT]       = "Abort",
 		[BL_MSG_SAMPLE_DATA] = "Sample Data",
 	};
 
@@ -57,22 +55,22 @@ static void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 				(unsigned) msg->response.error_code);
 		break;
 
-	case BL_MSG_LED_TEST:
+	case BL_MSG_LED:
 		fprintf(file, "    LED Mask: 0x%x\n",
-				(unsigned) msg->led_test.led_mask);
+				(unsigned) msg->led.led_mask);
 		break;
 
-	case BL_MSG_ACQ_SETUP:
+	case BL_MSG_START:
 		fprintf(file, "    Oversample: %u\n",
-				(unsigned) msg->acq_setup.oversample);
+				(unsigned) msg->start.oversample);
 		fprintf(file, "    Period: %u\n",
-				(unsigned) msg->acq_setup.period);
+				(unsigned) msg->start.period);
 		fprintf(file, "    Source Mask: 0x%x\n",
-				(unsigned) msg->acq_setup.src_mask);
+				(unsigned) msg->start.src_mask);
 		fprintf(file, "    Gain:\n");
 		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 			fprintf(file, "    - %u\n",
-				(unsigned) msg->acq_setup.gain[i]);
+				(unsigned) msg->start.gain[i]);
 		}
 		break;
 

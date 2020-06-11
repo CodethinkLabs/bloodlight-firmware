@@ -25,7 +25,6 @@ enum bl_error {
 	BL_ERROR_BAD_MESSAGE_LENGTH, /**< Unexpected message length. */
 	BL_ERROR_BAD_SOURCE_MASK,    /**< No sources would be sampled. */
 	BL_ERROR_ACTIVE_ACQUISITION, /**< There is an active acquisition. */
-	BL_ERROR_ACQ_NOT_CONFIGURED, /**< Acquisition is not configured. */
 };
 
 #endif
