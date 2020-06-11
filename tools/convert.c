@@ -29,7 +29,8 @@
 #include "../src/msg.h"
 
 /* Common helper functionality. */
-#include "common.c"
+#include "common.h"
+#include "conversion.h"
 
 /* Whether we've had a `ctrl-c`. */
 volatile bool killed;
@@ -199,19 +200,6 @@ static bool read_message(union bl_msg_data *msg)
 static uint32_t bl_get_sample_rate(uint32_t period_us, uint32_t oversample)
 {
 	return (1 * 1000 * 1000) / period_us / (1 << oversample);
-}
-
-static uint16_t bl_count_channels(uint16_t src_mask)
-{
-	uint16_t bit_count = 0;
-
-	for (unsigned i = 0; i < 16; i++) {
-		if (src_mask & (1 << i)) {
-			bit_count++;
-		}
-	}
-
-	return bit_count;
 }
 
 static bool bl_masks_to_channel_idxs(

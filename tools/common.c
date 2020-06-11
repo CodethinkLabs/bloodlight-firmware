@@ -14,7 +14,16 @@
  * limitations under the License.
  */
 
-static inline const char *bl_msg_type_to_str(enum bl_msg_type type)
+#include <stdint.h>
+#include <stdio.h>
+
+#include "../src/error.h"
+#include "../src/util.h"
+#include "../src/msg.h"
+
+#include "common.h"
+
+const char *bl_msg_type_to_str(enum bl_msg_type type)
 {
 	static const char *types[] = {
 		[BL_MSG_RESPONSE]    = "Response",
@@ -31,7 +40,7 @@ static inline const char *bl_msg_type_to_str(enum bl_msg_type type)
 	return types[type];
 }
 
-static void bl_msg_print(const union bl_msg_data *msg, FILE *file)
+void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 {
 	if (bl_msg_type_to_str(msg->type) == NULL) {
 		fprintf(file, "- Unknown (0x%x)\n",

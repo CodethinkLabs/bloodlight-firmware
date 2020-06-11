@@ -34,7 +34,8 @@
 #include "../src/msg.h"
 
 /* Common helper functionality. */
-#include "common.c"
+#include "common.h"
+#include "conversion.h"
 
 /* Whether we've had a `ctrl-c`. */
 volatile bool killed;
@@ -189,10 +190,10 @@ static int bl_cmd_read_message(
 int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 {
 	union bl_msg_data * msg = NULL;
-	bl_cmd_read_message(dev_fd, timeout_ms, &msg);
+	int ret = bl_cmd_read_message(dev_fd, timeout_ms, &msg);
 	bl_msg_print(msg, stdout);
 
-	return 0;
+	return ret;
 }
 
 static int bl_open_device(const char *dev_path)
@@ -377,6 +378,24 @@ int bl_cmd_receive_and_print_loop(int dev_fd)
 	return ret;
 }
 
+int bl_cmd_receive_and_print_xy_loop(int dev_fd, int frequency)
+{
+	int ret = EXIT_SUCCESS;
+	long current_x[MAX_CHANNELS] = {0};
+	do {
+		union bl_msg_data * msg = NULL;
+		ret = bl_cmd_read_message(dev_fd, 10000, &msg);
+		if (ret == EINTR) {
+			killed = true;
+		} else if (ret != 0) {
+			ret = EXIT_FAILURE;
+		}
+		bl_live_samples_to_xy(msg, stdout, current_x, frequency);
+	} while (!killed);
+	return ret;
+}
+
+
 typedef enum bl_data_presentation
 {
 	HUMAN_READABLE,
@@ -499,7 +518,12 @@ static int bl_cmd_start_stream(
 		return EXIT_FAILURE;
 	}
 
-	ret = bl_cmd_receive_and_print_loop(dev_fd);
+	if (present == HUMAN_READABLE) {
+		ret = bl_cmd_receive_and_print_loop(dev_fd);
+	}else if (present == X_Y) {
+		ret = bl_cmd_receive_and_print_xy_loop(dev_fd, frequency);
+	}
+
 	/* Send abort after ctrl+c */
 	if (killed) {
 		union bl_msg_data abort_msg = {
@@ -508,10 +532,7 @@ static int bl_cmd_start_stream(
 		bl_cmd_send(&abort_msg, argv[ARG_DEV_PATH],dev_fd);
 		if (present == HUMAN_READABLE) {
 			bl_cmd_read_and_print_message(dev_fd, 10000);
-		} else if (present == X_Y)
-		{
-			/* TODO */
-		}
+		} 
 	}
 
 	bl_close_device(dev_fd);
@@ -524,6 +545,10 @@ int bl_cmd_start(int argc, char *argv[])
 	return bl_cmd_start_stream(argc, argv, HUMAN_READABLE);
 }
 
+int bl_cmd_start_xy(int argc, char *argv[])
+{
+	return bl_cmd_start_stream(argc, argv, X_Y);
+}
 
 static int bl_cmd_continue(int argc, char *argv[])
 {
@@ -572,6 +597,11 @@ static const struct bl_cmd {
 		.name = "start",
 		.help = "Start an acquisition",
 		.fn = bl_cmd_start,
+	},
+	{
+		.name = "startxy",
+		.help = "Start an acquisition and print data out in the format [source channel],[time ms],[value]",
+		.fn = bl_cmd_start_xy,
 	},
 	{
 		.name = "continue",

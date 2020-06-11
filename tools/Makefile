@@ -5,5 +5,7 @@ all: bl convert
 clean:
 	rm -f bl convert
 
-bl: bl.c
-convert: convert.c
+bl: bl.c common.o conversion.o
+convert: convert.c common.o conversion.o
+common.o: common.c
+conversion.o: conversion.c
