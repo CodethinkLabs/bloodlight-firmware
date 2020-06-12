@@ -22,6 +22,7 @@
 #include "led.h"
 #include "bl.h"
 #include "usb.h"
+#include "delay.h"
 #include "error.h"
 
 const struct rcc_clock_scale rcc_hse16mhz_config = {
@@ -43,6 +44,7 @@ void bl_init(void)
 {
 	rcc_clock_setup_pll(&rcc_hse16mhz_config);
 
+	bl_delay_init();
 	bl_usb_init();
 	bl_led_init();
 	bl_acq_init();
