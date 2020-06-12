@@ -2,6 +2,7 @@ PROJECT = mpd-firmware
 BUILD_DIR = bin
 
 CFILES = \
+	src/delay.c \
 	src/acq.c \
 	src/led.c \
 	src/bl.c \
