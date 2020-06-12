@@ -26,6 +26,7 @@
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/f3/nvic.h>
 
+#include "delay.h"
 #include "error.h"
 #include "util.h"
 #include "acq.h"
@@ -215,22 +216,6 @@ static const struct opamp_source_table {
 };
 
 /**
- * Cause the device to busy loop.
- *
- * TODO: Change the implementation to allow more controlled delay in
- *       micro seconds.
- */
-static void __attribute__((optimize("O0"))) delay(unsigned duration)
-{
-	unsigned j;
-	for (j = 0; j < duration; j++)
-	{
-		unsigned i;
-		for (i = 0; i < (1 << 20); i++);
-	}
-}
-
-/**
  * Make an ADC auto-calibrate.
  *
  * \param[in]  adc  The ADC to get to calibrate.
@@ -238,8 +223,8 @@ static void __attribute__((optimize("O0"))) delay(unsigned duration)
 static void bl_acq__adc_calibrate(uint32_t adc)
 {
 	adc_enable_regulator(adc);
-	/* TODO: Replace this with delay_us(10); */
-	delay(2);
+
+	bl_delay_us(10);
 
 	/* TODO: Explicitly calibrate single ended by setting DIFSEL. */
 	adc_calibrate(adc);
