@@ -81,6 +81,9 @@ struct {
 	uint16_t period;
 	uint8_t gain[BL_ACQ_PD__COUNT];
 	uint8_t opamp[BL_ACQ_PD__COUNT];
+
+	uint8_t opamp_trimoffsetn[BL_ACQ_PD__COUNT];
+	uint8_t opamp_trimoffsetp[BL_ACQ_PD__COUNT];
 } acq_g;
 
 enum acq_adc {
@@ -232,15 +235,63 @@ static void bl_acq__adc_calibrate(uint32_t adc)
 	adc_disable_regulator(adc);
 }
 
+/** TODO: Move into libopencm3 */
+static bool opamp_read_outcal(uint32_t base)
+{
+	return (OPAMP_CSR(base) >> OPAMP_CSR_OUTCAL_SHIFT) &
+			OPAMP_CSR_OUTCAL_MASK;
+}
+
+/** TODO: Move into libopencm3 */
+static void opamp_set_calsel(uint32_t base, uint32_t calsel)
+{
+	OPAMP_CSR(base) &= ~(OPAMP_CSR_CALSEL_MASK << OPAMP_CSR_CALSEL_SHIFT);
+	OPAMP_CSR(base) |= calsel << OPAMP_CSR_CALSEL_SHIFT;
+}
+
 /**
  * Make an OpAmp auto-calibrate.
  *
  * \param[in]  opamp  The ADC to get to calibrate.
  */
-static void bl_acq__opamp_calibrate(uint32_t opamp)
+static void bl_acq__opamp_calibrate(
+		uint32_t opamp,
+		uint8_t *trimoffsetn,
+		uint8_t *trimoffsetp)
 {
-	(void)opamp;
-	/* TODO: Implement OPAMP trimming. */
+	uint32_t i;
+
+	opamp_enable(opamp);
+
+	opamp_user_trim_enable(opamp);
+	opamp_cal_enable(opamp);
+	opamp_set_calsel(opamp, OPAMP_CSR_CALSEL_90_PERCENT);
+
+	for (i = 0; i < OPAMP_CSR_TRIMOFFSETN_MASK; i++) {
+		opamp_trimoffsetn_set(opamp, i);
+
+		bl_delay_us(2000);
+
+		if (!opamp_read_outcal(opamp)) {
+			*trimoffsetn = i;
+			break;
+		}
+	}
+
+	opamp_set_calsel(opamp, OPAMP_CSR_CALSEL_10_PERCENT);
+
+	for (i = 0; i < OPAMP_CSR_TRIMOFFSETN_MASK; i++) {
+		opamp_trimoffsetp_set(opamp, i);
+
+		bl_delay_us(2000);
+
+		if (!opamp_read_outcal(opamp)) {
+			*trimoffsetp = i;
+			break;
+		}
+	}
+
+	opamp_disable(opamp);
 }
 
 /* Exported function, documented in acq.h */
@@ -282,7 +333,10 @@ void bl_acq_init(void)
 	}
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_opamp_source_table); i++) {
-		bl_acq__opamp_calibrate(acq_opamp_source_table[i].opamp_addr);
+		bl_acq__opamp_calibrate(
+				acq_opamp_source_table[i].opamp_addr,
+				&acq_g.opamp_trimoffsetn[i],
+				&acq_g.opamp_trimoffsetp[i]);
 	}
 }
 
