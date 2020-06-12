@@ -615,6 +615,9 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 
 		opamp_enable(opamp);
 
+		opamp_trimoffsetn_set(opamp, acq_g.opamp_trimoffsetn[i]);
+		opamp_trimoffsetp_set(opamp, acq_g.opamp_trimoffsetp[i]);
+
 		uint32_t raw_gain;
 		switch (opamp_gain[i]) {
 		case 2:
