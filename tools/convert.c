@@ -50,8 +50,8 @@ static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
 	static const char *types[] = {
 		[BL_MSG_RESPONSE]    = "Response",
 		[BL_MSG_LED]         = "LED",
-		[BL_MSG_START]       = "Acq Start",
-		[BL_MSG_ABORT]       = "Acq Abort",
+		[BL_MSG_START]       = "Start",
+		[BL_MSG_ABORT]       = "Abort",
 		[BL_MSG_SAMPLE_DATA] = "Sample Data",
 	};
 
