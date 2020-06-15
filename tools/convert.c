@@ -368,8 +368,16 @@ int bl_cmd_wav_write_data_header(FILE *file)
 	return EXIT_SUCCESS;
 }
 
+enum bl_format {
+	BL_FORMAT_WAV,
+	BL_FORMAT_RAW,
+	BL_FORMAT_CSV,
+};
+
 int bl_sample_msg_to_file(
 		FILE *file,
+		enum bl_format format,
+		unsigned frequency,
 		uint16_t acq_src_mask,
 		union bl_msg_data *msg,
 		uint16_t channel_counter[MAX_CHANNELS],
@@ -379,12 +387,27 @@ int bl_sample_msg_to_file(
 
 	samples_copied = bl_msg_copy_samples(msg, acq_src_mask, data, channel_counter);
 	if (samples_copied > 0) {
-		size_t written;
-		unsigned count = bl_count_channels(acq_src_mask) * samples_copied;
-		written = fwrite(data, sizeof(int16_t), count, file);
-		if (written != count) {
-			fprintf(stderr, "Failed to write wave_data\n");
-			return EXIT_FAILURE;
+		if (format == BL_FORMAT_CSV) {
+			static unsigned counter;
+
+			unsigned channel_count = bl_count_channels(acq_src_mask);
+			float period = 1000.0 / frequency;
+
+			for (unsigned s = 0; s < samples_copied; s++) {
+				float x_ms = period * counter;
+				for (unsigned c = 0; c < channel_count; c++) {
+					fprintf(file, "%d,%f,%d\n", c, x_ms, data[s * channel_count + c]);
+				}
+				counter++;
+			}
+		} else {
+			size_t written;
+			unsigned count = bl_count_channels(acq_src_mask) * samples_copied;
+			written = fwrite(data, sizeof(int16_t), count, file);
+			if (written != count) {
+				fprintf(stderr, "Failed to write wave_data\n");
+				return EXIT_FAILURE;
+			}
 		}
 		memset(channel_counter, 0, sizeof(uint16_t) * MAX_CHANNELS);
 	}
@@ -392,7 +415,7 @@ int bl_sample_msg_to_file(
 	return EXIT_SUCCESS;
 }
 
-int bl_samples_to_file(int argc, char *argv[], bool wav)
+int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 {
 	uint16_t channel_counter[MAX_CHANNELS] = { 0 };
 	int16_t data[MAX_SAMPLES * MAX_CHANNELS];
@@ -429,7 +452,7 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 		file = stdout;
 	}
 
-	if (wav) {
+	if (format == BL_FORMAT_WAV) {
 		ret = bl_cmd_wav_write_riff_header(file);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
@@ -446,7 +469,7 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 					msg->start.prescale,
 					msg->start.period);
 
-			if (wav) {
+			if (format == BL_FORMAT_WAV) {
 				ret = bl_cmd_wav_write_format_header(file,
 						msg->start.period,
 						msg->start.prescale,
@@ -482,8 +505,8 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 			goto cleanup;
 		}
 
-		bl_sample_msg_to_file(file, acq_src_mask, msg,
-				channel_counter, data);
+		bl_sample_msg_to_file(file, format, frequency, acq_src_mask,
+				msg, channel_counter, data);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
 		}
@@ -499,12 +522,17 @@ cleanup:
 
 int bl_cmd_wav(int argc, char *argv[])
 {
-	return bl_samples_to_file(argc, argv, true);
+	return bl_samples_to_file(argc, argv, BL_FORMAT_WAV);
 }
 
 int bl_cmd_raw(int argc, char *argv[])
 {
-	return bl_samples_to_file(argc, argv, false);
+	return bl_samples_to_file(argc, argv, BL_FORMAT_RAW);
+}
+
+int bl_cmd_csv(int argc, char *argv[])
+{
+	return bl_samples_to_file(argc, argv, BL_FORMAT_CSV);
 }
 
 int bl_cmd_relay(int argc, char *argv[])
@@ -544,6 +572,11 @@ static const struct bl_cmd {
 		.name = "raw",
 		.help = "Convert to RAW binary data",
 		.fn = bl_cmd_raw,
+	},
+	{
+		.name = "csv",
+		.help = "Convert to CSV",
+		.fn = bl_cmd_csv,
 	},
 	{
 		.name = "relay",
