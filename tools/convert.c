@@ -174,6 +174,7 @@ static bool read_message(union bl_msg_data *msg)
 	case BL_MSG_START:
 		msg->start.oversample = read_unsigned(&ok, "Oversample");
 		msg->start.period = read_unsigned(&ok, "Period");
+		msg->start.prescale = read_unsigned(&ok, "Prescale");
 		msg->start.src_mask = read_hex(&ok, "Source Mask");
 		ok |= (scanf("    Gain:\n") == 0);
 		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
@@ -197,9 +198,14 @@ static bool read_message(union bl_msg_data *msg)
 	return ok;
 }
 
-static uint32_t bl_get_sample_rate(uint32_t period_us, uint32_t oversample)
+static uint32_t bl_get_sample_rate(
+		uint32_t oversample,
+		uint32_t prescale,
+		uint32_t period)
 {
-	return (1 * 1000 * 1000) / period_us / (1 << oversample);
+	double tick_time = 1 / ((double)(72 * 1000 * 1000));
+	double frequency = (1 / (tick_time * prescale * period)) / (1 << oversample);
+	return frequency + 0.5;
 }
 
 static bool bl_masks_to_channel_idxs(
@@ -304,6 +310,7 @@ int bl_cmd_wav_write_riff_header(FILE *file)
 int bl_cmd_wav_write_format_header(
 		FILE *file,
 		uint16_t period,
+		uint16_t prescale,
 		uint16_t src_mask,
 		uint8_t  oversample)
 {
@@ -322,7 +329,7 @@ int bl_cmd_wav_write_format_header(
 		.subchunk_size = 16, /* For PCM format. */
 		.audio_format = 1, /* PCM format. */
 		.bits_per_sample = 16,
-		.sample_rate = bl_get_sample_rate(period, oversample),
+		.sample_rate = bl_get_sample_rate(period, prescale, oversample),
 		.num_channels = bl_count_channels(src_mask),
 	};
 
@@ -392,6 +399,7 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 	union bl_msg_data *msg = &input.msg;
 	bool had_setup = false;
 	uint16_t acq_src_mask;
+	unsigned frequency;
 	FILE *file;
 	int ret;
 	enum {
@@ -433,9 +441,15 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 			acq_src_mask = msg->start.src_mask;
 			had_setup = true;
 
+			frequency = bl_get_sample_rate(
+					msg->start.oversample,
+					msg->start.prescale,
+					msg->start.period);
+
 			if (wav) {
 				ret = bl_cmd_wav_write_format_header(file,
 						msg->start.period,
+						msg->start.prescale,
 						msg->start.src_mask,
 						msg->start.oversample);
 				if (ret != EXIT_SUCCESS) {
@@ -452,9 +466,7 @@ int bl_samples_to_file(int argc, char *argv[], bool wav)
 						(unsigned) bl_count_channels(
 							msg->start.src_mask));
 				fprintf(stderr, "    Frequency: %u Hz\n",
-						(unsigned) bl_get_sample_rate(
-							msg->start.period,
-							msg->start.oversample));
+						frequency);
 			}
 		}
 

@@ -74,6 +74,8 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 				(unsigned) msg->start.oversample);
 		fprintf(file, "    Period: %u\n",
 				(unsigned) msg->start.period);
+		fprintf(file, "    Prescale: %u\n",
+				(unsigned) msg->start.prescale);
 		fprintf(file, "    Source Mask: 0x%x\n",
 				(unsigned) msg->start.src_mask);
 		fprintf(file, "    Gain:\n");
