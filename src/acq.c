@@ -427,9 +427,9 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	memset(sample, 0x00, MSG_CHANNELS_MAX * sizeof(*sample));
 
 	volatile uint16_t *p = adc->dma_buffer;
-	for (unsigned i = 0; i < (1U << acq_g.oversample); i++) {
-		for (unsigned j = 0; j < adc->msg_channels_max; j++) {
-			sample[j] += *p++;
+	for (unsigned i = 0; i < adc->msg_channels_max; i++) {
+		for (unsigned j = 0; j < (1U << acq_g.oversample); j++) {
+			sample[i] += *p++;
 		}
 	}
 
