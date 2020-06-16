@@ -203,9 +203,7 @@ static uint32_t bl_get_sample_rate(
 		uint32_t prescale,
 		uint32_t period)
 {
-	double tick_time = 1 / ((double)(72 * 1000 * 1000));
-	double frequency = (1 / (tick_time * prescale * period)) / (1 << oversample);
-	return frequency + 0.5;
+	return ((72*1000*1000) / prescale) / period / (1 << oversample);
 }
 
 static bool bl_masks_to_channel_idxs(
