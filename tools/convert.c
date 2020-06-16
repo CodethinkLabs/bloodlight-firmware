@@ -332,7 +332,7 @@ int bl_cmd_wav_write_format_header(
 		.subchunk_size = 16, /* For PCM format. */
 		.audio_format = 1, /* PCM format. */
 		.bits_per_sample = 16,
-		.sample_rate = bl_get_sample_rate(period, prescale, oversample),
+		.sample_rate = bl_get_sample_rate(oversample, prescale, period),
 		.num_channels = bl_count_channels(src_mask),
 	};
 
