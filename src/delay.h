@@ -18,15 +18,21 @@
 #define BL_DELAY_H
 
 /**
- * Initialise the delay module.
- */
-void bl_delay_init(void);
-
-/**
  * Block for given number of microseconds.
  *
- * \param[in]  us  Delay in mictroseconds.
+ * bl_tick_init must be called first for this to work
+ * 
+ * \param[in]  us  Delay in microseconds.
  */
 void bl_delay_us(uint32_t us);
+
+/**
+ * Block for given number of milliseconds.
+ *
+ * bl_tick_init must be called first for this to work
+ * 
+ * \param[in]  us  Delay in milliseconds.
+ */
+void bl_delay_ms(uint32_t ms);
 
 #endif
