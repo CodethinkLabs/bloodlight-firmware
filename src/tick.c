@@ -25,12 +25,21 @@ uint32_t us;
 uint32_t ms;
 uint32_t last_ms_us = 0;
 
+#define MAX_TIMER_RES_US    1000
+#define MIN_TIMER_RES_US    10
+uint32_t res = MAX_TIMER_RES_US;
+uint32_t new_res = MAX_TIMER_RES_US;
+
+
 /**
  * systick isr
  */
 void sys_tick_handler(void)
 {
-	us++;
+	us += res;
+    if(new_res != res) {
+        res =new_res;
+    }
     /* We could just use us only and multiply everywhere, but doing it this
      * way might be handy later if we wanna do ms specific stuff
      */
@@ -46,9 +55,9 @@ void bl_tick_init(void)
     systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
     /* 
      * System clock is 72MHz, so 1/72 usec per "tick" there and we want to tick
-     * every usec, so that means a counter of 72-1
+     * res * usec, so that means a counter of (res * 72) -1
      */
-    systick_set_reload(71);
+    systick_set_reload((res * 72) - 1);
     systick_clear();
     systick_interrupt_enable();
 	systick_counter_enable();
@@ -73,4 +82,22 @@ void bl_set_ms_timer(uint32_t * timer)
 uint32_t bl_get_ms_timer_elapsed(uint32_t timer)
 {
     return (ms - timer);
+}
+
+int bl_set_resolution(uint32_t usec)
+{
+    if (MAX_TIMER_RES_US % usec ||
+        usec < MIN_TIMER_RES_US ||
+        usec > MAX_TIMER_RES_US){
+        return -1;
+    }
+
+    new_res = usec;
+    systick_set_reload((new_res * 72) - 1);
+    return 0;
+}
+
+uint32_t bl_get_resolution(void)
+{
+    return res;
 }
