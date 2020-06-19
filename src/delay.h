@@ -21,7 +21,9 @@
  * Block for given number of microseconds.
  *
  * bl_tick_init must be called first for this to work
- * 
+ * Should not be called from interrupt
+ * Minimum delay of 10us
+ *
  * \param[in]  us  Delay in microseconds.
  */
 void bl_delay_us(uint32_t us);
@@ -30,7 +32,8 @@ void bl_delay_us(uint32_t us);
  * Block for given number of milliseconds.
  *
  * bl_tick_init must be called first for this to work
- * 
+ * Should not be called from interrupt
+ *
  * \param[in]  us  Delay in milliseconds.
  */
 void bl_delay_ms(uint32_t ms);

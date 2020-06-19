@@ -37,67 +37,71 @@ uint32_t new_res = MAX_TIMER_RES_US;
 void sys_tick_handler(void)
 {
 	us += res;
-    if(new_res != res) {
-        res =new_res;
-    }
-    /* We could just use us only and multiply everywhere, but doing it this
-     * way might be handy later if we wanna do ms specific stuff
-     */
-    if (us - last_ms_us >= 1000){
-        ms++;
-        last_ms_us = us;
-    }
+	/* We could just use us only and multiply everywhere, but doing it this
+	 * way might be handy later if we wanna do ms specific stuff
+	 */
+	if (us - last_ms_us >= 1000){
+		ms++;
+		last_ms_us = us;
+	}
 }
 
 void bl_tick_init(void)
 {
-    /* Set up the systick to trigger every microsecond*/
-    systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
-    /* 
-     * System clock is 72MHz, so 1/72 usec per "tick" there and we want to tick
-     * res * usec, so that means a counter of (res * 72) -1
-     */
-    systick_set_reload((res * 72) - 1);
-    systick_clear();
-    systick_interrupt_enable();
+	/* Set up the systick to trigger every microsecond*/
+	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+	/*
+	 * System clock is 72MHz, so 1/72 usec per "tick" there and we want to tick
+	 * res * usec, so that means a counter of (res * 72) -1
+	 */
+	systick_set_reload((res * 72) - 1);
+	systick_clear();
+	systick_interrupt_enable();
 	systick_counter_enable();
 }
 
 
 void bl_set_us_timer(uint32_t * timer)
 {
-    *timer = us;
+	*timer = us;
 }
 
 uint32_t bl_get_us_timer_elapsed(uint32_t timer)
 {
-    return (us - timer);
+	return (us - timer);
 }
 
 void bl_set_ms_timer(uint32_t * timer)
 {
-    *timer = ms;
+	*timer = ms;
 }
 
 uint32_t bl_get_ms_timer_elapsed(uint32_t timer)
 {
-    return (ms - timer);
+	return (ms - timer);
 }
 
 int bl_set_resolution(uint32_t usec)
 {
-    if (MAX_TIMER_RES_US % usec ||
-        usec < MIN_TIMER_RES_US ||
-        usec > MAX_TIMER_RES_US){
-        return -1;
-    }
-
-    new_res = usec;
-    systick_set_reload((new_res * 72) - 1);
-    return 0;
+	if (MAX_TIMER_RES_US % usec ||
+		usec < MIN_TIMER_RES_US ||
+		usec > MAX_TIMER_RES_US){
+		return -1;
+	}
+	/* Set the new resolution */
+	res = usec;
+	systick_set_reload((res * 72) - 1);
+	/* Add the remaining time to us and clear the counter */
+	uint32_t ticks_left = systick_get_value();
+	us += ticks_left * 72;
+	/* Not sure if we need to disable interrupt here */
+	systick_interrupt_disable();
+	systick_clear();
+	systick_interrupt_enable();
+	return 0;
 }
 
 uint32_t bl_get_resolution(void)
 {
-    return res;
+	return res;
 }

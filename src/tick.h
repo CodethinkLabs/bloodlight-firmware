@@ -23,38 +23,38 @@
 void bl_tick_init(void);
 
 /**
- * Set up a usec timer. 
- * 
+ * Set up a usec timer.
+ *
  * Use @ref bl_get_us_timer_elapsed to get the time elapsed since setting
- * 
+ *
  * \param[in]  timer  Timer to be used
  */
 void bl_set_us_timer(uint32_t * timer);
 
 /**
  * Get the elapsed time for a usec timer
- * 
+ *
  * The time is the usecs since  @ref bl_set_us_timer  was called on the timer
- * 
+ *
  * \param[in]  timer    Timer to get the elapsed value of
  * \return     uint32_t usecs elapsed
  */
 uint32_t bl_get_us_timer_elapsed(uint32_t timer);
 
 /**
- * Set up a msec timer. 
- * 
+ * Set up a msec timer.
+ *
  * Use @ref bl_get_ms_timer_elapsed to get the time elapsed since setting
- * 
+ *
  * \param[in]  timer  Timer to be used
  */
 void bl_set_ms_timer(uint32_t * timer);
 
 /**
  * Get the elapsed time for a msec timer
- * 
+ *
  * The time is the msecs since  @ref bl_set_us_timer  was called on the timer
- * 
+ *
  * \param[in]  timer    Timer to get the elapsed value of
  * \return     uint32_t msecs elapsed
  */
@@ -62,21 +62,17 @@ uint32_t bl_get_ms_timer_elapsed(uint32_t timer);
 
 /**
  * Set the resolution of the usec timer
- * 
- * Note: This won't take effect until the next timer reload occurs
- * 
- * \param[in]  usec     The resolution of the timer in usec. 
+ *
+ * \param[in]  usec     The resolution of the timer in usec.
  *                      usec modulo 1000 must be 0.
  *                      Minimum of 10, and maximum of 1000.
- *                      If the current value is lower, will not be set.
- * \return     -1 if the set failed, 0 if a smaller value is 
- *              already set, 1 if successful
+ * \return     -1 if the set failed, 0 if successful
  */
 int bl_set_resolution(uint32_t usec);
 
 /**
  * Get the resolution of the usec timer
- * 
+ *
  * \return     How often the usec timer updates, in usec
  */
 uint32_t bl_get_resolution(void);
