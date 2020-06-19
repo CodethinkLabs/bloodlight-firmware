@@ -19,6 +19,15 @@
 #include "delay.h"
 #include "tick.h"
 
+static uint32_t gcd (uint32_t a, uint32_t b) {
+	uint32_t r;
+	while(b!=0){
+		r = a % b;
+		a = b;
+		b = r;
+	}
+	return a;
+}
 
 void bl_delay_us(uint32_t us)
 {
@@ -29,8 +38,16 @@ void bl_delay_us(uint32_t us)
 	if (us < 10) {
 		us = 10;
 	} else if (us < current_res) {
-		/* if we need better resolution, set it*/
-		bl_set_resolution((us/10)*10);
+		/* if we need better resolution, set it
+		 * by finding the gretest common divisor of us and 1000
+		 */
+		if (1000 % us) {
+			bl_set_resolution(gcd(us, 1000));
+		} else {
+			bl_set_resolution(us);
+		}
+
+		
 	}
 
 	bl_set_us_timer(&timer);
