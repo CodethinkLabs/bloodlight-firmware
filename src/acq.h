@@ -41,7 +41,7 @@ enum bl_acq_source {
 	BL_ACQ_PD4,
 	BL_ACQ_3V3,
 	BL_ACQ_5V0,
-	/* TODO: Add temparature sensor: BL_ACQ_TMP. */
+	BL_ACQ_TMP,
 };
 
 /**

@@ -79,6 +79,7 @@ struct {
 
 	uint8_t  oversample;
 	uint16_t period;
+	uint16_t src_mask;
 	uint8_t gain[BL_ACQ_PD__COUNT];
 	uint8_t opamp[BL_ACQ_PD__COUNT];
 
@@ -185,7 +186,10 @@ static const struct source_table {
 		.gpio_pin = GPIO2,
 		.opamp_mask = 0x5,
 	},
-	/* TODO: Add temparature sensor. */
+	[BL_ACQ_TMP] = {
+		.adc = ACQ_ADC_1,
+		.adc_channel = 16,
+	},
 };
 
 /**
@@ -392,6 +396,11 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 
 		acq_adc_table[i].msg_channels_max = (max / channels) * channels;
 	}
+
+	if (src_mask & (1 << BL_ACQ_TMP)) {
+		adc_enable_temperature_sensor();
+	}
+	acq_g.src_mask = src_mask;
 
 	return BL_ERROR_NONE;
 }
@@ -779,6 +788,10 @@ enum bl_error bl_acq_abort(void)
 		dma_disable_channel(
 				acq_adc_table[i].dma_addr,
 				acq_adc_table[i].dma_chan);
+	}
+
+	if (acq_g.src_mask & (1 << BL_ACQ_TMP)) {
+		adc_disable_temperature_sensor();
 	}
 
 	acq_g.state = ACQ_STATE_IDLE;
