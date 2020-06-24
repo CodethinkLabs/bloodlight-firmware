@@ -295,6 +295,7 @@ static void bl_acq__opamp_calibrate(
 		}
 	}
 
+	opamp_cal_disable(opamp);
 	opamp_disable(opamp);
 }
 
