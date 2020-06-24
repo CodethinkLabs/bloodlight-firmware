@@ -483,6 +483,16 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 		} else {
 			sample[i] = 0;
 		}
+		if (acq_g.oversample > 64) {
+			/* The oversampling and offsetting basically zooms
+			 * into a section of the sample range.  When we zoom
+			 * in a lot, it is hard to find the signal by
+			 * offsetting because it can wander around a lot.
+			 * Here we divide by 4, which effecively lets us
+			 * see four times as much of the range.  It's only
+			 * really worth doing this for "large" oversamples. */
+			sample[i] >>= 2;
+		}
 		if (sample[i] > 0xFFFF)
 		{
 			sample[i] = 0xFFFF;
