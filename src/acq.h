@@ -90,7 +90,7 @@ enum bl_error bl_acq_set_oversample_setting(
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_set_fixed_offset_setting(
-		const uint16_t offset);
+		const uint32_t offset);
 
 /**
  * Abort an acquisition.

@@ -78,7 +78,7 @@ struct {
 	uint8_t opamp[BL_ACQ_PD__COUNT];
 	uint8_t opamp_trimoffsetn[BL_ACQ_PD__COUNT];
 	uint8_t opamp_trimoffsetp[BL_ACQ_PD__COUNT];
-	uint16_t offset;
+	uint32_t offset;
 } acq_g;
 
 enum acq_adc {
@@ -733,7 +733,7 @@ enum bl_error bl_acq_set_oversample_setting(
 }
 
 enum bl_error bl_acq_set_fixed_offset_setting(
-		const uint16_t offset)
+		const uint32_t offset)
 {
 	if(acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
