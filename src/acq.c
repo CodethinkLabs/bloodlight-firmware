@@ -71,7 +71,7 @@ enum acq_state {
 struct {
 	enum acq_state state;
 
-	uint8_t  oversample;
+	uint32_t  oversample;
 	uint16_t period;
 	uint16_t src_mask;
 	uint8_t gain[BL_ACQ_PD__COUNT];
@@ -719,7 +719,7 @@ enum bl_error bl_acq_set_gains_setting(
 }
 
 enum bl_error bl_acq_set_oversample_setting(
-		uint16_t  oversample)
+		uint32_t  oversample)
 {
 	if(acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;

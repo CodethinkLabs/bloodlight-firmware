@@ -79,7 +79,7 @@ enum bl_error bl_acq_set_gains_setting(
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_set_oversample_setting(
-		uint16_t  oversample);
+		uint32_t  oversample);
 
 /**
  * Set the offset value to use when an aquisition starts

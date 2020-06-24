@@ -69,7 +69,7 @@ union bl_msg_data {
 
 	struct {
 		uint8_t type;
-		uint8_t  oversample;
+		uint32_t oversample;
 	} oversample;
 
 	struct {
