@@ -36,6 +36,8 @@ def cat_2d_lists(a, b):
 
 def read_new_data_from_stdin(xy, ys, max_sources, killed, locks):
     buff = ''
+    # If true, don't plot readings of 65535
+    ignore_saturates = True
     while not killed:
         max_new_data_to_read = 500
         data_read = 0
@@ -50,11 +52,12 @@ def read_new_data_from_stdin(xy, ys, max_sources, killed, locks):
                 buff += sys.stdin.read(1)
                 if buff.endswith('\n'):
                     s, x, y = get_data_from_line(buff)
-                    temp_xs[s].append(x)
-                    temp_ys[s].append(y)
+                    if not ignore_saturates or y != 65535:
+                        temp_xs[s].append(x)
+                        temp_ys[s].append(y)
+                        s_modded[s] = True
                     buff = ''
                     data_read += 1
-                    s_modded[s] = True
                     if data_read >= max_new_data_to_read:
                         break
             else:

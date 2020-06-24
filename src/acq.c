@@ -47,20 +47,14 @@
 #define ADC_MAX_CHANNELS 8
 
 /**
- * Bits to oversample by.
+ * Oversample multiplier
  *
- * The samples from the ADC are 12-bit.  We always convert to a 16 bit value.
- *
- * With an oversample of 0, the samples are effectively summed up to be
- * 16-bit, however they will still have 12-bit precision.
- *
- * With an oversample of 4, 2^4=16 12-bit values are read from the ADC and
- * used to build a single 16-bit sample.
- *
- * With an oversample of more than 4, even more samples are taken, giving
- * a 16-bit value with less noise.
+ * The samples from the ADC are 12-bit. We combine <multiplier> samples
+ * to build up a higher precision sample. Samples are stored as 16-bit
+ * values, so if the combined value reaches more than 65535, then
+ * 65535 will be returned. Offsets can be used to mitigate this.
  */
-#define ACQ_OVERSAMPLE_MAX 8
+#define ACQ_OVERSAMPLE_MAX 255
 
 /**
  * Maximum number of channels a message can contain.
@@ -82,9 +76,9 @@ struct {
 	uint16_t src_mask;
 	uint8_t gain[BL_ACQ_PD__COUNT];
 	uint8_t opamp[BL_ACQ_PD__COUNT];
-
 	uint8_t opamp_trimoffsetn[BL_ACQ_PD__COUNT];
 	uint8_t opamp_trimoffsetp[BL_ACQ_PD__COUNT];
+	uint16_t offset;
 } acq_g;
 
 enum acq_adc {
@@ -113,7 +107,7 @@ static struct adc_table {
 	uint8_t channels[ADC_MAX_CHANNELS];
 
 	volatile bool msg_ready;
-	volatile uint16_t dma_buffer[MSG_CHANNELS_MAX << ACQ_OVERSAMPLE_MAX];
+	volatile uint16_t dma_buffer[MSG_CHANNELS_MAX * ACQ_OVERSAMPLE_MAX];
 
 	uint8_t msg_channels_max;
 	union bl_msg_data msg;
@@ -455,7 +449,7 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 
 	dma_enable_transfer_complete_interrupt(addr, chan);
 	dma_set_number_of_data(addr, chan,
-			adc_info->msg_channels_max << acq_g.oversample);
+			adc_info->msg_channels_max * acq_g.oversample);
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
 
@@ -477,22 +471,21 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 
 	volatile uint16_t *p = adc->dma_buffer;
 	for (unsigned i = 0; i < adc->msg_channels_max; i++) {
-		for (unsigned j = 0; j < (1U << acq_g.oversample); j++) {
+		for (unsigned j = 0; j < (acq_g.oversample); j++) {
 			sample[i] += *p++;
 		}
-	}
-
-	unsigned bits = 12 + acq_g.oversample;
-	if (bits < 16) {
-		unsigned shift = 16 - bits;
-		for (unsigned j = 0; j < adc->msg_channels_max; j++) {
-			sample[j] = (sample[j] << shift)
-					| (sample[j] >> (bits - shift));
+		/* Use offset to get just the range we want
+		 * Reduce down to 0 or saturate to 0xFFFF if we're
+		 * outside of that range
+		 */
+		if (sample[i] > acq_g.offset) {
+			sample[i] -= acq_g.offset;
+		} else {
+			sample[i] = 0;
 		}
-	} else if (bits > 16) {
-		unsigned shift = bits - 16;
-		for (unsigned j = 0; j < adc->msg_channels_max; j++) {
-			sample[j] >>= shift;
+		if (sample[i] > 0xFFFF)
+		{
+			sample[i] = 0xFFFF;
 		}
 	}
 
@@ -661,6 +654,34 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 	return BL_ERROR_NONE;
 }
 
+#define DIV_NEAREST(_num, _den) (((_num) + (_den) / 2) / (_den))
+/**
+ * Calculate the timing parameters needed to get readings at a given
+ * frequency and oversample
+ *
+ * \param[in]  frequency      Sample frequency in Hz.
+ * \param[in]  oversample     The number of ADC samples to take per returned sample.
+ * \param[out] prescale_out   The prescaler value to get this frequency
+ * \param[out] period_out     The period value to get this frequency
+ */
+static void bl_frequency_to_acq_params(
+		uint32_t frequency,
+		uint32_t oversample,
+		uint32_t *prescale_out,
+		uint32_t *period_out)
+{
+	const uint32_t device_clock_speed = (72 * 1000 * 1000);
+	uint32_t samples_per_second;
+	uint32_t ticks_per_sample;
+
+	samples_per_second = oversample * frequency;
+	ticks_per_sample = DIV_NEAREST(device_clock_speed, samples_per_second);
+
+	*prescale_out = 1 + (ticks_per_sample >> 16);
+	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
+}
+
+
 /**
  * Set the hardware up for an acquisition.
  *
@@ -684,10 +705,47 @@ static enum bl_error bl_acq_setup_timer(
 	return BL_ERROR_NONE;
 }
 
+enum bl_error bl_acq_set_gains_setting(
+		const uint8_t gain[BL_ACQ_PD__COUNT])
+{
+	if(acq_g.state == ACQ_STATE_ACTIVE) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+	for(unsigned i = 0; i < BL_ACQ_PD__COUNT; i++)
+	{
+		acq_g.gain[i] = gain[i];
+	}
+	return BL_ERROR_NONE;
+}
+
+enum bl_error bl_acq_set_oversample_setting(
+		uint16_t  oversample)
+{
+	if(acq_g.state == ACQ_STATE_ACTIVE) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+	if (oversample == 0 || oversample > ACQ_OVERSAMPLE_MAX) {
+		return  BL_ERROR_OUT_OF_RANGE;
+	}
+
+	acq_g.oversample = oversample;
+	return BL_ERROR_NONE;
+}
+
+enum bl_error bl_acq_set_fixed_offset_setting(
+		const uint16_t offset)
+{
+	if(acq_g.state == ACQ_STATE_ACTIVE) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+	acq_g.offset = offset;
+	return BL_ERROR_NONE;
+}
+
 /**
  * Set the hardware up for an acquisition.
  *
- * \param[in]  period      Sample period in us.
+ * \param[in]  frequency   Sample period in Hz.
  * \param[in]  prescale    Sample timer prescale.
  * \param[in]  oversample  Number of bits to oversample by.
  * \param[in]  src_mask    Mask of sources to enable.
@@ -695,31 +753,37 @@ static enum bl_error bl_acq_setup_timer(
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 static enum bl_error bl_acq_setup(
-		uint16_t period,
-		uint16_t prescale,
-		uint8_t  oversample,
-		uint16_t src_mask,
-		const uint8_t gain[BL_ACQ_PD__COUNT])
+		uint16_t frequency,
+		uint16_t src_mask)
 {
 	enum bl_error error;
 
-	if (oversample > ACQ_OVERSAMPLE_MAX) {
+	/* This will always be false currently as MAX is 255, but we
+	 * may bring it down so worth leaving this here
+	 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+	if (acq_g.oversample > ACQ_OVERSAMPLE_MAX) {
+#pragma GCC diagnostic pop
 		return BL_ERROR_OUT_OF_RANGE;
 	}
 
-	acq_g.oversample = oversample;
 	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 		if (acq_g.gain[i] == 0) {
 			acq_g.gain[i] = 1;
 		}
 	}
 
+	/* Calculate prescale required with current oversample settings */
+	uint32_t period, prescale;
+	bl_frequency_to_acq_params(frequency, acq_g.oversample, &prescale, &period);
+
 	error = bl_acq_setup_timer(period, prescale);
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}
 
-	error = bl_acq_set_gains(gain);
+	error = bl_acq_set_gains(acq_g.gain);
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}
@@ -741,11 +805,8 @@ static enum bl_error bl_acq_setup(
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
-		uint16_t period,
-		uint16_t prescale,
-		uint8_t  oversample,
-		uint16_t src_mask,
-		const uint8_t gain[BL_ACQ_PD__COUNT])
+		uint16_t frequency,
+		uint16_t src_mask)
 {
 	enum bl_error error;
 
@@ -753,7 +814,7 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-	error = bl_acq_setup(period, prescale, oversample, src_mask, gain);
+	error = bl_acq_setup(frequency, src_mask);
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}

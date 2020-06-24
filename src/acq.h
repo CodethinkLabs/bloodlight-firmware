@@ -61,10 +61,36 @@ void bl_acq_init(void);
  */
 enum bl_error bl_acq_start(
 		uint16_t period,
-		uint16_t prescale,
-		uint8_t  oversample,
-		uint16_t src_mask,
+		uint16_t src_mask);
+
+/**
+ * Set the gain values to use when an aquisition starts
+ *
+ * \param[in]  gain      Array of gains to use for the sources
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_acq_set_gains_setting(
 		const uint8_t gain[BL_ACQ_PD__COUNT]);
+
+/**
+ * Set the oversample value to use when an aquisition starts
+ *
+ * \param[in]  oversample   How many ADC readings to take per reported reading
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_acq_set_oversample_setting(
+		uint16_t  oversample);
+
+/**
+ * Set the offset value to use when an aquisition starts
+ *
+ * \param[in]  offset    How much to subtract from each totalled reading
+ *                       after oversampling to attempt to get it into 16-bit
+ *                       range
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_acq_set_fixed_offset_setting(
+		const uint16_t offset);
 
 /**
  * Abort an acquisition.

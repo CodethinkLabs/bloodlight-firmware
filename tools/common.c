@@ -26,11 +26,14 @@
 const char *bl_msg_type_to_str(enum bl_msg_type type)
 {
 	static const char *types[] = {
-		[BL_MSG_RESPONSE]    = "Response",
-		[BL_MSG_LED]         = "LED",
-		[BL_MSG_START]       = "Start",
-		[BL_MSG_ABORT]       = "Abort",
-		[BL_MSG_SAMPLE_DATA] = "Sample Data",
+		[BL_MSG_RESPONSE]        = "Response",
+		[BL_MSG_LED]             = "LED",
+		[BL_MSG_START]           = "Start",
+		[BL_MSG_ABORT]           = "Abort",
+		[BL_MSG_SAMPLE_DATA]     = "Sample Data",
+		[BL_MSG_SET_GAINS]       = "Set Gains",
+		[BL_MSG_SET_OVERSAMPLE]  = "Set Oversample",
+		[BL_MSG_SET_FIXEDOFFSET] = "Set Fixed Offset",
 	};
 
 	if (type >= BL_ARRAY_LEN(types)) {
@@ -70,19 +73,10 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 		break;
 
 	case BL_MSG_START:
-		fprintf(file, "    Oversample: %u\n",
-				(unsigned) msg->start.oversample);
-		fprintf(file, "    Period: %u\n",
-				(unsigned) msg->start.period);
-		fprintf(file, "    Prescale: %u\n",
-				(unsigned) msg->start.prescale);
+		fprintf(file, "    Frequency: %u\n",
+				(unsigned) msg->start.frequency);
 		fprintf(file, "    Source Mask: 0x%x\n",
-				(unsigned) msg->start.src_mask);
-		fprintf(file, "    Gain:\n");
-		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-			fprintf(file, "    - %u\n",
-				(unsigned) msg->start.gain[i]);
-		}
+				(unsigned) msg->start.src_mask);		
 		break;
 
 	case BL_MSG_SAMPLE_DATA:
@@ -96,7 +90,19 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 				(unsigned) msg->sample_data.data[i]);
 		}
 		break;
-
+	case BL_MSG_SET_GAINS:
+		fprintf(file, "    Gains:\n");
+		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+			fprintf(file, "    - %u\n",
+				(unsigned) msg->gain.gain[i]);
+		}
+		break;
+	case BL_MSG_SET_OVERSAMPLE:
+		fprintf(file, "    Oversample: %u\n", msg->oversample.oversample);
+		break;
+	case BL_MSG_SET_FIXEDOFFSET:
+		fprintf(file, "    Offset: %u\n", msg->offset.offset);
+		break;
 	default:
 		break;
 	}

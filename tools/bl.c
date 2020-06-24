@@ -304,6 +304,196 @@ static int bl_cmd_led(int argc, char *argv[])
 	
 }
 
+static int bl_cmd_gains(int argc, char *argv[])
+{
+	union bl_msg_data msg = {
+		.gain = {
+			.type = BL_MSG_SET_GAINS,
+		}
+	};
+	unsigned arg_gain_count;
+	int ret;
+	int dev_fd;
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG__COUNT,
+	};
+
+	arg_gain_count = argc - ARG__COUNT;
+	if (argc < ARG__COUNT || arg_gain_count > BL_ACQ_PD__COUNT) {
+		fprintf(stderr, "Usage:\n");
+		fprintf(stderr, "  %s %s \\\n"
+				"  \t<DEVICE_PATH> \\\n"
+				"  \t[GAIN]\n",
+				argv[ARG_PROG],
+				argv[ARG_CMD]);
+		fprintf(stderr, "\n");
+		fprintf(stderr, "GAIN values which are not provided, "
+				"will default to 1 (no amplification).\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "A GAIN value must be a power of two"
+				" up to 16.\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Up to %u GAIN values may be provided.\n",
+				(unsigned) BL_ACQ_PD__COUNT);
+		fprintf(stderr, "If a single GAIN value is given it is used "
+				"for all photodiodes.\n");
+		return EXIT_FAILURE;
+	}
+
+	
+	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+		uint32_t gain;
+
+		if (arg_gain_count == 0) {
+			gain = 1;
+		} else {
+			unsigned arg = i % arg_gain_count;
+			const char *arg_s = argv[ARG__COUNT + arg];
+
+			if (!read_uint32_t(arg_s, &gain)) {
+				fprintf(stderr, "Failed to parse value.\n");
+				return EXIT_FAILURE;
+			}
+
+			if (!check_fit(gain, sizeof(gain))) {
+				fprintf(stderr, "Value too large for message.\n");
+				return EXIT_FAILURE;
+			}
+		}
+
+		msg.gain.gain[i] = gain;
+	}
+
+	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+
+	bl_msg_print(&msg, stdout);
+	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
+	if (ret != EXIT_SUCCESS) {
+		bl_close_device(dev_fd);
+		return ret;
+	}
+	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+	bl_close_device(dev_fd);
+	return ret;
+	
+}
+
+
+static int bl_cmd_oversample(int argc, char *argv[])
+{
+	union bl_msg_data msg = {
+		.oversample = {
+			.type = BL_MSG_SET_OVERSAMPLE,
+		}
+	};
+	uint32_t oversample;
+	int ret;
+	int dev_fd;
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG_OVERSAMPLE,
+		ARG__COUNT,
+	};
+
+	
+	if (argc != ARG__COUNT) {
+		fprintf(stderr, "Usage:\n");
+		fprintf(stderr, "  %s %s \\\n"
+				"  \t<DEVICE_PATH> \\\n"
+				"  \t<OVERSAMPLE>\n",
+				argv[ARG_PROG],
+				argv[ARG_CMD]);
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Provide the numer of samples to read per reported sample\n");
+		return EXIT_FAILURE;
+	}
+
+	if (read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false){
+		fprintf(stderr, "Failed to parse value.\n");
+		return EXIT_FAILURE;
+	}
+	msg.oversample.oversample = oversample;
+
+	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+
+	bl_msg_print(&msg, stdout);
+	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
+	if (ret != EXIT_SUCCESS) {
+		bl_close_device(dev_fd);
+		return ret;
+	}
+	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+	bl_close_device(dev_fd);
+	return ret;
+	
+}
+
+static int bl_cmd_offset(int argc, char *argv[])
+{
+	union bl_msg_data msg = {
+		.offset = {
+			.type = BL_MSG_SET_FIXEDOFFSET,
+		}
+	};
+	uint32_t offset;
+	int ret;
+	int dev_fd;
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG_OFFSET,
+		ARG__COUNT,
+	};
+
+	
+	if (argc != ARG__COUNT) {
+		fprintf(stderr, "Usage:\n");
+		fprintf(stderr, "  %s %s \\\n"
+				"  \t<DEVICE_PATH> \\\n"
+				"  \t<OFFSET>\n",
+				argv[ARG_PROG],
+				argv[ARG_CMD]);
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Provide the amount to subtract from accumulated values in-chip\n");
+		return EXIT_FAILURE;
+	}
+
+	
+	if (read_uint32_t(argv[ARG_OFFSET], &offset) == false){
+		fprintf(stderr, "Failed to parse value.\n");
+		return EXIT_FAILURE;
+	}
+	msg.offset.offset = offset;
+
+	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+
+	bl_msg_print(&msg, stdout);
+	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
+	if (ret != EXIT_SUCCESS) {
+		bl_close_device(dev_fd);
+		return ret;
+	}
+	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+	bl_close_device(dev_fd);
+	return ret;
+	
+}
+
 static int bl_cmd__no_params_helper(
 		int argc,
 		char *argv[],
@@ -341,26 +531,6 @@ static int bl_cmd__no_params_helper(
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 	bl_close_device(dev_fd);
 	return ret;
-}
-
-/* Division rounding to nearest integer. */
-#define DIV_NEAREST(_num, _den) (((_num) + (_den) / 2) / (_den))
-
-static void bl_frequency_to_acq_params(
-		uint32_t frequency,
-		uint32_t oversample,
-		uint32_t *prescale_out,
-		uint32_t *period_out)
-{
-	const uint32_t device_clock_speed = (72 * 1000 * 1000);
-	uint32_t samples_per_second;
-	uint32_t ticks_per_sample;
-
-	samples_per_second = (1 << oversample) * frequency;
-	ticks_per_sample = DIV_NEAREST(device_clock_speed, samples_per_second);
-
-	*prescale_out = 1 + (ticks_per_sample >> 16);
-	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
 }
 
 int bl_cmd_receive_and_print_loop(int dev_fd)
@@ -413,11 +583,7 @@ static int bl_cmd_start_stream(
 		}
 	};
 	uint32_t src_mask;
-	uint32_t oversample;
-	unsigned arg_gain_count;
 	uint32_t frequency;
-	uint32_t prescale;
-	uint32_t period;
 	int ret;
 	int dev_fd;
 	enum {
@@ -425,82 +591,35 @@ static int bl_cmd_start_stream(
 		ARG_CMD,
 		ARG_DEV_PATH,
 		ARG_FREQUENCY,
-		ARG_OVERSAMPLE,
 		ARG_SRC_MASK,
 		ARG__COUNT,
 	};
 
-	arg_gain_count = argc - ARG__COUNT;
-
-	if (argc < ARG__COUNT || arg_gain_count > BL_ACQ_PD__COUNT) {
+	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
 				"  \t<FREQUENCY> \\\n"
-				"  \t<OVERSAMPLE> \\\n"
-				"  \t<SRC_MASK>\n"
-				"  \t[GAIN]*\n",
+				"  \t<SRC_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "GAIN values which are not provided, "
-				"will default to 1 (no amplification).\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "A GAIN value must be a power of two"
-				" up to 16.\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "Up to %u GAIN values may be provided.\n",
-				(unsigned) BL_ACQ_PD__COUNT);
-		fprintf(stderr, "If a single GAIN value is given it is used "
-				"for all photodiodes.\n");
 		fprintf(stderr, "\n");
 		fprintf(stderr, "FREQUENCY is the sampling rate in Hz.\n");
 		return EXIT_FAILURE;
 	}
 
 	if (read_uint32_t(argv[ARG_SRC_MASK],   &src_mask)   == false ||
-	    read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false ||
 	    read_uint32_t(argv[ARG_FREQUENCY],  &frequency)  == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
 
-	bl_frequency_to_acq_params(frequency, oversample, &prescale, &period);
-
-	if (check_fit(src_mask,   sizeof(msg.start.src_mask))   == false ||
-	    check_fit(oversample, sizeof(msg.start.oversample)) == false ||
-	    check_fit(period,     sizeof(msg.start.period))     == false ||
-	    check_fit(prescale,   sizeof(msg.start.prescale))   == false) {
+	if (check_fit(src_mask,   sizeof(msg.start.src_mask))   == false) {
 		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
 
-	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-		uint32_t gain;
-
-		if (arg_gain_count == 0) {
-			gain = 1;
-		} else {
-			unsigned arg = i % arg_gain_count;
-			const char *arg_s = argv[ARG__COUNT + arg];
-
-			if (!read_uint32_t(arg_s, &gain)) {
-				fprintf(stderr, "Failed to parse value.\n");
-				return EXIT_FAILURE;
-			}
-
-			if (!check_fit(gain, sizeof(gain))) {
-				fprintf(stderr, "Value too large for message.\n");
-				return EXIT_FAILURE;
-			}
-		}
-
-		msg.start.gain[i] = gain;
-	}
-
-	msg.start.period = period;
-	msg.start.prescale = prescale;
-	msg.start.oversample = oversample;
+	msg.start.frequency = frequency;
 	msg.start.src_mask = src_mask;
 
 	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
@@ -613,6 +732,22 @@ static const struct bl_cmd {
 		.help = "Abort an acquisition",
 		.fn = bl_cmd_abort,
 	},
+	{
+		.name = "gains",
+		.help = "set gains",
+		.fn = bl_cmd_gains,
+	},
+	{
+		.name = "oversample",
+		.help = "set oversamples",
+		.fn = bl_cmd_oversample,
+	},
+	{
+		.name = "offset",
+		.help = "set offset",
+		.fn = bl_cmd_offset,
+	},
+
 };
 
 static void bl_cmd_help(const char *prog)

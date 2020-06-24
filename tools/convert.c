@@ -172,14 +172,9 @@ static bool read_message(union bl_msg_data *msg)
 		break;
 
 	case BL_MSG_START:
-		msg->start.oversample = read_unsigned(&ok, "Oversample");
-		msg->start.period = read_unsigned(&ok, "Period");
-		msg->start.prescale = read_unsigned(&ok, "Prescale");
+		msg->start.frequency = read_unsigned(&ok, "Frequency");
 		msg->start.src_mask = read_hex(&ok, "Source Mask");
-		ok |= (scanf("    Gain:\n") == 0);
-		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-			msg->start.gain[i] = read_unsigned_no_field(&ok);
-		}
+		
 		break;
 
 	case BL_MSG_SAMPLE_DATA:
@@ -191,19 +186,25 @@ static bool read_message(union bl_msg_data *msg)
 		}
 		break;
 
+	case BL_MSG_SET_GAINS:
+		ok |= (scanf("    Gains:") == 0);
+		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
+			msg->gain.gain[i] = read_unsigned_no_field(&ok);
+		}
+		break;
+	case BL_MSG_SET_OVERSAMPLE:
+		msg->oversample.oversample = read_hex(&ok, "Oversample");
+		break;
+
+	case BL_MSG_SET_FIXEDOFFSET:
+		msg->offset.offset = read_hex(&ok, "Offset");
+		break;
+
 	default:
 		break;
 	}
 
 	return ok;
-}
-
-static uint32_t bl_get_sample_rate(
-		uint32_t oversample,
-		uint32_t prescale,
-		uint32_t period)
-{
-	return ((72*1000*1000) / prescale) / period / (1 << oversample);
 }
 
 static bool bl_masks_to_channel_idxs(
@@ -312,10 +313,8 @@ int bl_cmd_wav_write_riff_header(FILE *file)
 
 int bl_cmd_wav_write_format_header(
 		FILE *file,
-		uint16_t period,
-		uint16_t prescale,
-		uint16_t src_mask,
-		uint8_t  oversample)
+		uint16_t frequency,
+		uint16_t src_mask)
 {
 	size_t written;
 	struct {
@@ -332,7 +331,7 @@ int bl_cmd_wav_write_format_header(
 		.subchunk_size = 16, /* For PCM format. */
 		.audio_format = 1, /* PCM format. */
 		.bits_per_sample = 16,
-		.sample_rate = bl_get_sample_rate(oversample, prescale, period),
+		.sample_rate = frequency,
 		.num_channels = bl_count_channels(src_mask),
 	};
 
@@ -469,17 +468,12 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			acq_src_mask = msg->start.src_mask;
 			had_setup = true;
 
-			frequency = bl_get_sample_rate(
-					msg->start.oversample,
-					msg->start.prescale,
-					msg->start.period);
+			frequency = msg->start.frequency;
 
 			if (format == BL_FORMAT_WAV) {
 				ret = bl_cmd_wav_write_format_header(file,
-						msg->start.period,
-						msg->start.prescale,
-						msg->start.src_mask,
-						msg->start.oversample);
+						msg->start.frequency,
+						msg->start.src_mask);
 				if (ret != EXIT_SUCCESS) {
 					goto cleanup;
 				}
