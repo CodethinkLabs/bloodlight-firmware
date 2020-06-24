@@ -54,7 +54,7 @@
  * values, so if the combined value reaches more than 65535, then
  * 65535 will be returned. Offsets can be used to mitigate this.
  */
-#define ACQ_OVERSAMPLE_MAX 255
+#define ACQ_OVERSAMPLE_MAX 256
 
 /**
  * Maximum number of channels a message can contain.
