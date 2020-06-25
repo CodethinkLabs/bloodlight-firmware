@@ -771,10 +771,7 @@ static enum bl_error bl_acq_setup(
 	/* This will always be false currently as MAX is 255, but we
 	 * may bring it down so worth leaving this here
 	 */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wtype-limits"
 	if (acq_g.oversample > ACQ_OVERSAMPLE_MAX) {
-#pragma GCC diagnostic pop
 		return BL_ERROR_OUT_OF_RANGE;
 	}
 
