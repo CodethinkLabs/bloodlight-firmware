@@ -453,7 +453,6 @@ static int bl_cmd_offset(int argc, char *argv[])
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
-		ARG_OFFSET,
 		ARG__COUNT,
 	};
 

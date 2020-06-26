@@ -48,11 +48,14 @@ typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
 {
 	static const char *types[] = {
-		[BL_MSG_RESPONSE]    = "Response",
-		[BL_MSG_LED]         = "LED",
-		[BL_MSG_START]       = "Start",
-		[BL_MSG_ABORT]       = "Abort",
-		[BL_MSG_SAMPLE_DATA] = "Sample Data",
+		[BL_MSG_RESPONSE]        = "Response",
+		[BL_MSG_LED]             = "LED",
+		[BL_MSG_START]           = "Start",
+		[BL_MSG_ABORT]           = "Abort",
+		[BL_MSG_SAMPLE_DATA]     = "Sample Data",
+		[BL_MSG_SET_GAINS]       = "Set Gains",
+		[BL_MSG_SET_OVERSAMPLE]  = "Set Oversample",
+		[BL_MSG_SET_FIXEDOFFSET] = "Set Fixed Offset",
 	};
 
 	if (str != NULL) {
@@ -187,17 +190,17 @@ static bool read_message(union bl_msg_data *msg)
 		break;
 
 	case BL_MSG_SET_GAINS:
-		ok |= (scanf("    Gains:") == 0);
+		ok |= (scanf("    Gains:\n") == 0);
 		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 			msg->gain.gain[i] = read_unsigned_no_field(&ok);
 		}
 		break;
 	case BL_MSG_SET_OVERSAMPLE:
-		msg->oversample.oversample = read_hex(&ok, "Oversample");
+		msg->oversample.oversample = read_unsigned(&ok, "Oversample");
 		break;
 
 	case BL_MSG_SET_FIXEDOFFSET:
-		ok |= (scanf("    Offset:") == 0);
+		ok |= (scanf("    Offset:\n") == 0);
 		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 			msg->gain.gain[i] = read_unsigned_no_field(&ok);
 		}
