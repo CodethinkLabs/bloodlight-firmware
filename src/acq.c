@@ -105,6 +105,7 @@ static struct adc_table {
 	uint16_t src_mask;
 	uint8_t channel_count;
 	uint8_t channels[ADC_MAX_CHANNELS];
+	uint32_t sample[MSG_CHANNELS_MAX];
 
 	volatile bool msg_ready;
 	volatile uint16_t dma_buffer[MSG_CHANNELS_MAX * ACQ_OVERSAMPLE_MAX];
@@ -460,16 +461,25 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 }
 
 /**
+ * Helper to clear the temporary 32-bit sample array.
+ *
+ * \param[in]  adc  The adc table entry to clear the sample array for.
+ */
+static inline void bl_acq__clear_sample_array(struct adc_table *adc)
+{
+	memset(adc->sample, 0x00, sizeof(adc->sample));
+}
+
+/**
  * DMA interrupt handler helper
  *
  * \param[in]  adc  ADC table entry for the ADC that the DMA interrupt is for.
  */
 static inline void dma_interrupt_helper(struct adc_table *adc)
 {
-	uint32_t sample[MSG_CHANNELS_MAX];
-	memset(sample, 0x00, MSG_CHANNELS_MAX * sizeof(*sample));
-
+	uint32_t *sample = adc->sample;
 	volatile uint16_t *p = adc->dma_buffer;
+
 	for (unsigned i = 0; i < adc->msg_channels_max; i++) {
 		for (unsigned j = 0; j < (acq_g.oversample); j++) {
 			sample[i] += *p++;
@@ -504,6 +514,7 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	}
 
 	adc->msg_ready = true;
+	bl_acq__clear_sample_array(adc);
 }
 
 /** DMA interrupt handler */
@@ -802,6 +813,7 @@ static enum bl_error bl_acq_setup(
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		if (acq_adc_table[i].enabled) {
+			bl_acq__clear_sample_array(&acq_adc_table[i]);
 			bl_acq__init_sample_message(&acq_adc_table[i]);
 			bl_acq__setup_adc_dma(&acq_adc_table[i]);
 		}
