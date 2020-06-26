@@ -3,7 +3,7 @@ LDFLAGS=-g
 
 all: bl convert
 clean:
-	rm -f bl convert
+	rm -f bl convert *.o
 
 bl: bl.c common.o conversion.o
 convert: convert.c common.o conversion.o

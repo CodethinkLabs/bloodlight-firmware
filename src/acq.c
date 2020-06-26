@@ -78,7 +78,7 @@ struct {
 	uint8_t opamp[BL_ACQ_PD__COUNT];
 	uint8_t opamp_trimoffsetn[BL_ACQ_PD__COUNT];
 	uint8_t opamp_trimoffsetp[BL_ACQ_PD__COUNT];
-	uint32_t offset;
+	uint32_t offset[BL_ACQ__SRC_COUNT];
 } acq_g;
 
 enum acq_adc {
@@ -100,6 +100,8 @@ static struct adc_table {
 	const uint32_t adc_addr;
 	const uint32_t dma_addr;
 	const uint32_t dma_chan;
+
+	uint8_t source[ADC_MAX_CHANNELS];
 
 	bool enabled;
 	uint16_t src_mask;
@@ -379,6 +381,7 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 			acq_adc_table[adc].enabled = true;
 			acq_adc_table[adc].src_mask |= src_bit;
 			acq_adc_table[adc].channels[channels] = channel;
+			acq_adc_table[adc].source[channels] = i;
 			acq_adc_table[adc].channel_count++;
 		}
 	}
@@ -489,12 +492,14 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	}
 
 	for (unsigned i = 0; i < adc->channel_count; i++) {
+		uint32_t offset = acq_g.offset[adc->source[i]];
+
 		/* Use offset to get just the range we want
 		 * Reduce down to 0 or saturate to 0xFFFF if we're
 		 * outside of that range
 		 */
-		if (sample[i] > acq_g.offset) {
-			sample[i] -= acq_g.offset;
+		if (sample[i] > offset) {
+			sample[i] -= offset;
 		} else {
 			sample[i] = 0;
 		}
@@ -763,12 +768,12 @@ enum bl_error bl_acq_set_oversample_setting(
 }
 
 enum bl_error bl_acq_set_fixed_offset_setting(
-		const uint32_t offset)
+		const uint32_t offset[BL_ACQ__SRC_COUNT])
 {
 	if(acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
-	acq_g.offset = offset;
+	memcpy(acq_g.offset, offset, sizeof(acq_g.offset));
 	return BL_ERROR_NONE;
 }
 

@@ -101,7 +101,11 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 		fprintf(file, "    Oversample: %u\n", msg->oversample.oversample);
 		break;
 	case BL_MSG_SET_FIXEDOFFSET:
-		fprintf(file, "    Offset: %u\n", msg->offset.offset);
+		fprintf(file, "    Offset:\n");
+		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+			fprintf(file, "    - %u\n",
+				(unsigned) msg->offset.offset[i]);
+		}
 		break;
 	default:
 		break;

@@ -197,7 +197,10 @@ static bool read_message(union bl_msg_data *msg)
 		break;
 
 	case BL_MSG_SET_FIXEDOFFSET:
-		msg->offset.offset = read_hex(&ok, "Offset");
+		ok |= (scanf("    Offset:") == 0);
+		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+			msg->gain.gain[i] = read_unsigned_no_field(&ok);
+		}
 		break;
 
 	default:

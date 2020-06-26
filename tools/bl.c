@@ -446,7 +446,7 @@ static int bl_cmd_offset(int argc, char *argv[])
 			.type = BL_MSG_SET_FIXEDOFFSET,
 		}
 	};
-	uint32_t offset;
+	unsigned arg_offset_count;
 	int ret;
 	int dev_fd;
 	enum {
@@ -457,25 +457,42 @@ static int bl_cmd_offset(int argc, char *argv[])
 		ARG__COUNT,
 	};
 
-	
-	if (argc != ARG__COUNT) {
+	arg_offset_count = argc - ARG__COUNT;
+	if (argc < ARG__COUNT || arg_offset_count > BL_ACQ__SRC_COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
-				"  \t<OFFSET>\n",
+				"  \t[OFFSET]*\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
 		fprintf(stderr, "\n");
 		fprintf(stderr, "Provide the amount to subtract from accumulated values in-chip\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "OFFSET values which are not provided, "
+				"will default to 0 (no offset).\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Up to %u OFFSET values may be provided.\n",
+				(unsigned) BL_ACQ__SRC_COUNT);
 		return EXIT_FAILURE;
 	}
 
-	
-	if (read_uint32_t(argv[ARG_OFFSET], &offset) == false){
-		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		uint32_t offset;
+
+		if (arg_offset_count == 0) {
+			offset = 0;
+		} else {
+			unsigned arg = i % arg_offset_count;
+			const char *arg_s = argv[ARG__COUNT + arg];
+
+			if (!read_uint32_t(arg_s, &offset)) {
+				fprintf(stderr, "Failed to parse value.\n");
+				return EXIT_FAILURE;
+			}
+		}
+
+		msg.offset.offset[i] = offset;
 	}
-	msg.offset.offset = offset;
 
 	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
@@ -491,7 +508,7 @@ static int bl_cmd_offset(int argc, char *argv[])
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 	bl_close_device(dev_fd);
 	return ret;
-	
+
 }
 
 static int bl_cmd__no_params_helper(

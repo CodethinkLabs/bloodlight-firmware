@@ -74,7 +74,7 @@ union bl_msg_data {
 
 	struct {
 		uint8_t type;
-		uint32_t offset;
+		uint32_t offset[BL_ACQ__SRC_COUNT]; /**< Offsets per source. */
 	} offset;
 	/**
 	 * Data for \ref BL_MSG_SETUP.

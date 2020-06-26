@@ -42,6 +42,7 @@ enum bl_acq_source {
 	BL_ACQ_3V3,
 	BL_ACQ_5V0,
 	BL_ACQ_TMP,
+	BL_ACQ__SRC_COUNT, /**< Not a source, but a count of sources. */
 };
 
 /**
@@ -84,13 +85,13 @@ enum bl_error bl_acq_set_oversample_setting(
 /**
  * Set the offset value to use when an aquisition starts
  *
- * \param[in]  offset    How much to subtract from each totalled reading
+ * \param[in]  offset    How much to subtract from each source total reading
  *                       after oversampling to attempt to get it into 16-bit
  *                       range
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_set_fixed_offset_setting(
-		const uint32_t offset);
+		const uint32_t offset[BL_ACQ__SRC_COUNT]);
 
 /**
  * Abort an acquisition.
