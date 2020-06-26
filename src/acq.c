@@ -54,7 +54,7 @@
  * values, so if the combined value reaches more than 65535, then
  * 65535 will be returned. Offsets can be used to mitigate this.
  */
-#define ACQ_OVERSAMPLE_MAX 256
+#define ACQ_OVERSAMPLE_MAX 512
 
 /**
  * Maximum number of channels a message can contain.
@@ -105,11 +105,12 @@ static struct adc_table {
 	uint16_t src_mask;
 	uint8_t channel_count;
 	uint8_t channels[ADC_MAX_CHANNELS];
-	uint32_t sample[MSG_CHANNELS_MAX];
+	uint32_t sample[ADC_MAX_CHANNELS];
 
 	volatile bool msg_ready;
-	volatile uint16_t dma_buffer[MSG_CHANNELS_MAX * ACQ_OVERSAMPLE_MAX];
+	volatile uint16_t dma_buffer[ADC_MAX_CHANNELS * ACQ_OVERSAMPLE_MAX];
 
+	uint8_t msg_channels;
 	uint8_t msg_channels_max;
 	union bl_msg_data msg;
 	uint16_t sample_data[MSG_CHANNELS_MAX];
@@ -429,6 +430,7 @@ static void bl_acq__init_sample_message(
 	adc_info->msg.sample_data.count = adc_info->msg_channels_max;
 	adc_info->msg.sample_data.src_mask = adc_info->src_mask;
 	adc_info->msg_ready = false;
+	adc_info->msg_channels = 0;
 }
 
 static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
@@ -450,7 +452,7 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 
 	dma_enable_transfer_complete_interrupt(addr, chan);
 	dma_set_number_of_data(addr, chan,
-			adc_info->msg_channels_max * acq_g.oversample);
+			adc_info->channel_count * acq_g.oversample);
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
 
@@ -480,10 +482,13 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	uint32_t *sample = adc->sample;
 	volatile uint16_t *p = adc->dma_buffer;
 
-	for (unsigned i = 0; i < adc->msg_channels_max; i++) {
-		for (unsigned j = 0; j < (acq_g.oversample); j++) {
+	for (unsigned j = 0; j < acq_g.oversample; j++) {
+		for (unsigned i = 0; i < adc->channel_count; i++) {
 			sample[i] += *p++;
 		}
+	}
+
+	for (unsigned i = 0; i < adc->channel_count; i++) {
 		/* Use offset to get just the range we want
 		 * Reduce down to 0 or saturate to 0xFFFF if we're
 		 * outside of that range
@@ -507,13 +512,17 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 		{
 			sample[i] = 0xFFFF;
 		}
+
+		adc->msg.sample_data.data[adc->msg_channels + i] = sample[i];
 	}
 
-	for (unsigned j = 0; j < adc->msg_channels_max; j++) {
-		adc->msg.sample_data.data[j] = sample[j];
+	adc->msg_channels += adc->channel_count;
+
+	if (adc->msg_channels == adc->msg_channels_max) {
+		adc->msg_ready = true;
+		adc->msg_channels = 0;
 	}
 
-	adc->msg_ready = true;
 	bl_acq__clear_sample_array(adc);
 }
 
