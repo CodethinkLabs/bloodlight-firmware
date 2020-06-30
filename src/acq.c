@@ -494,15 +494,6 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 	for (unsigned i = 0; i < adc->channel_count; i++) {
 		uint32_t offset = acq_g.offset[adc->source[i]];
 
-		/* Use offset to get just the range we want
-		 * Reduce down to 0 or saturate to 0xFFFF if we're
-		 * outside of that range
-		 */
-		if (sample[i] > offset) {
-			sample[i] -= offset;
-		} else {
-			sample[i] = 0;
-		}
 		if (acq_g.oversample > 64) {
 			/* The oversampling and offsetting basically zooms
 			 * into a section of the sample range.  When we zoom
@@ -512,6 +503,15 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 			 * see four times as much of the range.  It's only
 			 * really worth doing this for "large" oversamples. */
 			sample[i] >>= 2;
+		}
+		/* Use offset to get just the range we want
+		 * Reduce down to 0 or saturate to 0xFFFF if we're
+		 * outside of that range
+		 */
+		if (sample[i] > offset) {
+			sample[i] -= offset;
+		} else {
+			sample[i] = 0;
 		}
 		if (sample[i] > 0xFFFF)
 		{
