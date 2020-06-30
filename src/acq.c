@@ -59,7 +59,7 @@
 /**
  * Maximum number of channels a message can contain.
  */
-#define MSG_CHANNELS_MAX 16
+#define MSG_CHANNELS_MAX 30
 
 /** Current acquisition state. */
 enum acq_state {
