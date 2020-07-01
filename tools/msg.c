@@ -31,23 +31,24 @@
 
 static char buffer[BUFFER_LEN + 1];
 
+/** Message type to string mapping, */
+static const char *msg_types[] = {
+	[BL_MSG_RESPONSE]        = "Response",
+	[BL_MSG_LED]             = "LED",
+	[BL_MSG_START]           = "Start",
+	[BL_MSG_ABORT]           = "Abort",
+	[BL_MSG_SAMPLE_DATA]     = "Sample Data",
+	[BL_MSG_SET_GAINS]       = "Set Gains",
+	[BL_MSG_SET_OVERSAMPLE]  = "Set Oversample",
+	[BL_MSG_SET_FIXEDOFFSET] = "Set Fixed Offset",
+};
+
 static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
 {
-	static const char *types[] = {
-		[BL_MSG_RESPONSE]        = "Response",
-		[BL_MSG_LED]             = "LED",
-		[BL_MSG_START]           = "Start",
-		[BL_MSG_ABORT]           = "Abort",
-		[BL_MSG_SAMPLE_DATA]     = "Sample Data",
-		[BL_MSG_SET_GAINS]       = "Set Gains",
-		[BL_MSG_SET_OVERSAMPLE]  = "Set Oversample",
-		[BL_MSG_SET_FIXEDOFFSET] = "Set Fixed Offset",
-	};
-
 	if (str != NULL) {
-		for (unsigned i = 0; i < BL_ARRAY_LEN(types); i++) {
-			if (types[i] != NULL) {
-				if (strcmp(types[i], str) == 0) {
+		for (unsigned i = 0; i < BL_ARRAY_LEN(msg_types); i++) {
+			if (msg_types[i] != NULL) {
+				if (strcmp(msg_types[i], str) == 0) {
 					return i;
 				}
 			}
@@ -204,22 +205,11 @@ bool bl_msg_parse(union bl_msg_data *msg)
 
 static const char *bl_msg_type_to_str(enum bl_msg_type type)
 {
-	static const char *types[] = {
-		[BL_MSG_RESPONSE]        = "Response",
-		[BL_MSG_LED]             = "LED",
-		[BL_MSG_START]           = "Start",
-		[BL_MSG_ABORT]           = "Abort",
-		[BL_MSG_SAMPLE_DATA]     = "Sample Data",
-		[BL_MSG_SET_GAINS]       = "Set Gains",
-		[BL_MSG_SET_OVERSAMPLE]  = "Set Oversample",
-		[BL_MSG_SET_FIXEDOFFSET] = "Set Fixed Offset",
-	};
-
-	if (type >= BL_ARRAY_LEN(types)) {
+	if (type >= BL_ARRAY_LEN(msg_types)) {
 		return NULL;
 	}
 
-	return types[type];
+	return msg_types[type];
 }
 
 void bl_msg_print(const union bl_msg_data *msg, FILE *file)
