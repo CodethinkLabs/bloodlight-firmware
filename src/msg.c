@@ -102,11 +102,11 @@ enum bl_error bl_msg_handle(const union bl_msg_data *msg)
 			const union bl_msg_data *msg);
 
 	static const bl_msg_handle_fn fns[] = {
-		[BL_MSG_LED]   = bl_msg_led,
-		[BL_MSG_START] = bl_msg_start,
-		[BL_MSG_ABORT] = bl_msg_abort,
-		[BL_MSG_SET_GAINS] = bl_msg_set_gains,
-		[BL_MSG_SET_OVERSAMPLE] = bl_msg_set_oversample,
+		[BL_MSG_LED]             = bl_msg_led,
+		[BL_MSG_START]           = bl_msg_start,
+		[BL_MSG_ABORT]           = bl_msg_abort,
+		[BL_MSG_SET_GAINS]       = bl_msg_set_gains,
+		[BL_MSG_SET_OVERSAMPLE]  = bl_msg_set_oversample,
 		[BL_MSG_SET_FIXEDOFFSET] = bl_msg_set_fixed_offset,
 	};
 

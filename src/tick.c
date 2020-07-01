@@ -50,8 +50,8 @@ void bl_tick_init(void)
 {
 	/* Set up the systick to trigger every microsecond*/
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
-	/*
-	 * System clock is 72MHz, so 1/72 usec per "tick" there and we want to tick
+
+	/* System clock is 72MHz, so 1/72 usec per "tick" there and we want to tick
 	 * res * usec, so that means a counter of (res * 72) -1
 	 */
 	systick_set_reload((res * 72) - 1);

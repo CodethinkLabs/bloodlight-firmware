@@ -21,7 +21,7 @@
 
 static uint32_t gcd (uint32_t a, uint32_t b) {
 	uint32_t r;
-	while(b!=0){
+	while (b!=0) {
 		r = a % b;
 		a = b;
 		b = r;
@@ -51,7 +51,7 @@ void bl_delay_us(uint32_t us)
 	}
 
 	bl_set_us_timer(&timer);
-	while(bl_get_us_timer_elapsed(timer) < us);
+	while (bl_get_us_timer_elapsed(timer) < us);
 	/* return to previous resolution */
 	bl_set_resolution(current_res);
 }
@@ -60,5 +60,5 @@ void bl_delay_ms(uint32_t ms)
 {
 	uint32_t timer;
 	bl_set_ms_timer(&timer);
-	while(bl_get_ms_timer_elapsed(timer) < ms);
+	while (bl_get_ms_timer_elapsed(timer) < ms);
 }

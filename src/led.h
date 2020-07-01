@@ -38,7 +38,8 @@ enum bl_led_id {
 	BL_LED_ID_13, /* LED 14, 570nm, YELLOW */
 	BL_LED_ID_14, /* LED 15, 528nm, GREEN */
 	BL_LED_ID_15, /* LED 16, 470nm, BLUE */
-	BL_LED__COUNT,
+
+	BL_LED__COUNT
 };
 
 /* Friendly names for visible light LEDs */

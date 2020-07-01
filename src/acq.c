@@ -66,13 +66,13 @@ enum acq_state {
 struct {
 	enum acq_state state;
 
-	uint32_t  oversample;
+	uint32_t oversample;
 	uint16_t period;
 	uint16_t src_mask;
-	uint8_t gain[BL_ACQ_PD__COUNT];
-	uint8_t opamp[BL_ACQ_PD__COUNT];
-	uint8_t opamp_trimoffsetn[BL_ACQ_PD__COUNT];
-	uint8_t opamp_trimoffsetp[BL_ACQ_PD__COUNT];
+	uint8_t  gain[BL_ACQ_PD__COUNT];
+	uint8_t  opamp[BL_ACQ_PD__COUNT];
+	uint8_t  opamp_trimoffsetn[BL_ACQ_PD__COUNT];
+	uint8_t  opamp_trimoffsetp[BL_ACQ_PD__COUNT];
 	uint32_t offset[BL_ACQ__SRC_COUNT];
 } acq_g;
 
@@ -711,7 +711,6 @@ static void bl_frequency_to_acq_params(
 	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
 }
 
-
 /**
  * Set the hardware up for an acquisition.
  *
@@ -738,10 +737,10 @@ static enum bl_error bl_acq_setup_timer(
 enum bl_error bl_acq_set_gains_setting(
 		const uint8_t gain[BL_ACQ_PD__COUNT])
 {
-	if(acq_g.state == ACQ_STATE_ACTIVE) {
+	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
-	for(unsigned i = 0; i < BL_ACQ_PD__COUNT; i++)
+	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++)
 	{
 		acq_g.gain[i] = gain[i];
 	}
@@ -751,7 +750,7 @@ enum bl_error bl_acq_set_gains_setting(
 enum bl_error bl_acq_set_oversample_setting(
 		uint32_t  oversample)
 {
-	if(acq_g.state == ACQ_STATE_ACTIVE) {
+	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 	if (oversample == 0 || oversample > ACQ_OVERSAMPLE_MAX) {
@@ -765,9 +764,10 @@ enum bl_error bl_acq_set_oversample_setting(
 enum bl_error bl_acq_set_fixed_offset_setting(
 		const uint32_t offset[BL_ACQ__SRC_COUNT])
 {
-	if(acq_g.state == ACQ_STATE_ACTIVE) {
+	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
+
 	memcpy(acq_g.offset, offset, sizeof(acq_g.offset));
 	return BL_ERROR_NONE;
 }

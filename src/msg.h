@@ -37,7 +37,8 @@ enum bl_msg_type {
 	BL_MSG_START,
 	BL_MSG_ABORT,
 	BL_MSG_SAMPLE_DATA,
-	BL_MSG__COUNT,
+
+	BL_MSG__COUNT
 };
 
 /** Message data */

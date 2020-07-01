@@ -70,7 +70,7 @@ static inline uint16_t bl_led__get_pin_mask(
 	uint16_t pin_mask = 0;
 
 	for (enum bl_led_id i = BL_LED_ID_0; i < BL_LED__COUNT; i++) {
-		if ((1 << i) & led_mask) {
+		if ((1U << i) & led_mask) {
 			if (led_table[i].port_idx == port) {
 				pin_mask |= (1 << led_table[i].pin);
 			}
@@ -115,8 +115,7 @@ static inline void bl_led__set(
 }
 
 /* Exported function, documented in led.h */
-enum bl_error bl_led_set(
-		uint16_t led_mask)
+enum bl_error bl_led_set(uint16_t led_mask)
 {
 	/* TODO: Check that the LEDs enabled don't exceed available power,
 	 *       or any other conditions? */
