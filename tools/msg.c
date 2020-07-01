@@ -21,7 +21,7 @@
 #include "../src/util.h"
 #include "../src/msg.h"
 
-#include "common.h"
+#include "msg.h"
 
 const char *bl_msg_type_to_str(enum bl_msg_type type)
 {

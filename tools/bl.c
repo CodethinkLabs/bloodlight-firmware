@@ -34,7 +34,7 @@
 #include "../src/msg.h"
 
 /* Common helper functionality. */
-#include "common.h"
+#include "msg.h"
 #include "conversion.h"
 
 /* Whether we've had a `ctrl-c`. */
