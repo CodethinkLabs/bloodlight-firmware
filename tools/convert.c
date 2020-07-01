@@ -38,180 +38,7 @@ volatile bool killed;
 #define MAX_SAMPLES 64
 #define MAX_CHANNELS 16
 
-#define BUFFER_LEN 64
-#define BUFFER_LEN_STR "64"
-
-static char buffer[BUFFER_LEN + 1];
-
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
-
-static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
-{
-	static const char *types[] = {
-		[BL_MSG_RESPONSE]        = "Response",
-		[BL_MSG_LED]             = "LED",
-		[BL_MSG_START]           = "Start",
-		[BL_MSG_ABORT]           = "Abort",
-		[BL_MSG_SAMPLE_DATA]     = "Sample Data",
-		[BL_MSG_SET_GAINS]       = "Set Gains",
-		[BL_MSG_SET_OVERSAMPLE]  = "Set Oversample",
-		[BL_MSG_SET_FIXEDOFFSET] = "Set Fixed Offset",
-	};
-
-	if (str != NULL) {
-		for (unsigned i = 0; i < BL_ARRAY_LEN(types); i++) {
-			if (types[i] != NULL) {
-				if (strcmp(types[i], str) == 0) {
-					return i;
-				}
-			}
-		}
-	}
-
-	return BL_MSG__COUNT;
-}
-
-static const char * read_str_type(bool *success)
-{
-	int ret;
-
-	ret = scanf("- %"BUFFER_LEN_STR"[A-Za-z0-9 ]:\n", buffer);
-	if (ret != 1) {
-		*success = false;
-		return NULL;
-	}
-
-	return buffer;
-}
-
-static enum bl_msg_type read_type(bool *success)
-{
-	const char *str_type = read_str_type(success);
-
-	return bl_msg_str_to_type(str_type);
-}
-
-static uint8_t read_response_to(bool *success)
-{
-	unsigned value;
-	int ret;
-
-	ret = scanf("    Response to: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n",
-			buffer);
-	if (ret == 1) {
-		return bl_msg_str_to_type(buffer);
-	}
-
-	ret = scanf("    Response to: Unknown (0x%x)\n", &value);
-	if (ret == 1) {
-		return value;
-	}
-
-	*success = false;
-	return bl_msg_str_to_type("Unknown");
-}
-
-static uint16_t read_unsigned(bool *success, const char *field)
-{
-	unsigned value;
-	int ret;
-
-	ret = scanf("%"BUFFER_LEN_STR"[A-Za-z0-9 ]: %u\n",
-			buffer, &value);
-	if (ret == 2) {
-		if (strcmp(buffer, field) == 0) {
-			return value;
-		}
-	}
-
-	*success = false;
-	return 0;
-}
-
-static uint16_t read_hex(bool *success, const char *field)
-{
-	unsigned value;
-	int ret;
-
-	ret = scanf("%"BUFFER_LEN_STR"[A-Za-z0-9 ]: 0x%x\n",
-			buffer, &value);
-	if (ret == 2) {
-		if (strcmp(buffer, field) == 0) {
-			return value;
-		}
-	}
-
-	*success = false;
-	return 0;
-}
-
-static uint16_t read_unsigned_no_field(bool *success)
-{
-	unsigned value;
-	int ret;
-
-	ret = scanf("%*[ -]%u\n", &value);
-	if (ret == 1) {
-		return value;
-	}
-
-	*success = false;
-	return 0;
-}
-
-static bool read_message(union bl_msg_data *msg)
-{
-	bool ok = true;
-	msg->type = read_type(&ok);
-
-	switch (msg->type) {
-	case BL_MSG_RESPONSE:
-		msg->response.response_to = read_response_to(&ok);
-		msg->response.error_code = read_unsigned(&ok, "Error code");
-		break;
-
-	case BL_MSG_LED:
-		msg->led.led_mask = read_hex(&ok, "LED Mask");
-		break;
-
-	case BL_MSG_START:
-		msg->start.frequency = read_unsigned(&ok, "Frequency");
-		msg->start.src_mask = read_hex(&ok, "Source Mask");
-		
-		break;
-
-	case BL_MSG_SAMPLE_DATA:
-		msg->sample_data.count = read_unsigned(&ok, "Count");
-		msg->sample_data.src_mask = read_hex(&ok, "Source Mask");
-		ok |= (scanf("    Data:\n") == 0);
-		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			msg->sample_data.data[i] = read_unsigned_no_field(&ok);
-		}
-		break;
-
-	case BL_MSG_SET_GAINS:
-		ok |= (scanf("    Gains:\n") == 0);
-		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-			msg->gain.gain[i] = read_unsigned_no_field(&ok);
-		}
-		break;
-	case BL_MSG_SET_OVERSAMPLE:
-		msg->oversample.oversample = read_unsigned(&ok, "Oversample");
-		break;
-
-	case BL_MSG_SET_FIXEDOFFSET:
-		ok |= (scanf("    Offset:\n") == 0);
-		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-			msg->gain.gain[i] = read_unsigned_no_field(&ok);
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	return ok;
-}
 
 static bool bl_masks_to_channel_idxs(
 		uint16_t acq_src_mask,
@@ -469,7 +296,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 	}
 
-	while (!killed && read_message(msg)) {
+	while (!killed && bl_msg_parse(msg)) {
 		if (!had_setup && msg->type == BL_MSG_START) {
 			acq_src_mask = msg->start.src_mask;
 			had_setup = true;
@@ -556,7 +383,7 @@ int bl_cmd_relay(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	while (!killed && read_message(msg)) {
+	while (!killed && bl_msg_parse(msg)) {
 		bl_msg_print(msg, stdout);
 	}
 
