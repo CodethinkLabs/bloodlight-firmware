@@ -210,6 +210,7 @@ int bl_sample_msg_to_file(
 		FILE *file,
 		enum bl_format format,
 		unsigned frequency,
+		unsigned acq_channels,
 		uint16_t acq_src_mask,
 		union bl_msg_data *msg,
 		uint16_t channel_counter[MSG_CHANNELS_MAX],
@@ -222,19 +223,18 @@ int bl_sample_msg_to_file(
 		if (format == BL_FORMAT_CSV) {
 			static unsigned counter;
 
-			unsigned channel_count = bl_count_channels(acq_src_mask);
 			float period = 1000.0 / frequency;
 
 			for (unsigned s = 0; s < samples_copied; s++) {
 				float x_ms = period * counter;
-				for (unsigned c = 0; c < channel_count; c++) {
-					fprintf(file, "%d,%f,%d\n", c, x_ms, data[s * channel_count + c]);
+				for (unsigned c = 0; c < acq_channels; c++) {
+					fprintf(file, "%d,%f,%d\n", c, x_ms, data[s * acq_channels + c]);
 				}
 				counter++;
 			}
 		} else {
 			size_t written;
-			unsigned count = bl_count_channels(acq_src_mask) * samples_copied;
+			unsigned count = acq_channels * samples_copied;
 			written = fwrite(data, sizeof(int16_t), count, file);
 			if (written != count) {
 				fprintf(stderr, "Failed to write wave_data\n");
@@ -294,8 +294,11 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 	}
 
 	while (!killed && bl_msg_parse(msg)) {
+		unsigned acq_channels = 0;
+
 		if (!had_setup && msg->type == BL_MSG_START) {
 			acq_src_mask = msg->start.src_mask;
+			acq_channels = bl_count_channels(msg->start.src_mask);
 			had_setup = true;
 
 			frequency = msg->start.frequency;
@@ -314,9 +317,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			} else {
 				fprintf(stderr, "- RAW output format:\n");
 				fprintf(stderr, "    Samples: 16-bit signed\n");
-				fprintf(stderr, "    Channels: %u\n",
-						(unsigned) bl_count_channels(
-							msg->start.src_mask));
+				fprintf(stderr, "    Channels: %u\n", acq_channels);
 				fprintf(stderr, "    Frequency: %u Hz\n",
 						frequency);
 			}
@@ -334,7 +335,8 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			goto cleanup;
 		}
 
-		bl_sample_msg_to_file(file, format, frequency, acq_src_mask,
+		bl_sample_msg_to_file(file, format, frequency,
+				acq_channels, acq_src_mask,
 				msg, channel_counter, data);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
