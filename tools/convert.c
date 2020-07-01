@@ -66,7 +66,7 @@ static inline int32_t bl_sample_to_signed(uint16_t in)
 }
 
 static unsigned bl_msg_copy_samples(
-		union bl_msg_data *msg,
+		const union bl_msg_data *msg,
 		unsigned acq_channels,
 		uint16_t acq_src_mask,
 		uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX],
@@ -212,7 +212,7 @@ int bl_sample_msg_to_file(
 		unsigned frequency,
 		unsigned acq_channels,
 		uint16_t acq_src_mask,
-		union bl_msg_data *msg,
+		const union bl_msg_data *msg,
 		uint16_t channel_counter[MSG_CHANNELS_MAX],
 		uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX])
 {
