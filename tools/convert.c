@@ -65,13 +65,25 @@ static inline int32_t bl_sample_to_signed(uint16_t in)
 	return in - INT16_MIN;
 }
 
+enum bl_format {
+	BL_FORMAT_WAV,
+	BL_FORMAT_RAW,
+	BL_FORMAT_CSV,
+};
+
+struct convert_ctx {
+	enum bl_format format;
+
+	unsigned acq_channels;
+	uint16_t acq_src_mask;
+
+	uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX];
+	uint16_t sample_count[MSG_CHANNELS_MAX];
+};
+
 static unsigned bl_msg_copy_samples(
 		const union bl_msg_data *msg,
-		unsigned acq_channels,
-		uint16_t acq_src_mask,
-		uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX],
-		uint16_t channel_counter[MSG_CHANNELS_MAX],
-		bool convert_to_signed)
+		struct convert_ctx *ctx)
 {
 	uint16_t msg_channel_count = bl_count_channels(msg->sample_data.src_mask);
 	uint16_t msg_sample_count = msg->sample_data.count;
@@ -81,33 +93,33 @@ static unsigned bl_msg_copy_samples(
 	uint16_t counter = 0;
 	uint16_t check_mask;
 
-	while (bl_masks_to_channel_idxs(acq_src_mask, &msg_src_mask, &acq_idx)) {
-		size_t data_off = acq_channels * channel_counter[acq_idx] +
+	while (bl_masks_to_channel_idxs(ctx->acq_src_mask, &msg_src_mask, &acq_idx)) {
+		size_t data_off = ctx->acq_channels * ctx->sample_count[acq_idx] +
 				acq_idx;
 
 		for (unsigned i = msg_idx; i < msg_sample_count; i += msg_channel_count) {
-			if (convert_to_signed) {
-				data[data_off] = bl_sample_to_signed(msg->sample_data.data[i]);
+			if (ctx->format == BL_FORMAT_CSV) {
+				ctx->data[data_off] = msg->sample_data.data[i];
 			} else {
-				data[data_off] = msg->sample_data.data[i];
+				ctx->data[data_off] = bl_sample_to_signed(msg->sample_data.data[i]);
 			}
-			data_off += acq_channels;
-			channel_counter[acq_idx]++;
+			data_off += ctx->acq_channels;
+			ctx->sample_count[acq_idx]++;
 		}
 		msg_idx++;
 	}
 
 	acq_idx = 0;
 	msg_idx = 0;
-	check_mask = acq_src_mask;
-	while (bl_masks_to_channel_idxs(acq_src_mask, &check_mask, &acq_idx)) {
-		if (channel_counter[acq_idx] == 0) {
+	check_mask = ctx->acq_src_mask;
+	while (bl_masks_to_channel_idxs(ctx->acq_src_mask, &check_mask, &acq_idx)) {
+		if (ctx->sample_count[acq_idx] == 0) {
 			return 0;
 		} else if (counter != 0 &&
-				counter != channel_counter[acq_idx]) {
+				counter != ctx->sample_count[acq_idx]) {
 			return 0;
 		}
-		counter = channel_counter[acq_idx];
+		counter = ctx->sample_count[acq_idx];
 	}
 
 	return counter;
@@ -200,48 +212,38 @@ int bl_cmd_wav_write_data_header(FILE *file)
 	return EXIT_SUCCESS;
 }
 
-enum bl_format {
-	BL_FORMAT_WAV,
-	BL_FORMAT_RAW,
-	BL_FORMAT_CSV,
-};
-
 int bl_sample_msg_to_file(
 		FILE *file,
-		enum bl_format format,
 		unsigned frequency,
-		unsigned acq_channels,
-		uint16_t acq_src_mask,
 		const union bl_msg_data *msg,
-		uint16_t channel_counter[MSG_CHANNELS_MAX],
-		uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX])
+		struct convert_ctx *ctx)
 {
 	unsigned samples_copied;
 
-	samples_copied = bl_msg_copy_samples(msg, acq_channels, acq_src_mask, data, channel_counter, format == BL_FORMAT_WAV);
+	samples_copied = bl_msg_copy_samples(msg, ctx);
 	if (samples_copied > 0) {
-		if (format == BL_FORMAT_CSV) {
+		if (ctx->format == BL_FORMAT_CSV) {
 			static unsigned counter;
 
 			float period = 1000.0 / frequency;
 
 			for (unsigned s = 0; s < samples_copied; s++) {
 				float x_ms = period * counter;
-				for (unsigned c = 0; c < acq_channels; c++) {
-					fprintf(file, "%d,%f,%d\n", c, x_ms, data[s * acq_channels + c]);
+				for (unsigned c = 0; c < ctx->acq_channels; c++) {
+					fprintf(file, "%d,%f,%d\n", c, x_ms, ctx->data[s * ctx->acq_channels + c]);
 				}
 				counter++;
 			}
 		} else {
 			size_t written;
-			unsigned count = acq_channels * samples_copied;
-			written = fwrite(data, sizeof(int16_t), count, file);
+			unsigned count = ctx->acq_channels * samples_copied;
+			written = fwrite(ctx->data, sizeof(int16_t), count, file);
 			if (written != count) {
 				fprintf(stderr, "Failed to write wave_data\n");
 				return EXIT_FAILURE;
 			}
 		}
-		memset(channel_counter, 0, sizeof(uint16_t) * MSG_CHANNELS_MAX);
+		memset(ctx->sample_count, 0, sizeof(uint16_t) * MSG_CHANNELS_MAX);
 
 		fflush(file);
 	}
@@ -251,11 +253,11 @@ int bl_sample_msg_to_file(
 
 int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 {
-	uint16_t channel_counter[MSG_CHANNELS_MAX] = { 0 };
-	uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX];
 	union bl_msg_data *msg = &input.msg;
 	bool had_setup = false;
-	uint16_t acq_src_mask;
+	struct convert_ctx ctx = {
+		.acq_channels = 0,
+	};
 	unsigned frequency;
 	FILE *file;
 	int ret;
@@ -294,11 +296,10 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 	}
 
 	while (!killed && bl_msg_parse(msg)) {
-		unsigned acq_channels = 0;
 
 		if (!had_setup && msg->type == BL_MSG_START) {
-			acq_src_mask = msg->start.src_mask;
-			acq_channels = bl_count_channels(msg->start.src_mask);
+			ctx.acq_src_mask = msg->start.src_mask;
+			ctx.acq_channels = bl_count_channels(msg->start.src_mask);
 			had_setup = true;
 
 			frequency = msg->start.frequency;
@@ -317,9 +318,8 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			} else {
 				fprintf(stderr, "- RAW output format:\n");
 				fprintf(stderr, "    Samples: 16-bit signed\n");
-				fprintf(stderr, "    Channels: %u\n", acq_channels);
-				fprintf(stderr, "    Frequency: %u Hz\n",
-						frequency);
+				fprintf(stderr, "    Channels: %u\n", ctx.acq_channels);
+				fprintf(stderr, "    Frequency: %u Hz\n", frequency);
 			}
 		}
 
@@ -335,9 +335,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			goto cleanup;
 		}
 
-		bl_sample_msg_to_file(file, format, frequency,
-				acq_channels, acq_src_mask,
-				msg, channel_counter, data);
+		bl_sample_msg_to_file(file, frequency, msg, &ctx);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
 		}
