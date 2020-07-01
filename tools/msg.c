@@ -23,7 +23,7 @@
 
 #include "msg.h"
 
-const char *bl_msg_type_to_str(enum bl_msg_type type)
+static const char *bl_msg_type_to_str(enum bl_msg_type type)
 {
 	static const char *types[] = {
 		[BL_MSG_RESPONSE]        = "Response",
