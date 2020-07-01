@@ -567,7 +567,7 @@ int bl_cmd_receive_and_print_loop(int dev_fd)
 int bl_cmd_receive_and_print_xy_loop(int dev_fd, int frequency)
 {
 	int ret = EXIT_SUCCESS;
-	long current_x[MAX_CHANNELS] = {0};
+	long current_x[MSG_CHANNELS_MAX] = {0};
 	do {
 		union bl_msg_data * msg = NULL;
 		ret = bl_cmd_read_message(dev_fd, 10000, &msg);

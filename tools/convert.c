@@ -35,9 +35,6 @@
 /* Whether we've had a `ctrl-c`. */
 volatile bool killed;
 
-#define MAX_SAMPLES 64
-#define MAX_CHANNELS 16
-
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
 static bool bl_masks_to_channel_idxs(
@@ -71,8 +68,8 @@ static inline int32_t bl_sample_to_signed(uint16_t in)
 static unsigned bl_msg_copy_samples(
 		union bl_msg_data *msg,
 		uint16_t acq_src_mask,
-		uint16_t data[MAX_SAMPLES * MAX_CHANNELS],
-		uint16_t channel_counter[MAX_CHANNELS],
+		uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX],
+		uint16_t channel_counter[MSG_CHANNELS_MAX],
 		bool convert_to_signed)
 {
 	uint16_t msg_channel_count = bl_count_channels(msg->sample_data.src_mask);
@@ -215,8 +212,8 @@ int bl_sample_msg_to_file(
 		unsigned frequency,
 		uint16_t acq_src_mask,
 		union bl_msg_data *msg,
-		uint16_t channel_counter[MAX_CHANNELS],
-		uint16_t data[MAX_SAMPLES * MAX_CHANNELS])
+		uint16_t channel_counter[MSG_CHANNELS_MAX],
+		uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX])
 {
 	unsigned samples_copied;
 
@@ -244,7 +241,7 @@ int bl_sample_msg_to_file(
 				return EXIT_FAILURE;
 			}
 		}
-		memset(channel_counter, 0, sizeof(uint16_t) * MAX_CHANNELS);
+		memset(channel_counter, 0, sizeof(uint16_t) * MSG_CHANNELS_MAX);
 
 		fflush(file);
 	}
@@ -254,8 +251,8 @@ int bl_sample_msg_to_file(
 
 int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 {
-	uint16_t channel_counter[MAX_CHANNELS] = { 0 };
-	uint16_t data[MAX_SAMPLES * MAX_CHANNELS];
+	uint16_t channel_counter[MSG_CHANNELS_MAX] = { 0 };
+	uint16_t data[MAX_SAMPLES * MSG_CHANNELS_MAX];
 	union bl_msg_data *msg = &input.msg;
 	bool had_setup = false;
 	uint16_t acq_src_mask;

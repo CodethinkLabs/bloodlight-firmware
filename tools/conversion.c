@@ -11,12 +11,11 @@
 #include "conversion.h"
 
 #define MAX_SAMPLES 64
-#define MAX_CHANNELS 16
 
 int bl_live_samples_to_xy(
 		const union bl_msg_data *msg,
 		FILE *file,
-		long current_x[MAX_CHANNELS],
+		long current_x[MSG_CHANNELS_MAX],
 		int frequency)
 {
 	if (msg->type != BL_MSG_SAMPLE_DATA) {
