@@ -56,11 +56,6 @@
  */
 #define ACQ_OVERSAMPLE_MAX 512
 
-/**
- * Maximum number of channels a message can contain.
- */
-#define MSG_CHANNELS_MAX 30
-
 /** Current acquisition state. */
 enum acq_state {
 	ACQ_STATE_IDLE,

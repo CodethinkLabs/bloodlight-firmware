@@ -20,6 +20,11 @@
 #include "acq.h"
 #include "led.h"
 
+/**
+ * Maximum number of channels a \ref BL_MSG_SAMPLE_DATA message can contain.
+ */
+#define MSG_CHANNELS_MAX 30
+
 enum bl_error;
 
 /** Message type. */
