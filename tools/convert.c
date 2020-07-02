@@ -81,6 +81,25 @@ struct convert_ctx {
 	uint16_t sample_count[MSG_CHANNELS_MAX];
 };
 
+static unsigned bl_channels_count_samples(
+		const struct convert_ctx *ctx)
+{
+	uint16_t check_mask = ctx->acq_src_mask;
+	uint16_t acq_idx = 0;
+	uint16_t count = 0;
+
+	while (bl_masks_to_channel_idxs(ctx->acq_src_mask, &check_mask, &acq_idx)) {
+		if (ctx->sample_count[acq_idx] == 0) {
+			return 0;
+		} else if (count != 0 && count != ctx->sample_count[acq_idx]) {
+			return 0;
+		}
+		count = ctx->sample_count[acq_idx];
+	}
+
+	return count;
+}
+
 static unsigned bl_msg_copy_samples(
 		const union bl_msg_data *msg,
 		struct convert_ctx *ctx)
@@ -90,8 +109,6 @@ static unsigned bl_msg_copy_samples(
 	uint16_t msg_src_mask = msg->sample_data.src_mask;
 	uint16_t acq_idx = 0;
 	uint16_t msg_idx = 0;
-	uint16_t counter = 0;
-	uint16_t check_mask;
 
 	while (bl_masks_to_channel_idxs(ctx->acq_src_mask, &msg_src_mask, &acq_idx)) {
 		size_t data_off = ctx->acq_channels * ctx->sample_count[acq_idx] +
@@ -109,20 +126,7 @@ static unsigned bl_msg_copy_samples(
 		msg_idx++;
 	}
 
-	acq_idx = 0;
-	msg_idx = 0;
-	check_mask = ctx->acq_src_mask;
-	while (bl_masks_to_channel_idxs(ctx->acq_src_mask, &check_mask, &acq_idx)) {
-		if (ctx->sample_count[acq_idx] == 0) {
-			return 0;
-		} else if (counter != 0 &&
-				counter != ctx->sample_count[acq_idx]) {
-			return 0;
-		}
-		counter = ctx->sample_count[acq_idx];
-	}
-
-	return counter;
+	return bl_channels_count_samples(ctx);
 }
 
 /* Note: We'll break if there are more than MAX_SAMPLES in a message. */
