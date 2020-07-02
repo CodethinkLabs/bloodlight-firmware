@@ -115,10 +115,12 @@ static unsigned bl_msg_copy_samples(
 				acq_idx;
 
 		for (unsigned i = msg_idx; i < msg_sample_count; i += msg_channel_count) {
+			uint16_t samp = msg->sample_data.data[i];
+
 			if (ctx->format == BL_FORMAT_CSV) {
-				ctx->data[data_off] = msg->sample_data.data[i];
+				ctx->data[data_off] = samp;
 			} else {
-				ctx->data[data_off] = bl_sample_to_signed(msg->sample_data.data[i]);
+				ctx->data[data_off] = bl_sample_to_signed(samp);
 			}
 			data_off += ctx->acq_channels;
 			ctx->sample_count[acq_idx]++;
