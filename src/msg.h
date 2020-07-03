@@ -100,7 +100,6 @@ union bl_msg_data {
 	struct {
 		uint8_t  type;     /**< Must be \ref BL_MSG_SAMPLE_DATA */
 		uint8_t  count;    /**< Number of samples in packet. */
-		uint16_t src_mask; /**< Mask of sources in this message. */
 		uint16_t data[];   /**< Sample data for \ref count samples. */
 	} sample_data;
 };
