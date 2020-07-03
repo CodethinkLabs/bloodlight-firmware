@@ -35,7 +35,6 @@
 
 /* Common helper functionality. */
 #include "msg.h"
-#include "conversion.h"
 
 /* Whether we've had a `ctrl-c`. */
 volatile bool killed;
@@ -564,34 +563,9 @@ int bl_cmd_receive_and_print_loop(int dev_fd)
 	return ret;
 }
 
-int bl_cmd_receive_and_print_xy_loop(int dev_fd, int frequency)
-{
-	int ret = EXIT_SUCCESS;
-	long current_x[MSG_CHANNELS_MAX] = {0};
-	do {
-		union bl_msg_data * msg = NULL;
-		ret = bl_cmd_read_message(dev_fd, 10000, &msg);
-		if (ret == EINTR) {
-			killed = true;
-		} else if (ret != 0) {
-			ret = EXIT_FAILURE;
-		}
-		bl_live_samples_to_xy(msg, stdout, current_x, frequency);
-	} while (!killed);
-	return ret;
-}
-
-
-typedef enum bl_data_presentation
-{
-	HUMAN_READABLE,
-	X_Y,
-} bl_data_presentation;
-
 static int bl_cmd_start_stream(
 		int argc,
-		char *argv[],
-		bl_data_presentation present)
+		char *argv[])
 {
 	union bl_msg_data msg = {
 		.start = {
@@ -642,9 +616,8 @@ static int bl_cmd_start_stream(
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
-	if (present == HUMAN_READABLE) {
-		bl_msg_print(&msg, stdout);
-	}
+	
+	bl_msg_print(&msg, stdout);
 	
 	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
 
@@ -653,11 +626,7 @@ static int bl_cmd_start_stream(
 		return EXIT_FAILURE;
 	}
 
-	if (present == HUMAN_READABLE) {
-		ret = bl_cmd_receive_and_print_loop(dev_fd);
-	}else if (present == X_Y) {
-		ret = bl_cmd_receive_and_print_xy_loop(dev_fd, frequency);
-	}
+	ret = bl_cmd_receive_and_print_loop(dev_fd);
 
 	/* Send abort after ctrl+c */
 	if (killed) {
@@ -665,9 +634,7 @@ static int bl_cmd_start_stream(
 			.type = BL_MSG_ABORT,
 		};
 		bl_cmd_send(&abort_msg, argv[ARG_DEV_PATH],dev_fd);
-		if (present == HUMAN_READABLE) {
-			bl_cmd_read_and_print_message(dev_fd, 10000);
-		} 
+		bl_cmd_read_and_print_message(dev_fd, 10000);
 	}
 
 	bl_close_device(dev_fd);
@@ -677,40 +644,7 @@ static int bl_cmd_start_stream(
 
 int bl_cmd_start(int argc, char *argv[])
 {
-	return bl_cmd_start_stream(argc, argv, HUMAN_READABLE);
-}
-
-int bl_cmd_start_xy(int argc, char *argv[])
-{
-	return bl_cmd_start_stream(argc, argv, X_Y);
-}
-
-static int bl_cmd_continue(int argc, char *argv[])
-{
-	int dev_fd;
-	int ret;
-	enum {
-		ARG_PROG,
-		ARG_CMD,
-		ARG_DEV_PATH,
-		ARG__COUNT,
-	};
-
-	if (argc != ARG__COUNT) {
-		fprintf(stderr, "Usage:\n");
-		fprintf(stderr, "  %s %s <DEVICE_PATH>\n",
-				argv[ARG_PROG], argv[ARG_CMD]);
-		return EXIT_FAILURE;
-	}
-
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
-	if (dev_fd == -1) {
-		return EXIT_FAILURE;
-	}
-	ret = bl_cmd_receive_and_print_loop(dev_fd);
-
-	bl_close_device(dev_fd);
-	return ret;
+	return bl_cmd_start_stream(argc, argv);
 }
 
 static int bl_cmd_abort(int argc, char *argv[])
@@ -732,16 +666,6 @@ static const struct bl_cmd {
 		.name = "start",
 		.help = "Start an acquisition",
 		.fn = bl_cmd_start,
-	},
-	{
-		.name = "startxy",
-		.help = "Start an acquisition and print data out in the format [source channel],[time ms],[value]",
-		.fn = bl_cmd_start_xy,
-	},
-	{
-		.name = "continue",
-		.help = "Continue an acquisition",
-		.fn = bl_cmd_continue,
 	},
 	{
 		.name = "abort",

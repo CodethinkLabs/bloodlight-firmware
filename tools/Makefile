@@ -5,7 +5,7 @@ all: bl convert
 clean:
 	rm -f bl convert *.o
 
-bl: bl.c msg.o conversion.o
-convert: convert.c msg.o conversion.o
+bl: bl.c msg.o
+convert: convert.c msg.o
 msg.o: msg.c
 conversion.o: conversion.c
