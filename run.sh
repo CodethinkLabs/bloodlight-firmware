@@ -6,8 +6,10 @@ declare DEVICE="$1"
 
 # Example acquisition:
 
-# Turn on the green LED (1 << 14)
-./tools/bl led        "$DEVICE" 0x4000
+# Turn on:
+# - the green LED    (1 << 14)
+# - an infra-red LED (1 <<  2)
+./tools/bl led        "$DEVICE" 0x4004
 
 # Accumulate 512 readings per sample
 ./tools/bl oversample "$DEVICE" 512
@@ -23,7 +25,7 @@ declare DEVICE="$1"
 # - 3.3 volt line: 240000
 # - 5.0 volt line: 240000
 # - Temperature:   180000
-./tools/bl offset     "$DEVICE" 280000 0 100000 0 240000 240000 180000
+./tools/bl offset     "$DEVICE" 1250000 0 500000 0 900000 900000 840000
 
 # Start an acquisition at 50 Hz with source mask 0x77 (enabling channels
 # 1, 2, 3, 5, 6, and 7).

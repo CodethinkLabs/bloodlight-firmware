@@ -29,6 +29,7 @@
 #include "delay.h"
 #include "error.h"
 #include "util.h"
+#include "fifo.h"
 #include "acq.h"
 #include "msg.h"
 #include "usb.h"
@@ -56,6 +57,8 @@
  */
 #define ACQ_OVERSAMPLE_MAX 512
 
+static struct fifo_channel fifo_channels[FIFO_CHANNEL_MAX];
+
 /** Current acquisition state. */
 enum acq_state {
 	ACQ_STATE_IDLE,
@@ -66,7 +69,9 @@ enum acq_state {
 struct {
 	enum acq_state state;
 
+	unsigned fifo_count;
 	uint32_t oversample;
+	uint8_t  sample_size;
 	uint16_t period;
 	uint16_t src_mask;
 	uint8_t  gain[BL_ACQ_PD__COUNT];
@@ -90,6 +95,8 @@ enum acq_opamp {
 	ACQ_OPAMP_4,
 };
 
+#define ACQ_DMA_MAX 128
+
 /** Per ADC globals. */
 static struct adc_table {
 	const uint32_t adc_addr;
@@ -104,13 +111,14 @@ static struct adc_table {
 	uint8_t channels[ADC_MAX_CHANNELS];
 	uint32_t sample[ADC_MAX_CHANNELS];
 
-	volatile bool msg_ready;
-	volatile uint16_t dma_buffer[ADC_MAX_CHANNELS * ACQ_OVERSAMPLE_MAX];
+	unsigned fifo_channel_index[ADC_MAX_CHANNELS];
 
-	uint8_t msg_channels;
-	uint8_t msg_channels_max;
-	union bl_msg_data msg;
-	uint16_t sample_data[MSG_CHANNELS_MAX];
+	unsigned samples_per_dma;
+	volatile uint16_t dma_buffer[ACQ_DMA_MAX];
+
+	uint32_t sample_data[MSG_CHANNELS_MAX];
+	uint32_t sample_count[MSG_CHANNELS_MAX];
+	
 } acq_adc_table[] = {
 	[ACQ_ADC_1] = {
 		.adc_addr = ADC1,
@@ -214,6 +222,22 @@ static const struct opamp_source_table {
 		.adc_channel = 3,
 	},
 };
+
+struct send_ctx {
+	union {
+		uint8_t raw[64];
+		union bl_msg_data msg;
+	};
+	unsigned cur_samples;
+	unsigned next_channel;
+};
+
+struct send_ctx send_ctx;
+
+static void bl_acq__reset_send_ctx(void)
+{
+	memset(&send_ctx, 0, sizeof(send_ctx));
+}
 
 /**
  * Make an ADC auto-calibrate.
@@ -336,6 +360,7 @@ void bl_acq_init(void)
 				&acq_g.opamp_trimoffsetn[i],
 				&acq_g.opamp_trimoffsetp[i]);
 	}
+	acq_g.sample_size = 2;
 }
 
 /**
@@ -355,7 +380,9 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 		acq_adc_table[i].channel_count = 0;
 	}
 
-	/* Set up ADC table acording to sources enabled by `src_mask`. */
+	acq_g.fifo_count = 0;
+
+	/* Set up ADC table according to sources enabled by `src_mask`. */
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_source_table); i++) {
 		uint16_t src_bit = (1 << i);
 
@@ -372,12 +399,19 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 					acq_g.opamp[i]].adc_channel;
 			}
 
+			fifo_channels[acq_g.fifo_count].offset   = acq_g.offset[i];
+			fifo_channels[acq_g.fifo_count].shift    = 2;
+			fifo_channels[acq_g.fifo_count].saturate = true;
+
 			enabled = true;
+			acq_adc_table[adc].fifo_channel_index[channels] = acq_g.fifo_count;
 			acq_adc_table[adc].enabled = true;
 			acq_adc_table[adc].src_mask |= src_bit;
 			acq_adc_table[adc].channels[channels] = channel;
 			acq_adc_table[adc].source[channels] = i;
 			acq_adc_table[adc].channel_count++;
+
+			acq_g.fifo_count++;
 		}
 	}
 
@@ -385,11 +419,9 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 		return BL_ERROR_BAD_SOURCE_MASK;
 	}
 
-	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
-		const uint8_t max = BL_ARRAY_LEN(acq_adc_table[i].sample_data);
-		const uint8_t channels = acq_adc_table[i].channel_count;
-
-		acq_adc_table[i].msg_channels_max = (max / channels) * channels;
+	// configure fifo
+	if (!fifo_config(acq_g.fifo_count, fifo_channels, acq_g.sample_size)) {
+		return BL_ERROR_FIFO_CONFIG_FAILED;
 	}
 
 	if (src_mask & (1 << BL_ACQ_TMP)) {
@@ -421,20 +453,19 @@ static void bl_acq__setup_adc(
 	adc_start_conversion_regular(adc);
 }
 
-static void bl_acq__init_sample_message(
-		struct adc_table *adc_info)
+static void bl_acq__init_sample_message_header(
+		union bl_msg_data *msg,
+		uint8_t sample_count)
 {
-	adc_info->msg.sample_data.type = BL_MSG_SAMPLE_DATA;
-	adc_info->msg.sample_data.count = adc_info->msg_channels_max;
-	adc_info->msg.sample_data.src_mask = adc_info->src_mask;
-	adc_info->msg_ready = false;
-	adc_info->msg_channels = 0;
+	msg->sample_data.type  = BL_MSG_SAMPLE_DATA;
+	msg->sample_data.count = sample_count;
 }
 
 static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 {
 	uint32_t addr = adc_info->dma_addr;
 	uint32_t chan = adc_info->dma_chan;
+	uint32_t channels = adc_info->channel_count;
 
 	dma_channel_reset(addr, chan);
 
@@ -449,8 +480,18 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 	dma_set_memory_size(addr, chan, DMA_CCR_MSIZE_16BIT);
 
 	dma_enable_transfer_complete_interrupt(addr, chan);
-	dma_set_number_of_data(addr, chan,
-			adc_info->channel_count * acq_g.oversample);
+
+	unsigned fifo_channel_size = FIFO_SIZE / acq_g.fifo_count / acq_g.sample_size;
+
+	/* Allow four DMAs before the fifo must be emptied, and ensure a
+	 * multiple of the number of channels for this ADC. */
+	adc_info->samples_per_dma = (fifo_channel_size / 4);
+	if (adc_info->samples_per_dma > ACQ_DMA_MAX) {
+		adc_info->samples_per_dma = ACQ_DMA_MAX;
+	}
+	adc_info->samples_per_dma = adc_info->samples_per_dma / channels * channels;
+
+	dma_set_number_of_data(addr, chan, adc_info->samples_per_dma);
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
 
@@ -477,53 +518,26 @@ static inline void bl_acq__clear_sample_array(struct adc_table *adc)
  */
 static inline void dma_interrupt_helper(struct adc_table *adc)
 {
-	uint32_t *sample = adc->sample;
+	uint32_t *sample_data = adc->sample_data;
+	uint32_t *sample_count = adc->sample_count;
 	volatile uint16_t *p = adc->dma_buffer;
+	unsigned channel = 0;
 
-	for (unsigned j = 0; j < acq_g.oversample; j++) {
-		for (unsigned i = 0; i < adc->channel_count; i++) {
-			sample[i] += *p++;
+	for (unsigned j = 0; j < adc->samples_per_dma; j++) {
+		sample_data[channel] += *p++;
+		sample_count[channel]++;
+
+		if (sample_count[channel] == acq_g.oversample) {
+			fifo_write(adc->fifo_channel_index[channel], sample_data[channel]);
+			sample_data[channel] = 0;
+			sample_count[channel] = 0;
+		}
+
+		channel++;
+		if (channel == adc->channel_count) {
+			channel = 0;
 		}
 	}
-
-	for (unsigned i = 0; i < adc->channel_count; i++) {
-		uint32_t offset = acq_g.offset[adc->source[i]];
-
-		if (acq_g.oversample > 64) {
-			/* The oversampling and offsetting basically zooms
-			 * into a section of the sample range.  When we zoom
-			 * in a lot, it is hard to find the signal by
-			 * offsetting because it can wander around a lot.
-			 * Here we divide by 4, which effecively lets us
-			 * see four times as much of the range.  It's only
-			 * really worth doing this for "large" oversamples. */
-			sample[i] >>= 2;
-		}
-		/* Use offset to get just the range we want
-		 * Reduce down to 0 or saturate to 0xFFFF if we're
-		 * outside of that range
-		 */
-		if (sample[i] > offset) {
-			sample[i] -= offset;
-		} else {
-			sample[i] = 0;
-		}
-		if (sample[i] > 0xFFFF)
-		{
-			sample[i] = 0xFFFF;
-		}
-
-		adc->msg.sample_data.data[adc->msg_channels + i] = sample[i];
-	}
-
-	adc->msg_channels += adc->channel_count;
-
-	if (adc->msg_channels == adc->msg_channels_max) {
-		adc->msg_ready = true;
-		adc->msg_channels = 0;
-	}
-
-	bl_acq__clear_sample_array(adc);
 }
 
 /** DMA interrupt handler */
@@ -823,7 +837,6 @@ static enum bl_error bl_acq_setup(
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		if (acq_adc_table[i].enabled) {
 			bl_acq__clear_sample_array(&acq_adc_table[i]);
-			bl_acq__init_sample_message(&acq_adc_table[i]);
 			bl_acq__setup_adc_dma(&acq_adc_table[i]);
 		}
 	}
@@ -837,6 +850,8 @@ enum bl_error bl_acq_start(
 		uint16_t src_mask)
 {
 	enum bl_error error;
+
+	bl_acq__reset_send_ctx();
 
 	if (acq_g.state != ACQ_STATE_IDLE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
@@ -866,10 +881,6 @@ enum bl_error bl_acq_abort(void)
 	timer_disable_counter(TIM1);
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
-		acq_adc_table[i].msg_ready = false;
-	}
-
-	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		adc_power_off(acq_adc_table[i].adc_addr);
 		adc_disable_dma(acq_adc_table[i].adc_addr);
 		dma_disable_transfer_complete_interrupt(
@@ -888,15 +899,37 @@ enum bl_error bl_acq_abort(void)
 	return BL_ERROR_NONE;
 }
 
+static void bl_acq__send(void)
+{
+	bl_acq__init_sample_message_header(&send_ctx.msg, send_ctx.cur_samples);
+	if (usb_send_message(&send_ctx.msg)) {
+		send_ctx.cur_samples = 0;
+	}
+}
+
 /* Exported function, documented in acq.h */
 void bl_acq_poll(void)
 {
-	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
-		if (acq_adc_table[i].msg_ready) {
-			if (usb_send_message(&acq_adc_table[i].msg)) {
-				acq_adc_table[i].msg_ready = false;
-				break;
-			}
+	if (acq_g.state != ACQ_STATE_ACTIVE) {
+		return;
+	}
+
+	while (true) {
+		/* if we have data we didn't manage to send last time, send it here first */
+		if (send_ctx.cur_samples == MSG_CHANNELS_MAX) {
+			bl_acq__send();
+			break;
+		}
+
+		if (!fifo_read(send_ctx.next_channel, &send_ctx.msg.sample_data.data[send_ctx.cur_samples])) {
+			break;
+		}
+
+		send_ctx.cur_samples++;
+		send_ctx.next_channel++;
+
+		if (send_ctx.next_channel == acq_g.fifo_count) {
+			send_ctx.next_channel = 0;
 		}
 	}
 }
