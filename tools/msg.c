@@ -171,7 +171,6 @@ bool bl_msg_parse(union bl_msg_data *msg)
 
 	case BL_MSG_SAMPLE_DATA:
 		msg->sample_data.count = bl_msg__read_unsigned(&ok, "Count");
-		msg->sample_data.src_mask = bl_msg__read_hex(&ok, "Source Mask");
 		ok |= (scanf("    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
 			msg->sample_data.data[i] = bl_msg__read_unsigned_no_field(&ok);
@@ -251,8 +250,6 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 	case BL_MSG_SAMPLE_DATA:
 		fprintf(file, "    Count: %u\n",
 				(unsigned) msg->sample_data.count);
-		fprintf(file, "    Source Mask: 0x%x\n",
-				(unsigned) msg->sample_data.src_mask);
 		fprintf(file, "    Data:\n");
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
 			fprintf(file, "    - %u\n",
