@@ -802,9 +802,6 @@ static enum bl_error bl_acq_setup(
 {
 	enum bl_error error;
 
-	/* This will always be false currently as MAX is 255, but we
-	 * may bring it down so worth leaving this here
-	 */
 	if (acq_g.oversample > ACQ_OVERSAMPLE_MAX) {
 		return BL_ERROR_OUT_OF_RANGE;
 	}
