@@ -72,7 +72,7 @@ struct {
 	unsigned fifo_count;
 	uint32_t oversample;
 	uint8_t  sample_size;
-	uint16_t period;
+	uint16_t frequency;
 	uint16_t src_mask;
 	uint8_t  gain[BL_ACQ_PD__COUNT];
 	uint8_t  opamp[BL_ACQ_PD__COUNT];
@@ -222,6 +222,47 @@ static const struct opamp_source_table {
 		.adc_channel = 3,
 	},
 };
+
+/** ADC SMP constants used for frequency setting.
+ *  We subtract 0.5 from the datasheet sampling time. */
+static struct acq_adc_smp_table {
+	const uint32_t smp;
+	const uint32_t time;
+} acq_adc_smp_table[] = {
+	{
+		.smp  = ADC_SMPR_SMP_1DOT5CYC,
+		.time = 1,
+	},
+	{
+		.smp  = ADC_SMPR_SMP_2DOT5CYC,
+		.time = 2,
+	},
+	{
+		.smp  = ADC_SMPR_SMP_4DOT5CYC,
+		.time = 4,
+	},
+	{
+		.smp  = ADC_SMPR_SMP_7DOT5CYC,
+		.time = 7,
+	},
+	{
+		.smp  = ADC_SMPR_SMP_19DOT5CYC,
+		.time = 19,
+	},
+	{
+		.smp  = ADC_SMPR_SMP_61DOT5CYC,
+		.time = 61,
+	},
+	{
+		.smp  = ADC_SMPR_SMP_181DOT5CYC,
+		.time = 181,
+	},
+	{
+		.smp  = ADC_SMPR_SMP_601DOT5CYC,
+		.time = 601,
+	},
+};
+#define ACQ_ADC_SMP_TABLE_COUNT 8
 
 struct send_ctx {
 	union {
@@ -431,16 +472,62 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 	return BL_ERROR_NONE;
 }
 
+static bool bl_acq__adc_is_fast(unsigned channel)
+{
+	return (channel <= 5);
+}
+
 static void bl_acq__setup_adc(
 		uint32_t adc,
 		uint8_t channels[],
 		uint8_t channel_count)
 {
+	uint32_t smp[channel_count];
+	uint32_t smp_time = 0;
+	for (unsigned i = 0; i < channel_count; i++) {
+		smp[i] = (bl_acq__adc_is_fast(channels[i]) ? 0 : 2);
+		smp_time += 13 + acq_adc_smp_table[smp[i]].time;
+	}
+
+	/* TODO: Get clock-speed properly. */
+	uint32_t clock = 72000000;
+	uint32_t smp_max = (clock / acq_g.frequency);
+
+	if (smp_time > smp_max) {
+		/* TODO: Report error if target frequency is not achievable. */
+	}
+
+	/* We continue to increase sampling time as long as we have headroom. */
+	bool changed = true;
+	while (changed) {
+		changed = false;
+
+		for (unsigned i = 0; i < channel_count; i++) {
+			if (smp[i] >= (ACQ_ADC_SMP_TABLE_COUNT - 1)) {
+				/* We're already at the max sampling period. */
+				continue;
+			}
+
+			uint32_t delta = acq_adc_smp_table[smp[i] + 1].time
+					- acq_adc_smp_table[smp[i]].time;
+			if ((smp_time + delta) <= smp_max)
+			{
+				smp[i]++;
+				smp_time += delta;
+				changed = true;
+			}
+		}
+	}
+
 	adc_power_on(adc);
 	adc_enable_dma_circular_mode(adc);
 	adc_enable_dma(adc);
 	adc_set_single_conversion_mode(adc);
-	adc_set_sample_time_on_all_channels(adc, ADC_SMPR_SMP_601DOT5CYC);
+
+	for (unsigned i = 0; i < channel_count; i++) {
+		adc_set_sample_time(adc, channels[i],
+				acq_adc_smp_table[smp[i]].smp);
+	}
 
 	adc_set_regular_sequence(adc, channel_count, channels);
 
@@ -788,7 +875,7 @@ enum bl_error bl_acq_set_fixed_offset_setting(
 /**
  * Set the hardware up for an acquisition.
  *
- * \param[in]  frequency   Sample period in Hz.
+ * \param[in]  frequency   Sample frequency in Hz.
  * \param[in]  prescale    Sample timer prescale.
  * \param[in]  oversample  Number of bits to oversample by.
  * \param[in]  src_mask    Mask of sources to enable.
@@ -819,6 +906,7 @@ static enum bl_error bl_acq_setup(
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}
+	acq_g.frequency = frequency;
 
 	error = bl_acq_set_gains(acq_g.gain);
 	if (error != BL_ERROR_NONE) {
