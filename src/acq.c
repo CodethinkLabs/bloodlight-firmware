@@ -47,16 +47,6 @@
 
 #define ADC_MAX_CHANNELS 8
 
-/**
- * Oversample multiplier
- *
- * The samples from the ADC are 12-bit. We combine <multiplier> samples
- * to build up a higher precision sample. Samples are stored as 16-bit
- * values, so if the combined value reaches more than 65535, then
- * 65535 will be returned. Offsets can be used to mitigate this.
- */
-#define ACQ_OVERSAMPLE_MAX 512
-
 static struct fifo_channel fifo_channels[FIFO_CHANNEL_MAX];
 
 /** Current acquisition state. */
@@ -853,7 +843,7 @@ enum bl_error bl_acq_set_oversample_setting(
 	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
-	if (oversample == 0 || oversample > ACQ_OVERSAMPLE_MAX) {
+	if (oversample == 0) {
 		return  BL_ERROR_OUT_OF_RANGE;
 	}
 
@@ -887,10 +877,6 @@ static enum bl_error bl_acq_setup(
 		uint16_t src_mask)
 {
 	enum bl_error error;
-
-	if (acq_g.oversample > ACQ_OVERSAMPLE_MAX) {
-		return BL_ERROR_OUT_OF_RANGE;
-	}
 
 	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
 		if (acq_g.gain[i] == 0) {
