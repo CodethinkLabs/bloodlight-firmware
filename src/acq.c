@@ -419,7 +419,6 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 		return BL_ERROR_BAD_SOURCE_MASK;
 	}
 
-	// configure fifo
 	if (!fifo_config(acq_g.fifo_count, fifo_channels, acq_g.sample_size)) {
 		return BL_ERROR_FIFO_CONFIG_FAILED;
 	}
