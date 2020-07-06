@@ -189,7 +189,7 @@ static const struct source_table {
 	},
 	[BL_ACQ_TMP] = {
 		.adc = ACQ_ADC_1,
-		.adc_channel = 16,
+		.adc_channel = ADC_CHANNEL_TEMP,
 	},
 };
 
