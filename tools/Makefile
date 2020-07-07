@@ -8,4 +8,3 @@ clean:
 bl: bl.c msg.o
 convert: convert.c msg.o
 msg.o: msg.c
-conversion.o: conversion.c
