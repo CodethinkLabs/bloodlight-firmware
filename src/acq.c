@@ -82,6 +82,11 @@ struct acq_chan_cfg {
 	bool     saturate;
 
 	uint8_t  opamp;
+
+	uint32_t sample;
+	uint32_t sample_min;
+	uint32_t sample_max;
+	uint32_t sample_count;
 };
 
 /** Acquisition globals. */
@@ -115,15 +120,11 @@ static struct adc_table {
 	uint16_t src_mask;
 	uint8_t channel_count;
 	uint8_t channels[ADC_MAX_CHANNELS];
-	uint32_t sample[ADC_MAX_CHANNELS];
 
 	unsigned fifo_channel_index[ADC_MAX_CHANNELS];
 
 	unsigned samples_per_dma;
 	volatile uint16_t dma_buffer[ACQ_DMA_MAX];
-
-	uint32_t sample_data[MSG_CHANNELS_MAX];
-	uint32_t sample_count[MSG_CHANNELS_MAX];
 
 } acq_adc_table[] = {
 	[ACQ_ADC_1] = {
@@ -593,35 +594,31 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 }
 
 /**
- * Helper to clear the temporary 32-bit sample array.
- *
- * \param[in]  adc  The adc table entry to clear the sample array for.
- */
-static inline void bl_acq__clear_sample_array(struct adc_table *adc)
-{
-	memset(adc->sample, 0x00, sizeof(adc->sample));
-}
-
-/**
  * DMA interrupt handler helper
  *
  * \param[in]  adc  ADC table entry for the ADC that the DMA interrupt is for.
  */
 static inline void dma_interrupt_helper(struct adc_table *adc)
 {
-	uint32_t *sample_data = adc->sample_data;
-	uint32_t *sample_count = adc->sample_count;
 	volatile uint16_t *p = adc->dma_buffer;
+
 	unsigned channel = 0;
+	for (unsigned i = 0; i < adc->samples_per_dma; i++) {
+		struct acq_chan_cfg *chan = &acq_g.chan[adc->source[channel]];
 
-	for (unsigned j = 0; j < adc->samples_per_dma; j++) {
-		sample_data[channel] += *p++;
-		sample_count[channel]++;
+		chan->sample += *p++;
+		chan->sample_count++;
 
-		if (sample_count[channel] == acq_g.oversample) {
-			fifo_write(adc->fifo_channel_index[channel], sample_data[channel]);
-			sample_data[channel] = 0;
-			sample_count[channel] = 0;
+		if (chan->sample_count == acq_g.oversample) {
+			fifo_write(adc->fifo_channel_index[channel], chan->sample);
+
+			if (chan->sample > chan->sample_max)
+				chan->sample_max = chan->sample;
+			if (chan->sample < chan->sample_min)
+				chan->sample_min = chan->sample;
+
+			chan->sample = 0;
+			chan->sample_count = 0;
 		}
 
 		channel++;
@@ -911,7 +908,6 @@ static enum bl_error bl_acq_setup(
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		if (acq_adc_table[i].enabled) {
-			bl_acq__clear_sample_array(&acq_adc_table[i]);
 			bl_acq__setup_adc_dma(&acq_adc_table[i]);
 		}
 	}
@@ -926,6 +922,14 @@ enum bl_error bl_acq_start(
 		uint32_t oversample)
 {
 	enum bl_error error;
+
+	/* Clear sample min/max variables. */
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		acq_g.chan[i].sample       = 0;
+		acq_g.chan[i].sample_min   = 0xFFFFFFFF;
+		acq_g.chan[i].sample_max   = 0;
+		acq_g.chan[i].sample_count = 0;
+	}
 
 	bl_acq__reset_send_ctx();
 
