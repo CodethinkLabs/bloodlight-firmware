@@ -49,33 +49,21 @@
 
 static struct fifo_channel fifo_channels[FIFO_CHANNEL_MAX];
 
+#define IS_POWER_OF_TWO(x) (((x) & ((x) - 1)) == 0)
+
 /** Current acquisition state. */
 enum acq_state {
 	ACQ_STATE_IDLE,
 	ACQ_STATE_ACTIVE,
 };
 
-/** Acquisition globals. */
-struct {
-	enum acq_state state;
-
-	unsigned fifo_count;
-	uint32_t oversample;
-	uint8_t  sample_size;
-	uint16_t frequency;
-	uint16_t src_mask;
-	uint8_t  gain[BL_ACQ_PD__COUNT];
-	uint8_t  opamp[BL_ACQ_PD__COUNT];
-	uint8_t  opamp_trimoffsetn[BL_ACQ_PD__COUNT];
-	uint8_t  opamp_trimoffsetp[BL_ACQ_PD__COUNT];
-	uint32_t offset[BL_ACQ__SRC_COUNT];
-} acq_g;
-
 enum acq_adc {
 	ACQ_ADC_1,
 	ACQ_ADC_2,
 	ACQ_ADC_3,
 	ACQ_ADC_4,
+
+	ACQ_ADC__COUNT
 };
 
 enum acq_opamp {
@@ -83,7 +71,35 @@ enum acq_opamp {
 	ACQ_OPAMP_2,
 	ACQ_OPAMP_3,
 	ACQ_OPAMP_4,
+
+	ACQ_OPAMP__COUNT
 };
+
+struct acq_chan_cfg {
+	uint8_t  gain;
+	uint32_t offset;
+	uint8_t  shift;
+	bool     saturate;
+
+	uint8_t  opamp;
+};
+
+/** Acquisition globals. */
+struct {
+	enum acq_state state;
+
+	unsigned fifo_count;
+
+	uint16_t frequency;
+	uint32_t oversample;
+	uint8_t  sample_size;
+	uint16_t src_mask;
+
+	struct acq_chan_cfg chan[BL_ACQ__SRC_COUNT];
+
+	uint8_t  opamp_trimoffsetn[ACQ_OPAMP__COUNT];
+	uint8_t  opamp_trimoffsetp[ACQ_OPAMP__COUNT];
+} acq_g;
 
 #define ACQ_DMA_MAX 128
 
@@ -108,7 +124,7 @@ static struct adc_table {
 
 	uint32_t sample_data[MSG_CHANNELS_MAX];
 	uint32_t sample_count[MSG_CHANNELS_MAX];
-	
+
 } acq_adc_table[] = {
 	[ACQ_ADC_1] = {
 		.adc_addr = ADC1,
@@ -422,17 +438,16 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 			uint8_t channel = acq_source_table[i].adc_channel;
 			uint8_t channels = acq_adc_table[adc].channel_count;
 
-			if ((i < BL_ARRAY_LEN(acq_g.gain))
-					&& (acq_g.gain[i] > 1)) {
+			if (acq_g.chan[i].gain > 1) {
 				adc = acq_opamp_source_table[
-					acq_g.opamp[i]].adc;
+					acq_g.chan[i].opamp].adc;
 				channel = acq_opamp_source_table[
-					acq_g.opamp[i]].adc_channel;
+					acq_g.chan[i].opamp].adc_channel;
 			}
 
-			fifo_channels[acq_g.fifo_count].offset   = acq_g.offset[i];
-			fifo_channels[acq_g.fifo_count].shift    = 2;
-			fifo_channels[acq_g.fifo_count].saturate = true;
+			fifo_channels[acq_g.fifo_count].offset   = acq_g.chan[i].offset;
+			fifo_channels[acq_g.fifo_count].shift    = acq_g.chan[i].shift;
+			fifo_channels[acq_g.fifo_count].saturate = acq_g.chan[i].saturate;
 
 			enabled = true;
 			acq_adc_table[adc].fifo_channel_index[channels] = acq_g.fifo_count;
@@ -653,15 +668,14 @@ void dma2_channel2_isr(void)
 }
 
 /**
- * Set up the photodiode gains.
+ * Apply up the source opamp gains.
  *
- * \param[in]  gain  Gain value for each photodiode.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
-static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
+static enum bl_error bl_acq_apply_gains(void)
 {
 	uint8_t opamp_avail_mask = 0xf;
-	uint8_t opamp_alloc_mask= 0x0;
+	uint8_t opamp_alloc_mask = 0x0;
 
 	/* We can't use OPAMP1 unless 3V3 divider is desoldered. */
 	opamp_avail_mask &= ~(1U << ACQ_OPAMP_1);
@@ -669,42 +683,54 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 	/* We can't use OPAMP3 because it clashes with LED1. */
 	opamp_avail_mask &= ~(1U << ACQ_OPAMP_3);
 
-	uint8_t  opamp_alloc[BL_ACQ_PD__COUNT];
-	uint8_t  opamp_gain[BL_ACQ_OPAMP__COUNT];
-	uint32_t opamp_vpsel[BL_ACQ_OPAMP__COUNT];
+	uint8_t  opamp_alloc[BL_ACQ__SRC_COUNT];
+	uint8_t  opamp_gain[ACQ_OPAMP__COUNT];
+	uint32_t opamp_vpsel[ACQ_OPAMP__COUNT];
 
 	static const uint32_t vpsel_matrix
-			[BL_ACQ_OPAMP__COUNT][BL_ACQ_PD__COUNT] = {
+			[ACQ_OPAMP__COUNT][BL_ACQ__SRC_COUNT] = {
 		[ACQ_OPAMP_1] = {
 			0,
 			OPAMP1_CSR_VP_SEL_PA3,
 			OPAMP1_CSR_VP_SEL_PA7,
-			OPAMP1_CSR_VP_SEL_PA5 },
+			OPAMP1_CSR_VP_SEL_PA5,
+			0,
+			0,
+			0 },
 		[ACQ_OPAMP_2] = {
 			0,
 			0,
 			OPAMP2_CSR_VP_SEL_PA7,
+			0,
+			0,
+			0,
 			0 },
 		[ACQ_OPAMP_3] = {
 			0,
 			0,
 			0,
-			OPAMP3_CSR_VP_SEL_PA5 },
+			OPAMP3_CSR_VP_SEL_PA5,
+			0,
+			0,
+			0 },
 		[ACQ_OPAMP_4] = {
 			OPAMP4_CSR_VP_SEL_PA4,
+			0,
+			0,
+			0,
 			0,
 			0,
 			0 },
 	};
 
-	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-		if ((gain[i] < 1) || (gain[i] > 16)
-				|| (gain[i] & (gain[i] - 1))) {
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		if ((acq_g.chan[i].gain < 1) || (acq_g.chan[i].gain > 16)
+				|| !IS_POWER_OF_TWO(acq_g.chan[i].gain)) {
 			return BL_ERROR_OUT_OF_RANGE;
 		}
 
 		opamp_alloc[i] = 0;
-		if (gain[i] > 1) {
+		if (acq_g.chan[i].gain > 1) {
 			uint8_t opamp_mask = acq_source_table[i].opamp_mask;
 			opamp_mask &= opamp_avail_mask;
 
@@ -713,13 +739,13 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 			}
 
 			/* Pick the first available opamp. */
-			for (unsigned j = 0; j < BL_ACQ_OPAMP__COUNT; j++) {
+			for (unsigned j = 0; j < ACQ_OPAMP__COUNT; j++) {
 				if ((opamp_mask & (1U << j)) == 0) {
 					continue;
 				}
 
 				opamp_alloc[i] = j;
-				opamp_gain[j]  = gain[i];
+				opamp_gain[j]  = acq_g.chan[i].gain;
 				opamp_vpsel[j] = vpsel_matrix[j][i];
 				break;
 			}
@@ -728,7 +754,7 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 		}
 	}
 
-	for (unsigned i = 0; i < BL_ACQ_OPAMP__COUNT; i++) {
+	for (unsigned i = 0; i < ACQ_OPAMP__COUNT; i++) {
 		uint32_t opamp = acq_opamp_source_table[i].opamp_addr;
 
 		if ((opamp_alloc_mask & (1U << i)) == 0) {
@@ -766,9 +792,8 @@ static enum bl_error bl_acq_set_gains(const uint8_t gain[BL_ACQ_PD__COUNT])
 		opamp_vp_select(opamp, opamp_vpsel[i]);
 	}
 
-	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-		acq_g.gain[i]  = gain[i];
-		acq_g.opamp[i] = opamp_alloc[i];
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		acq_g.chan[i].opamp = opamp_alloc[i];
 	}
 
 	return BL_ERROR_NONE;
@@ -824,41 +849,21 @@ static enum bl_error bl_acq_setup_timer(
 	return BL_ERROR_NONE;
 }
 
-enum bl_error bl_acq_set_gains_setting(
-		const uint8_t gain[BL_ACQ_PD__COUNT])
+enum bl_error bl_acq_channel_conf(
+		uint8_t  channel,
+		uint8_t  gain,
+		uint8_t  shift,
+		uint32_t offset,
+		bool     saturate)
 {
 	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
-	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++)
-	{
-		acq_g.gain[i] = gain[i];
-	}
-	return BL_ERROR_NONE;
-}
+	acq_g.chan[channel].gain = gain;
+	acq_g.chan[channel].shift = shift;
+	acq_g.chan[channel].offset = offset;
+	acq_g.chan[channel].saturate = saturate;
 
-enum bl_error bl_acq_set_oversample_setting(
-		uint32_t  oversample)
-{
-	if (acq_g.state == ACQ_STATE_ACTIVE) {
-		return BL_ERROR_ACTIVE_ACQUISITION;
-	}
-	if (oversample == 0) {
-		return  BL_ERROR_OUT_OF_RANGE;
-	}
-
-	acq_g.oversample = oversample;
-	return BL_ERROR_NONE;
-}
-
-enum bl_error bl_acq_set_fixed_offset_setting(
-		const uint32_t offset[BL_ACQ__SRC_COUNT])
-{
-	if (acq_g.state == ACQ_STATE_ACTIVE) {
-		return BL_ERROR_ACTIVE_ACQUISITION;
-	}
-
-	memcpy(acq_g.offset, offset, sizeof(acq_g.offset));
 	return BL_ERROR_NONE;
 }
 
@@ -866,35 +871,35 @@ enum bl_error bl_acq_set_fixed_offset_setting(
  * Set the hardware up for an acquisition.
  *
  * \param[in]  frequency   Sample frequency in Hz.
- * \param[in]  prescale    Sample timer prescale.
  * \param[in]  oversample  Number of bits to oversample by.
  * \param[in]  src_mask    Mask of sources to enable.
- * \param[in]  gain        Gain value for each photodiode.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 static enum bl_error bl_acq_setup(
 		uint16_t frequency,
+		uint32_t oversample,
 		uint16_t src_mask)
 {
 	enum bl_error error;
 
-	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-		if (acq_g.gain[i] == 0) {
-			acq_g.gain[i] = 1;
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		if (acq_g.chan[i].gain == 0) {
+			acq_g.chan[i].gain = 1;
 		}
 	}
 
 	/* Calculate prescale required with current oversample settings */
 	uint32_t period, prescale;
-	bl_frequency_to_acq_params(frequency, acq_g.oversample, &prescale, &period);
+	bl_frequency_to_acq_params(frequency, oversample, &prescale, &period);
 
 	error = bl_acq_setup_timer(period, prescale);
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}
-	acq_g.frequency = frequency;
+	acq_g.frequency  = frequency;
+	acq_g.oversample = oversample;
 
-	error = bl_acq_set_gains(acq_g.gain);
+	error = bl_acq_apply_gains();
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}
@@ -917,7 +922,8 @@ static enum bl_error bl_acq_setup(
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
-		uint16_t src_mask)
+		uint16_t src_mask,
+		uint32_t oversample)
 {
 	enum bl_error error;
 
@@ -927,7 +933,7 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-	error = bl_acq_setup(frequency, src_mask);
+	error = bl_acq_setup(frequency, oversample, src_mask);
 	if (error != BL_ERROR_NONE) {
 		return error;
 	}

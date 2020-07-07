@@ -41,24 +41,6 @@ volatile bool killed;
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
-static inline bool read_uint32_t(
-		const char *value,
-		uint32_t *out)
-{
-	unsigned long long temp;
-	char *end = NULL;
-
-	errno = 0;
-	temp = strtoull(value, &end, 0);
-
-	if (end == value || errno == ERANGE || temp > UINT32_MAX) {
-		return false;
-	}
-
-	*out = (uint32_t)temp;
-	return true;
-}
-
 static inline bool check_fit(uint32_t value, size_t target_size)
 {
 	uint32_t target_max;
@@ -73,6 +55,31 @@ static inline bool check_fit(uint32_t value, size_t target_size)
 
 	return true;
 }
+
+static inline bool read_sized_uint(
+		const char *value,
+		uint32_t *out,
+		size_t target_size)
+{
+	unsigned long long temp;
+	char *end = NULL;
+
+	errno = 0;
+	temp = strtoull(value, &end, 0);
+
+	if (end == value || errno == ERANGE || temp > UINT32_MAX) {
+		return false;
+	}
+
+	if (!check_fit(temp, target_size)) {
+		return false;
+	}
+
+	*out = (uint32_t)temp;
+	return true;
+}
+
+
 
 static inline int64_t time_diff_ms(
 		struct timespec *time_start,
@@ -96,7 +103,7 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 		return -errno;
 	}
 
-	while (total_read != size) {
+	while (total_read != size && !killed) {
 		ssize_t chunk_read;
 		struct pollfd pfd = {
 			.fd = fd,
@@ -243,7 +250,7 @@ static int bl_cmd_send(
 		fprintf(stderr, "Failed write message to '%s'\n", dev_path);
 		ret = EXIT_FAILURE;
 	}
-	
+
 	return ret;
 }
 
@@ -275,13 +282,10 @@ static int bl_cmd_led(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (read_uint32_t(argv[ARG_LED_MASK], &led_mask) == false) {
+	if (read_sized_uint(argv[ARG_LED_MASK],
+	                    &led_mask,
+						sizeof(msg.led.led_mask)) == false) {
 		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
-	}
-
-	if (check_fit(led_mask, sizeof(msg.led.led_mask)) == false) {
-		fprintf(stderr, "Value too large for message.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -300,196 +304,103 @@ static int bl_cmd_led(int argc, char *argv[])
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 	bl_close_device(dev_fd);
 	return ret;
-	
+
 }
 
-static int bl_cmd_gains(int argc, char *argv[])
+static int bl_cmd_channel_conf(int argc, char *argv[])
 {
 	union bl_msg_data msg = {
-		.gain = {
-			.type = BL_MSG_SET_GAINS,
+		.channel_conf = {
+			.type = BL_MSG_CHANNEL_CONF,
 		}
 	};
-	unsigned arg_gain_count;
+	unsigned arg_optional_count;
+	uint32_t saturate;
+	uint32_t channel;
+	uint32_t offset;
+	uint32_t shift;
+	uint32_t gain;
 	int ret;
 	int dev_fd;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
+		ARG_CHANNEL,
+		ARG_GAIN,
+		ARG_OFFSET,
+		ARG_SHIFT,
+		ARG_SATURATE,
 		ARG__COUNT,
 	};
 
-	arg_gain_count = argc - ARG__COUNT;
-	if (argc < ARG__COUNT || arg_gain_count > BL_ACQ_PD__COUNT) {
+	arg_optional_count = argc - ARG_OFFSET;
+	if (argc < (ARG_OFFSET) || argc > ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
-				"  \t[GAIN]\n",
+				"  \t<CHANNEL> \\\n"
+				"  \t<GAIN> \\\n"
+				"  \t[OFFSET] \\\n"
+				"  \t[SHIFT] \\\n"
+				"  \t[SATURATE]\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "GAIN values which are not provided, "
-				"will default to 1 (no amplification).\n");
 		fprintf(stderr, "\n");
 		fprintf(stderr, "A GAIN value must be a power of two"
 				" up to 16.\n");
 		fprintf(stderr, "\n");
-		fprintf(stderr, "Up to %u GAIN values may be provided.\n",
-				(unsigned) BL_ACQ_PD__COUNT);
-		fprintf(stderr, "If a single GAIN value is given it is used "
-				"for all photodiodes.\n");
-		return EXIT_FAILURE;
-	}
-
-	
-	for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-		uint32_t gain;
-
-		if (arg_gain_count == 0) {
-			gain = 1;
-		} else {
-			unsigned arg = i % arg_gain_count;
-			const char *arg_s = argv[ARG__COUNT + arg];
-
-			if (!read_uint32_t(arg_s, &gain)) {
-				fprintf(stderr, "Failed to parse value.\n");
-				return EXIT_FAILURE;
-			}
-
-			if (!check_fit(gain, sizeof(gain))) {
-				fprintf(stderr, "Value too large for message.\n");
-				return EXIT_FAILURE;
-			}
-		}
-
-		msg.gain.gain[i] = gain;
-	}
-
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
-	if (dev_fd == -1) {
-		return EXIT_FAILURE;
-	}
-
-	bl_msg_print(&msg, stdout);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
-		bl_close_device(dev_fd);
-		return ret;
-	}
-	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
-	return ret;
-	
-}
-
-
-static int bl_cmd_oversample(int argc, char *argv[])
-{
-	union bl_msg_data msg = {
-		.oversample = {
-			.type = BL_MSG_SET_OVERSAMPLE,
-		}
-	};
-	uint32_t oversample;
-	int ret;
-	int dev_fd;
-	enum {
-		ARG_PROG,
-		ARG_CMD,
-		ARG_DEV_PATH,
-		ARG_OVERSAMPLE,
-		ARG__COUNT,
-	};
-
-	
-	if (argc != ARG__COUNT) {
-		fprintf(stderr, "Usage:\n");
-		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
-				"  \t<OVERSAMPLE>\n",
-				argv[ARG_PROG],
-				argv[ARG_CMD]);
+		fprintf(stderr, "Provide the amount to subtract from accumulated values in-chip,\n");
+		fprintf(stderr, "optional shift and saturate can be used to fit values to 16-bit.\n");
 		fprintf(stderr, "\n");
-		fprintf(stderr, "Provide the numer of samples to read per reported sample\n");
+		fprintf(stderr, "If an OFFSET is not provided, "
+				"it will default to 0 (no offset).\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "If a SHIFT value is not provided, "
+				"it will default to 0 (no shift).\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "If a SATURATE flag is not provided, "
+				"it will default to 1 (saturation enabled).\n");
 		return EXIT_FAILURE;
 	}
 
-	if (read_uint32_t(argv[ARG_OVERSAMPLE], &oversample) == false){
+	if (!read_sized_uint(argv[ARG_CHANNEL], &channel, sizeof(msg.channel_conf.channel))) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
-	msg.oversample.oversample = oversample;
+	msg.channel_conf.channel = channel;
 
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
-	if (dev_fd == -1) {
+	if (!read_sized_uint(argv[ARG_GAIN], &gain, sizeof(msg.channel_conf.gain))) {
+		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
+	msg.channel_conf.gain = gain;
 
-	bl_msg_print(&msg, stdout);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
-		bl_close_device(dev_fd);
-		return ret;
-	}
-	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
-	return ret;
-	
-}
-
-static int bl_cmd_offset(int argc, char *argv[])
-{
-	union bl_msg_data msg = {
-		.offset = {
-			.type = BL_MSG_SET_FIXEDOFFSET,
+	switch (arg_optional_count)
+	{
+	case 3:
+		if (!read_sized_uint(argv[ARG_SATURATE], &saturate, sizeof(msg.channel_conf.saturate))) {
+			fprintf(stderr, "Failed to parse saturate value.\n");
+			return EXIT_FAILURE;
 		}
-	};
-	unsigned arg_offset_count;
-	int ret;
-	int dev_fd;
-	enum {
-		ARG_PROG,
-		ARG_CMD,
-		ARG_DEV_PATH,
-		ARG__COUNT,
-	};
+		msg.channel_conf.saturate = saturate;
+		/* Fall through */
 
-	arg_offset_count = argc - ARG__COUNT;
-	if (argc < ARG__COUNT || arg_offset_count > BL_ACQ__SRC_COUNT) {
-		fprintf(stderr, "Usage:\n");
-		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
-				"  \t[OFFSET]*\n",
-				argv[ARG_PROG],
-				argv[ARG_CMD]);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "Provide the amount to subtract from accumulated values in-chip\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "OFFSET values which are not provided, "
-				"will default to 0 (no offset).\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "Up to %u OFFSET values may be provided.\n",
-				(unsigned) BL_ACQ__SRC_COUNT);
-		return EXIT_FAILURE;
-	}
-
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		uint32_t offset;
-
-		if (arg_offset_count == 0) {
-			offset = 0;
-		} else {
-			unsigned arg = i % arg_offset_count;
-			const char *arg_s = argv[ARG__COUNT + arg];
-
-			if (!read_uint32_t(arg_s, &offset)) {
-				fprintf(stderr, "Failed to parse value.\n");
-				return EXIT_FAILURE;
-			}
+	case 2:
+		if (!read_sized_uint(argv[ARG_SHIFT], &shift, sizeof(msg.channel_conf.shift))) {
+			fprintf(stderr, "Failed to parse shift value.\n");
+			return EXIT_FAILURE;
 		}
+		msg.channel_conf.shift = shift;
+		/* Fall through */
 
-		msg.offset.offset[i] = offset;
+	case 1:
+		if (!read_sized_uint(argv[ARG_OFFSET], &offset, sizeof(msg.channel_conf.offset))) {
+			fprintf(stderr, "Failed to parse offset value.\n");
+			return EXIT_FAILURE;
+		}
+		msg.channel_conf.offset = offset;
+		break;
 	}
 
 	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
@@ -573,7 +484,7 @@ static int bl_cmd_start_stream(
 		}
 	};
 	uint32_t src_mask;
-	uint32_t frequency;
+	uint32_t frequency, oversample;
 	int ret;
 	int dev_fd;
 	enum {
@@ -581,6 +492,7 @@ static int bl_cmd_start_stream(
 		ARG_CMD,
 		ARG_DEV_PATH,
 		ARG_FREQUENCY,
+		ARG_OVERSAMPLE,
 		ARG_SRC_MASK,
 		ARG__COUNT,
 	};
@@ -590,35 +502,41 @@ static int bl_cmd_start_stream(
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH> \\\n"
 				"  \t<FREQUENCY> \\\n"
+				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
 		fprintf(stderr, "\n");
 		fprintf(stderr, "FREQUENCY is the sampling rate in Hz.\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "OVERSAMPLE is the number of samples to sum.\n");
 		return EXIT_FAILURE;
 	}
 
-	if (read_uint32_t(argv[ARG_SRC_MASK],   &src_mask)   == false ||
-	    read_uint32_t(argv[ARG_FREQUENCY],  &frequency)  == false) {
+	if (read_sized_uint(argv[ARG_SRC_MASK],
+	                    &src_mask,
+						sizeof(msg.start.src_mask)) == false ||
+	    read_sized_uint(argv[ARG_FREQUENCY],
+		                &frequency,
+						sizeof(msg.start.frequency)) == false ||
+		read_sized_uint(argv[ARG_OVERSAMPLE],
+		                &oversample,
+						sizeof(msg.start.oversample)) == false ) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
 
-	if (check_fit(src_mask,   sizeof(msg.start.src_mask))   == false) {
-		fprintf(stderr, "Value too large for message.\n");
-		return EXIT_FAILURE;
-	}
-
-	msg.start.frequency = frequency;
-	msg.start.src_mask = src_mask;
+	msg.start.frequency  = frequency;
+	msg.start.oversample = oversample;
+	msg.start.src_mask   = src_mask;
 
 	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
-	
+
 	bl_msg_print(&msg, stdout);
-	
+
 	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
 
 	if (ret != BL_ERROR_NONE) {
@@ -663,6 +581,11 @@ static const struct bl_cmd {
 		.fn = bl_cmd_led,
 	},
 	{
+		.name = "chancfg",
+		.help = "Set configuration for a given channel",
+		.fn = bl_cmd_channel_conf
+	},
+	{
 		.name = "start",
 		.help = "Start an acquisition",
 		.fn = bl_cmd_start,
@@ -672,22 +595,6 @@ static const struct bl_cmd {
 		.help = "Abort an acquisition",
 		.fn = bl_cmd_abort,
 	},
-	{
-		.name = "gains",
-		.help = "set gains",
-		.fn = bl_cmd_gains,
-	},
-	{
-		.name = "oversample",
-		.help = "set oversamples",
-		.fn = bl_cmd_oversample,
-	},
-	{
-		.name = "offset",
-		.help = "set offset",
-		.fn = bl_cmd_offset,
-	},
-
 };
 
 static void bl_cmd_help(const char *prog)

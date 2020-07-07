@@ -33,14 +33,12 @@ static char buffer[BUFFER_LEN + 1];
 
 /** Message type to string mapping, */
 static const char *msg_types[] = {
-	[BL_MSG_RESPONSE]        = "Response",
-	[BL_MSG_LED]             = "LED",
-	[BL_MSG_START]           = "Start",
-	[BL_MSG_ABORT]           = "Abort",
-	[BL_MSG_SAMPLE_DATA]     = "Sample Data",
-	[BL_MSG_SET_GAINS]       = "Set Gains",
-	[BL_MSG_SET_OVERSAMPLE]  = "Set Oversample",
-	[BL_MSG_SET_FIXEDOFFSET] = "Set Fixed Offset",
+	[BL_MSG_RESPONSE]     = "Response",
+	[BL_MSG_LED]          = "LED",
+	[BL_MSG_START]        = "Start",
+	[BL_MSG_ABORT]        = "Abort",
+	[BL_MSG_SAMPLE_DATA]  = "Sample Data",
+	[BL_MSG_CHANNEL_CONF] = "Channel Config",
 };
 
 static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
@@ -165,8 +163,9 @@ bool bl_msg_parse(union bl_msg_data *msg)
 		break;
 
 	case BL_MSG_START:
-		msg->start.frequency = bl_msg__read_unsigned(&ok, "Frequency");
-		msg->start.src_mask = bl_msg__read_hex(&ok, "Source Mask");
+		msg->start.frequency  = bl_msg__read_unsigned(&ok, "Frequency");
+		msg->start.oversample = bl_msg__read_unsigned(&ok, "Oversample");
+		msg->start.src_mask   = bl_msg__read_hex(&ok, "Source Mask");
 		break;
 
 	case BL_MSG_SAMPLE_DATA:
@@ -177,22 +176,12 @@ bool bl_msg_parse(union bl_msg_data *msg)
 		}
 		break;
 
-	case BL_MSG_SET_GAINS:
-		ok |= (scanf("    Gains:\n") == 0);
-		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-			msg->gain.gain[i] = bl_msg__read_unsigned_no_field(&ok);
-		}
-		break;
-
-	case BL_MSG_SET_OVERSAMPLE:
-		msg->oversample.oversample = bl_msg__read_unsigned(&ok, "Oversample");
-		break;
-
-	case BL_MSG_SET_FIXEDOFFSET:
-		ok |= (scanf("    Offset:\n") == 0);
-		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-			msg->gain.gain[i] = bl_msg__read_unsigned_no_field(&ok);
-		}
+	case BL_MSG_CHANNEL_CONF:
+		msg->channel_conf.channel  = bl_msg__read_unsigned(&ok, "Channel");
+		msg->channel_conf.gain     = bl_msg__read_unsigned(&ok, "Gain");
+		msg->channel_conf.shift    = bl_msg__read_unsigned(&ok, "Shift");
+		msg->channel_conf.offset   = bl_msg__read_unsigned(&ok, "Offset");
+		msg->channel_conf.saturate = bl_msg__read_unsigned(&ok, "Saturate");
 		break;
 
 	default:
@@ -243,6 +232,8 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 	case BL_MSG_START:
 		fprintf(file, "    Frequency: %u\n",
 				(unsigned) msg->start.frequency);
+		fprintf(file, "    Oversample: %u\n",
+				(unsigned) msg->start.oversample);
 		fprintf(file, "    Source Mask: 0x%x\n",
 				(unsigned) msg->start.src_mask);
 		break;
@@ -257,24 +248,17 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 		}
 		break;
 
-	case BL_MSG_SET_GAINS:
-		fprintf(file, "    Gains:\n");
-		for (unsigned i = 0; i < BL_ACQ_PD__COUNT; i++) {
-			fprintf(file, "    - %u\n",
-				(unsigned) msg->gain.gain[i]);
-		}
-		break;
-
-	case BL_MSG_SET_OVERSAMPLE:
-		fprintf(file, "    Oversample: %u\n", msg->oversample.oversample);
-		break;
-
-	case BL_MSG_SET_FIXEDOFFSET:
-		fprintf(file, "    Offset:\n");
-		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-			fprintf(file, "    - %u\n",
-				(unsigned) msg->offset.offset[i]);
-		}
+	case BL_MSG_CHANNEL_CONF:
+		fprintf(file, "    Channel: %u\n",
+				(unsigned) msg->channel_conf.channel);
+		fprintf(file, "    Gain: %u\n",
+				(unsigned) msg->channel_conf.gain);
+		fprintf(file, "    Shift: %u\n",
+				(unsigned) msg->channel_conf.shift);
+		fprintf(file, "    Offset: %u\n",
+				(unsigned) msg->channel_conf.offset);
+		fprintf(file, "    Saturate: %u\n",
+				(unsigned) msg->channel_conf.saturate);
 		break;
 
 	default:

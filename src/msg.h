@@ -31,9 +31,7 @@ enum bl_error;
 enum bl_msg_type {
 	BL_MSG_RESPONSE,
 	BL_MSG_LED,
-	BL_MSG_SET_GAINS,
-	BL_MSG_SET_OVERSAMPLE,
-	BL_MSG_SET_FIXEDOFFSET,
+	BL_MSG_CHANNEL_CONF,
 	BL_MSG_START,
 	BL_MSG_ABORT,
 	BL_MSG_SAMPLE_DATA,
@@ -69,25 +67,21 @@ union bl_msg_data {
 	} led;
 
 	struct {
-		uint8_t type;
-		uint8_t gain[BL_ACQ_PD__COUNT]; /**< Photodiode gains. */
-	} gain;
+		uint8_t  type;
+		uint8_t  channel;
+		uint8_t  gain;
+		uint8_t  shift;
+		uint32_t offset;
+		uint8_t  saturate;
+	} channel_conf;
 
-	struct {
-		uint8_t type;
-		uint32_t oversample;
-	} oversample;
-
-	struct {
-		uint8_t type;
-		uint32_t offset[BL_ACQ__SRC_COUNT]; /**< Offsets per source. */
-	} offset;
 	/**
 	 * Data for \ref BL_MSG_SETUP.
 	 */
 	struct {
 		uint8_t  type;           /**< Must be \ref BL_MSG_SETUP */
 		uint16_t frequency;      /**< Sampling rate in Hz. */
+		uint32_t oversample;     /**< Numver of sample readings per sample */
 		uint16_t src_mask;       /**< Mask of sources to enable. */
 	} start;
 
@@ -125,14 +119,12 @@ union bl_msg_data {
 static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 {
 	static const uint8_t len[BL_MSG__COUNT] = {
-		[BL_MSG_RESPONSE]    = BL_SIZEOF_MSG(response),
-		[BL_MSG_LED]         = BL_SIZEOF_MSG(led),
-		[BL_MSG_START]       = BL_SIZEOF_MSG(start),
-		[BL_MSG_ABORT]       = BL_SIZEOF_MSG(abort),
-		[BL_MSG_SAMPLE_DATA] = BL_SIZEOF_MSG(sample_data),
-		[BL_MSG_SET_GAINS]   = BL_SIZEOF_MSG(gain),
-		[BL_MSG_SET_OVERSAMPLE]   = BL_SIZEOF_MSG(oversample),
-		[BL_MSG_SET_FIXEDOFFSET]   = BL_SIZEOF_MSG(offset),
+		[BL_MSG_RESPONSE]     = BL_SIZEOF_MSG(response),
+		[BL_MSG_LED]          = BL_SIZEOF_MSG(led),
+		[BL_MSG_START]        = BL_SIZEOF_MSG(start),
+		[BL_MSG_ABORT]        = BL_SIZEOF_MSG(abort),
+		[BL_MSG_SAMPLE_DATA]  = BL_SIZEOF_MSG(sample_data),
+		[BL_MSG_CHANNEL_CONF] = BL_SIZEOF_MSG(channel_conf),
 	};
 
 	if (type >= BL_MSG__COUNT) {

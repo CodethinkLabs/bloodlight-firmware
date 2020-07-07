@@ -17,16 +17,12 @@
 #ifndef BL_ACQ_H
 #define BL_ACQ_H
 
+#include <stdbool.h>
+
 #include "led.h"
 
 union bl_msg_data;
 enum bl_error;
-
-/** OpAmp count */
-#define BL_ACQ_OPAMP__COUNT 4
-
-/** Photodiode count */
-#define BL_ACQ_PD__COUNT 4
 
 /**
  * Acquisition sources.
@@ -53,45 +49,32 @@ void bl_acq_init(void);
 /**
  * Start an acquisition.
  *
- * \param[in]  period      Sample timer perieod.
- * \param[in]  prescale    Sample timer prescale.
- * \param[in]  oversample  Number of bits to oversample by.
+ * \param[in]  frequency   Sampling frequency.
  * \param[in]  src_mask    Mask of sources to enable.
- * \param[in]  gain        Gain value for each photodiode.
+ * \param[in]  oversample  Number of bits to oversample by.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_start(
-		uint16_t period,
-		uint16_t src_mask);
+		uint16_t frequency,
+		uint16_t src_mask,
+		uint32_t oversample);
 
 /**
- * Set the gain values to use when an aquisition starts
+ * Set the per-channel configuration
  *
- * \param[in]  gain      Array of gains to use for the sources
+ * \param[in]  channel   Channel (source) to configure
+ * \param[in]  gain      OpAMP gain to apply for the channel
+ * \param[in]  shift     Bits to shift sample values by (divides by (2^shift)
+ * \param[in]  offset    Amount to offset sample values by
+ * \param[in]  saturate  Whether to enable sample saturation.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
-enum bl_error bl_acq_set_gains_setting(
-		const uint8_t gain[BL_ACQ_PD__COUNT]);
-
-/**
- * Set the oversample value to use when an aquisition starts
- *
- * \param[in]  oversample   How many ADC readings to take per reported reading
- * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
- */
-enum bl_error bl_acq_set_oversample_setting(
-		uint32_t  oversample);
-
-/**
- * Set the offset value to use when an aquisition starts
- *
- * \param[in]  offset    How much to subtract from each source total reading
- *                       after oversampling to attempt to get it into 16-bit
- *                       range
- * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
- */
-enum bl_error bl_acq_set_fixed_offset_setting(
-		const uint32_t offset[BL_ACQ__SRC_COUNT]);
+enum bl_error bl_acq_channel_conf(
+		uint8_t  channel,
+		uint8_t  gain,
+		uint8_t  shift,
+		uint32_t offset,
+		bool     saturate);
 
 /**
  * Abort an acquisition.
