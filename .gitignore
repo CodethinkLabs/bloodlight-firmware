@@ -3,4 +3,5 @@ bin/
 *.bin
 generated.*.ld
 tools/bl
+tools/*.o
 tools/convert
