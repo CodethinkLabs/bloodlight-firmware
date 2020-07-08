@@ -521,14 +521,11 @@ static int bl_cmd_start_stream(
 	}
 
 	if (read_sized_uint(argv[ARG_SRC_MASK],
-	                    &src_mask,
-						sizeof(msg.start.src_mask)) == false ||
+			&src_mask, sizeof(msg.start.src_mask)) == false ||
 	    read_sized_uint(argv[ARG_FREQUENCY],
-		                &frequency,
-						sizeof(msg.start.frequency)) == false ||
-		read_sized_uint(argv[ARG_OVERSAMPLE],
-		                &oversample,
-						sizeof(msg.start.oversample)) == false ) {
+			&frequency, sizeof(msg.start.frequency)) == false ||
+	    read_sized_uint(argv[ARG_OVERSAMPLE],
+			&oversample, sizeof(msg.start.oversample)) == false ) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
