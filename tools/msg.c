@@ -41,19 +41,43 @@ static const char *msg_types[] = {
 	[BL_MSG_CHANNEL_CONF] = "Channel Config",
 };
 
-static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
+/** Message type to string mapping, */
+static const char *msg_errors[] = {
+	[BL_ERROR_NONE]               = "Success",
+	[BL_ERROR_OUT_OF_RANGE]       = "Value out of range",
+	[BL_ERROR_BAD_MESSAGE_TYPE]   = "Bad message type",
+	[BL_ERROR_BAD_MESSAGE_LENGTH] = "Bad message length",
+	[BL_ERROR_BAD_SOURCE_MASK]    = "Bad source mask",
+	[BL_ERROR_ACTIVE_ACQUISITION] = "In acquisition state",
+	[BL_ERROR_FIFO_CONFIG_FAILED] = "Failed to configure FIFO",
+};
+
+static inline unsigned bl_msg_str_to_index(
+		const char *str,
+		const char * const *strings,
+		unsigned count)
 {
 	if (str != NULL) {
-		for (unsigned i = 0; i < BL_ARRAY_LEN(msg_types); i++) {
-			if (msg_types[i] != NULL) {
-				if (strcmp(msg_types[i], str) == 0) {
+		for (unsigned i = 0; i < count; i++) {
+			if (strings[i] != NULL) {
+				if (strcmp(strings[i], str) == 0) {
 					return i;
 				}
 			}
 		}
 	}
 
-	return BL_MSG__COUNT;
+	return count;
+}
+
+static inline enum bl_msg_type bl_msg_str_to_type(const char *str)
+{
+	return bl_msg_str_to_index(str, msg_types, BL_ARRAY_LEN(msg_types));
+}
+
+static inline enum bl_error bl_msg_str_to_error(const char *str)
+{
+	return bl_msg_str_to_index(str, msg_errors, BL_ARRAY_LEN(msg_errors));
 }
 
 static const char * bl_msg__read_str_type(bool *success)
@@ -69,11 +93,31 @@ static const char * bl_msg__read_str_type(bool *success)
 	return buffer;
 }
 
+static const char * bl_msg__read_str_error(bool *success)
+{
+	int ret;
+
+	ret = scanf("  Error: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n", buffer);
+	if (ret != 1) {
+		*success = false;
+		return NULL;
+	}
+
+	return buffer;
+}
+
 static enum bl_msg_type bl_msg__read_type(bool *success)
 {
 	const char *str_type = bl_msg__read_str_type(success);
 
 	return bl_msg_str_to_type(str_type);
+}
+
+static enum bl_msg_type bl_msg__read_error(bool *success)
+{
+	const char *str_type = bl_msg__read_str_error(success);
+
+	return bl_msg_str_to_error(str_type);
 }
 
 static uint8_t bl_msg__read_response_to(bool *success)
@@ -155,7 +199,7 @@ bool bl_msg_parse(union bl_msg_data *msg)
 	switch (msg->type) {
 	case BL_MSG_RESPONSE:
 		msg->response.response_to = bl_msg__read_response_to(&ok);
-		msg->response.error_code = bl_msg__read_unsigned(&ok, "Error code");
+		msg->response.error_code = bl_msg__read_error(&ok);
 		break;
 
 	case BL_MSG_LED:
@@ -200,6 +244,15 @@ static const char *bl_msg_type_to_str(enum bl_msg_type type)
 	return msg_types[type];
 }
 
+static const char *bl_msg_type_to_error(enum bl_error error)
+{
+	if (error >= BL_ARRAY_LEN(msg_errors)) {
+		return NULL;
+	}
+
+	return msg_errors[error];
+}
+
 void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 {
 	if (bl_msg_type_to_str(msg->type) == NULL) {
@@ -220,8 +273,8 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 					bl_msg_type_to_str(
 						msg->response.response_to));
 		}
-		fprintf(file, "    Error code: %u\n",
-				(unsigned) msg->response.error_code);
+		fprintf(file, "    Error: %s\n",
+				bl_msg_type_to_error(msg->response.error_code));
 		break;
 
 	case BL_MSG_LED:
