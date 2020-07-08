@@ -143,7 +143,7 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 	return total_read;
 }
 
-static uint16_t bl_response_data[sizeof(union bl_msg_data) / 2 + 1 + 64];
+static uint8_t bl_response_data[64];
 
 static int bl_cmd_read_message(
 		int dev_fd,
@@ -199,10 +199,14 @@ int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 	int ret = bl_cmd_read_message(dev_fd, timeout_ms, &msg);
 	if (ret == 0) {
 		bl_msg_print(msg, stdout);
-		if (msg->type == BL_MSG_RESPONSE) {
+		switch (msg->type) {
+		case BL_MSG_RESPONSE:
 			if (msg->response.error_code != BL_ERROR_NONE) {
 				return msg->response.error_code;
 			}
+			break;
+		case BL_MSG_ABORTED:
+			return -ECONNABORTED;
 		}
 	}
 
@@ -556,7 +560,8 @@ static int bl_cmd_start_stream(
 			.type = BL_MSG_ABORT,
 		};
 		bl_cmd_send(&abort_msg, argv[ARG_DEV_PATH],dev_fd);
-		bl_cmd_read_and_print_message(dev_fd, 10000);
+		killed = false;
+		bl_cmd_receive_and_print_loop(dev_fd);
 	}
 
 	bl_close_device(dev_fd);

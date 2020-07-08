@@ -63,7 +63,7 @@ enum bl_format {
 /* Note: We'll break if there are more than MAX_SAMPLES in a message. */
 union {
 	union bl_msg_data msg;
-	uint8_t samples[sizeof(union bl_msg_data) + sizeof(uint16_t) * MSG_CHANNELS_MAX];
+	uint8_t samples[sizeof(union bl_msg_data) + sizeof(uint16_t) * MSG_SAMPLES_MAX];
 } input;
 
 int bl_cmd_wav_write_riff_header(FILE *file)

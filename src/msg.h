@@ -23,7 +23,7 @@
 /**
  * Maximum number of channels a \ref BL_MSG_SAMPLE_DATA message can contain.
  */
-#define MSG_CHANNELS_MAX 30
+#define MSG_SAMPLES_MAX 30
 
 enum bl_error;
 
@@ -34,6 +34,7 @@ enum bl_msg_type {
 	BL_MSG_CHANNEL_CONF,
 	BL_MSG_START,
 	BL_MSG_ABORT,
+	BL_MSG_ABORTED,
 	BL_MSG_SAMPLE_DATA,
 
 	BL_MSG__COUNT
@@ -90,6 +91,17 @@ union bl_msg_data {
 		uint8_t type; /**< Must be \ref BL_MSG_ABORT */
 	} abort;
 
+	/**
+	 * Data for \ref BL_MSG_ABORTED.
+	 *
+	 * Response message for \ref BL_MSG_ABORT.
+	 */
+	struct {
+		uint8_t type; /**< Must be \ref BL_MSG_ABORTED */
+		uint32_t sample_min[BL_ACQ__SRC_COUNT];
+		uint32_t sample_max[BL_ACQ__SRC_COUNT];
+	} aborted;
+
 	/** Data for \ref BL_MSG_SAMPLE_DATA. */
 	struct {
 		uint8_t  type;     /**< Must be \ref BL_MSG_SAMPLE_DATA */
@@ -123,6 +135,7 @@ static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 		[BL_MSG_LED]          = BL_SIZEOF_MSG(led),
 		[BL_MSG_START]        = BL_SIZEOF_MSG(start),
 		[BL_MSG_ABORT]        = BL_SIZEOF_MSG(abort),
+		[BL_MSG_ABORTED]      = BL_SIZEOF_MSG(aborted),
 		[BL_MSG_SAMPLE_DATA]  = BL_SIZEOF_MSG(sample_data),
 		[BL_MSG_CHANNEL_CONF] = BL_SIZEOF_MSG(channel_conf),
 	};

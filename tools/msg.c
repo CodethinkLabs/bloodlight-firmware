@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <stdint.h>
@@ -37,6 +38,7 @@ static const char *msg_types[] = {
 	[BL_MSG_LED]          = "LED",
 	[BL_MSG_START]        = "Start",
 	[BL_MSG_ABORT]        = "Abort",
+	[BL_MSG_ABORTED]      = "Aborted",
 	[BL_MSG_SAMPLE_DATA]  = "Sample Data",
 	[BL_MSG_CHANNEL_CONF] = "Channel Config",
 };
@@ -174,12 +176,12 @@ static uint16_t bl_msg__read_hex(bool *success, const char *field)
 	return 0;
 }
 
-static uint16_t bl_msg__read_unsigned_no_field(bool *success)
+static uint32_t bl_msg__read_unsigned_no_field(bool *success)
 {
-	unsigned value;
+	uint32_t value;
 	int ret;
 
-	ret = scanf("%*[ -]%u\n", &value);
+	ret = scanf("%*[ -]%"SCNu32"""\n", &value);
 	if (ret == 1) {
 		return value;
 	}
@@ -217,6 +219,14 @@ bool bl_msg_parse(union bl_msg_data *msg)
 		ok |= (scanf("    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
 			msg->sample_data.data[i] = bl_msg__read_unsigned_no_field(&ok);
+		}
+		break;
+
+	case BL_MSG_ABORTED:
+		ok |= (scanf("    Channel min/max:\n") == 0);
+		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+			msg->aborted.sample_min[i] = bl_msg__read_unsigned_no_field(&ok);
+			msg->aborted.sample_max[i] = bl_msg__read_unsigned_no_field(&ok);
 		}
 		break;
 
@@ -298,6 +308,16 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
 			fprintf(file, "    - %u\n",
 				(unsigned) msg->sample_data.data[i]);
+		}
+		break;
+
+	case BL_MSG_ABORTED:
+		fprintf(file, "    Channel min/max:\n");
+		for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+			fprintf(file, "    - %u\n",
+				(unsigned) msg->aborted.sample_min[i]);
+			fprintf(file, "    - %u\n",
+				(unsigned) msg->aborted.sample_max[i]);
 		}
 		break;
 

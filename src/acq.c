@@ -55,6 +55,7 @@ static struct fifo_channel fifo_channels[FIFO_CHANNEL_MAX];
 enum acq_state {
 	ACQ_STATE_IDLE,
 	ACQ_STATE_ACTIVE,
+	ACQ_STATE_ABORT,
 };
 
 enum acq_adc {
@@ -276,16 +277,11 @@ struct send_ctx {
 		uint8_t raw[64];
 		union bl_msg_data msg;
 	};
-	unsigned cur_samples;
-	unsigned next_channel;
+	unsigned samples;
+	unsigned channel;
 };
 
-struct send_ctx send_ctx;
-
-static void bl_acq__reset_send_ctx(void)
-{
-	memset(&send_ctx, 0, sizeof(send_ctx));
-}
+static struct send_ctx send_ctx;
 
 /**
  * Make an ADC auto-calibrate.
@@ -543,14 +539,6 @@ static void bl_acq__setup_adc(
 			ADC_CFGR1_EXTSEL_VAL(extsel_tim1_trgo),
 			ADC_CFGR1_EXTEN_BOTH_EDGES);
 	adc_start_conversion_regular(adc);
-}
-
-static void bl_acq__init_sample_message_header(
-		union bl_msg_data *msg,
-		uint8_t sample_count)
-{
-	msg->sample_data.type  = BL_MSG_SAMPLE_DATA;
-	msg->sample_data.count = sample_count;
 }
 
 static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
@@ -856,9 +844,9 @@ enum bl_error bl_acq_channel_conf(
 	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
-	acq_g.chan[channel].gain = gain;
-	acq_g.chan[channel].shift = shift;
-	acq_g.chan[channel].offset = offset;
+	acq_g.chan[channel].gain     = gain;
+	acq_g.chan[channel].shift    = shift;
+	acq_g.chan[channel].offset   = offset;
 	acq_g.chan[channel].saturate = saturate;
 
 	return BL_ERROR_NONE;
@@ -931,8 +919,6 @@ enum bl_error bl_acq_start(
 		acq_g.chan[i].sample_count = 0;
 	}
 
-	bl_acq__reset_send_ctx();
-
 	if (acq_g.state != ACQ_STATE_IDLE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
@@ -943,6 +929,11 @@ enum bl_error bl_acq_start(
 	}
 
 	acq_g.state = ACQ_STATE_ACTIVE;
+
+	/* Send context will only send sample data while active. */
+	send_ctx.msg.type = BL_MSG_SAMPLE_DATA;
+	send_ctx.samples  = 0;
+	send_ctx.channel  = 0;
 
 	/* Enabling the timer will start triggering ADC. */
 	timer_enable_counter(TIM1);
@@ -975,41 +966,52 @@ enum bl_error bl_acq_abort(void)
 		adc_disable_temperature_sensor();
 	}
 
-	acq_g.state = ACQ_STATE_IDLE;
-	return BL_ERROR_NONE;
-}
+	acq_g.state = ACQ_STATE_ABORT;
 
-static void bl_acq__send(void)
-{
-	bl_acq__init_sample_message_header(&send_ctx.msg, send_ctx.cur_samples);
-	if (usb_send_message(&send_ctx.msg)) {
-		send_ctx.cur_samples = 0;
+	/* Send context will stay in ABORT mode until ABORTED message sends. */
+	send_ctx.msg.type = BL_MSG_ABORTED;
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		send_ctx.msg.aborted.sample_min[i] = acq_g.chan[i].sample_min;
+		send_ctx.msg.aborted.sample_max[i] = acq_g.chan[i].sample_max;
 	}
+
+	return BL_ERROR_NONE;
 }
 
 /* Exported function, documented in acq.h */
 void bl_acq_poll(void)
 {
+	if (acq_g.state == ACQ_STATE_ABORT) {
+		if (usb_send_message(&send_ctx.msg)) {
+			acq_g.state = ACQ_STATE_IDLE;
+		}
+		return;
+	}
+
 	if (acq_g.state != ACQ_STATE_ACTIVE) {
 		return;
 	}
 
-	while (true) {
-		/* if we have data we didn't manage to send last time, send it here first */
-		if (send_ctx.cur_samples == MSG_CHANNELS_MAX) {
-			bl_acq__send();
+	while (send_ctx.samples < MSG_SAMPLES_MAX) {
+		uint16_t *samples = send_ctx.msg.sample_data.data;
+		if (!fifo_read(send_ctx.channel, &samples[send_ctx.samples])) {
 			break;
 		}
 
-		if (!fifo_read(send_ctx.next_channel, &send_ctx.msg.sample_data.data[send_ctx.cur_samples])) {
-			break;
+		send_ctx.samples++;
+		send_ctx.channel++;
+
+		if (send_ctx.channel == acq_g.fifo_count) {
+			send_ctx.channel = 0;
 		}
+	}
 
-		send_ctx.cur_samples++;
-		send_ctx.next_channel++;
+	/* If we have data we didn't manage to send last time, send it here first. */
+	if (send_ctx.samples == MSG_SAMPLES_MAX) {
+		send_ctx.msg.sample_data.count = send_ctx.samples;
 
-		if (send_ctx.next_channel == acq_g.fifo_count) {
-			send_ctx.next_channel = 0;
+		if (usb_send_message(&send_ctx.msg)) {
+			send_ctx.samples = 0;
 		}
 	}
 }
