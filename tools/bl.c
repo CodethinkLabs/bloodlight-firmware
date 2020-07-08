@@ -197,7 +197,14 @@ int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 {
 	union bl_msg_data * msg = NULL;
 	int ret = bl_cmd_read_message(dev_fd, timeout_ms, &msg);
-	bl_msg_print(msg, stdout);
+	if (ret == 0) {
+		bl_msg_print(msg, stdout);
+		if (msg->type == BL_MSG_RESPONSE) {
+			if (msg->response.error_code != BL_ERROR_NONE) {
+				return msg->response.error_code;
+			}
+		}
+	}
 
 	return ret;
 }
