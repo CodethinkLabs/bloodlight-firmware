@@ -904,8 +904,8 @@ static enum bl_error bl_acq_setup(
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
-		uint16_t src_mask,
-		uint32_t oversample)
+		uint32_t oversample,
+		uint16_t src_mask)
 {
 	enum bl_error error;
 
