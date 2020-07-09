@@ -820,7 +820,6 @@ static enum bl_error bl_acq_setup_timer(
 		uint16_t period,
 		uint16_t prescale)
 {
-	/* Prescale of 72 (set as 71) means timer runs at 1MHz. */
 	timer_set_prescaler(TIM1, prescale - 1);
 
 	/* Timer will trigger TRGO every OC1 match (once per period). */
