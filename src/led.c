@@ -117,9 +117,6 @@ static inline void bl_led__set(
 /* Exported function, documented in led.h */
 enum bl_error bl_led_set(uint16_t led_mask)
 {
-	/* TODO: Check that the LEDs enabled don't exceed available power,
-	 *       or any other conditions? */
-
 	bl_led__set(LED_PORT_A, led_mask);
 	bl_led__set(LED_PORT_B, led_mask);
 	bl_led__set(LED_PORT_C, led_mask);
