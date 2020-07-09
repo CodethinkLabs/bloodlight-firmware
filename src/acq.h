@@ -44,7 +44,7 @@ enum bl_acq_source {
 /**
  * Initialise the acquisition module.
  */
-void bl_acq_init(void);
+void bl_acq_init(uint32_t clock);
 
 /**
  * Start an acquisition.

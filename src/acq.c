@@ -105,6 +105,8 @@ struct {
 
 	uint8_t  opamp_trimoffsetn[ACQ_OPAMP__COUNT];
 	uint8_t  opamp_trimoffsetp[ACQ_OPAMP__COUNT];
+
+	uint32_t adc_clock;
 } acq_g;
 
 #define ACQ_DMA_MAX 128
@@ -361,7 +363,7 @@ static void bl_acq__opamp_calibrate(
 }
 
 /* Exported function, documented in acq.h */
-void bl_acq_init(void)
+void bl_acq_init(uint32_t clock)
 {
 	rcc_periph_clock_enable(RCC_ADC12);
 	rcc_periph_clock_enable(RCC_ADC34);
@@ -391,6 +393,7 @@ void bl_acq_init(void)
 	adc_set_clk_prescale(ADC3, ADC_CCR_CKMODE_DIV1);
 	adc_set_multi_mode(ADC1, ADC_CCR_DUAL_INDEPENDENT);
 	adc_set_multi_mode(ADC3, ADC_CCR_DUAL_INDEPENDENT);
+	acq_g.adc_clock = clock;
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		bl_acq__adc_calibrate(acq_adc_table[i].adc_addr);
@@ -489,9 +492,8 @@ static void bl_acq__setup_adc(
 		smp_time += 13 + acq_adc_smp_table[smp[i]].time;
 	}
 
-	/* TODO: Get clock-speed properly. */
-	uint32_t clock = 72000000;
-	uint32_t smp_max = (clock / (acq_g.frequency * acq_g.oversample));
+	uint32_t smp_max = (acq_g.adc_clock /
+		(acq_g.frequency * acq_g.oversample));
 
 	if (smp_time > smp_max) {
 		/* TODO: Report error if target frequency is not achievable. */
@@ -798,12 +800,11 @@ static void bl_frequency_to_acq_params(
 		uint32_t *prescale_out,
 		uint32_t *period_out)
 {
-	const uint32_t device_clock_speed = (72 * 1000 * 1000);
 	uint32_t samples_per_second;
 	uint32_t ticks_per_sample;
 
 	samples_per_second = oversample * frequency;
-	ticks_per_sample = DIV_NEAREST(device_clock_speed, samples_per_second);
+	ticks_per_sample = DIV_NEAREST(acq_g.adc_clock, samples_per_second);
 
 	*prescale_out = 1 + (ticks_per_sample >> 16);
 	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
