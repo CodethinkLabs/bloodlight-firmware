@@ -365,13 +365,11 @@ void bl_acq_init(void)
 {
 	rcc_periph_clock_enable(RCC_ADC12);
 	rcc_periph_clock_enable(RCC_ADC34);
-	/* TODO: Find out whether SYSCFG needs enabling for the opamps. */
 	rcc_periph_clock_enable(RCC_SYSCFG);
 	rcc_periph_clock_enable(RCC_DMA1);
 	rcc_periph_clock_enable(RCC_DMA2);
 	rcc_periph_clock_enable(RCC_TIM1);
 
-	/* TODO: Consider moving to setup and disabling on abort. */
 	nvic_enable_irq(NVIC_DMA1_CHANNEL1_IRQ);
 	nvic_enable_irq(NVIC_DMA2_CHANNEL1_IRQ);
 	nvic_enable_irq(NVIC_DMA2_CHANNEL5_IRQ);
