@@ -140,11 +140,10 @@ Usage:
   ./tools/bl CMD [params]
 
 Available CMDs:
-  led        Turn LEDs on/off
-  start      Start an acquisition
-  continue   Continue an acquisition
-  abort      Abort an acquisition
-  reset      Reset the device
+  led       Turn LEDs on/off
+  chancfg   Set configuration for a given channel
+  start     Start an acquisition
+  abort     Abort an acquisition
 ```
 
 Running a command will show if you need to pass any parameters to the
@@ -266,6 +265,7 @@ Usage:
 Available CMDs:
   wav     Convert to WAVE format
   raw     Convert to RAW binary data
+  csv     Convert to CSV
   relay   Relay stdin to stdout
 ```
 
