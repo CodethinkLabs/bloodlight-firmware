@@ -480,11 +480,13 @@ static bool bl_acq__adc_is_fast(unsigned channel)
 	return (channel <= 5);
 }
 
-static void bl_acq__setup_adc(
+static enum bl_error bl_acq__setup_adc(
 		uint32_t adc,
 		uint8_t channels[],
 		uint8_t channel_count)
 {
+	enum bl_error status = BL_ERROR_NONE;
+
 	uint32_t smp[channel_count];
 	uint32_t smp_time = 0;
 	for (unsigned i = 0; i < channel_count; i++) {
@@ -496,7 +498,7 @@ static void bl_acq__setup_adc(
 		(acq_g.frequency * acq_g.oversample));
 
 	if (smp_time > smp_max) {
-		/* TODO: Report error if target frequency is not achievable. */
+		status = BL_ERROR_BAD_FREQUENCY;
 	}
 
 	/* We continue to increase sampling time as long as we have headroom. */
@@ -539,9 +541,10 @@ static void bl_acq__setup_adc(
 			ADC_CFGR1_EXTSEL_VAL(extsel_tim1_trgo),
 			ADC_CFGR1_EXTEN_BOTH_EDGES);
 	adc_start_conversion_regular(adc);
+	return status;
 }
 
-static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
+static enum bl_error bl_acq__setup_adc_dma(struct adc_table *adc_info)
 {
 	uint32_t addr = adc_info->dma_addr;
 	uint32_t chan = adc_info->dma_chan;
@@ -575,7 +578,7 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
 
-	bl_acq__setup_adc(
+	return bl_acq__setup_adc(
 			adc_info->adc_addr,
 			adc_info->channels,
 			adc_info->channel_count);
@@ -894,11 +897,14 @@ static enum bl_error bl_acq_setup(
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		if (acq_adc_table[i].enabled) {
-			bl_acq__setup_adc_dma(&acq_adc_table[i]);
+			error = bl_acq__setup_adc_dma(&acq_adc_table[i]);
+			if (error != BL_ERROR_NONE) {
+				return error;
+			}
 		}
 	}
 
-	return BL_ERROR_NONE;
+	return error;
 }
 
 /* Exported function, documented in acq.h */
