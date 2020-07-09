@@ -93,7 +93,7 @@ Reset the device and load on the firmware:
 
 Now the device is flashed with the `mpd-firmware.elf` firmware.
 
-Run the firmare with:
+Run the firmware with:
 
 ```
 (gdb) c
@@ -131,7 +131,7 @@ The message protocol is defined in [src/msg.h](src/msg.h).
 
 To control the device, use the `bl` host helper tool, at `tools/bl`.
 
-Running it without any parametes will list the commands it supports:
+Running it without any parameters will list the commands it supports:
 
 ```
 ./tools/bl
@@ -163,7 +163,7 @@ The DEVICE_PATH is the tty device reported in `dmesg` when the device was
 connected.
 
 The LED_MASK is a 16-bit mask of the 16 LEDs on the device.  If a bit is
-set, then the corrasponding LED is turned on:
+set, then the corresponding LED is turned on:
 
 ```
 ./tools/bl led /dev/ttyACM2 0x8000
@@ -201,9 +201,9 @@ and use the [run.sh](run.sh) script either directly or as an example:
 sudo ./run.sh /dev/ttyACM2
 ```
 
-This will show the messages being sent and recieved to run an acquisition,
+This will show the messages being sent and received to run an acquisition,
 and also the sample data. See the comments in the [run.sh](run.sh) script
-for further details on how to configure an acqisition.
+for further details on how to configure an acquisition.
 
 Device info
 -----------
@@ -241,16 +241,16 @@ in [src/acq.c](src/acq.c).
 Of particular note is that the `sample_data` message
 (see [src/msg.h](src/msg.h)) contains a `src_mask` field.
 This is because the way the firmware works is that each of
-the ADCs builds its sample data messages separatly, and sends
+the ADCs builds its sample data messages separately, and sends
 them when they are filled.
 
 Inspecting acquisition data
 ---------------------------
 
 The raw sample values from an acquisition don't really give much of an
-insignt into what is happening.
+insight into what is happening.
 
-The output from an acqusition is in YAML format, so it should be easy to
+The output from an acquisition is in YAML format, so it should be easy to
 write code to load it for analysis.
 
 Currently there is a simple conversion tool (`tools/convert`) which can
