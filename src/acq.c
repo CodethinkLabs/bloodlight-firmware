@@ -803,14 +803,33 @@ static void bl_frequency_to_acq_params(
 		uint32_t *prescale_out,
 		uint32_t *period_out)
 {
-	uint32_t samples_per_second;
-	uint32_t ticks_per_sample;
+	uint32_t samples_per_second = oversample * frequency;
+	uint32_t ticks_per_sample = DIV_NEAREST(
+			acq_g.adc_clock, samples_per_second);
 
-	samples_per_second = oversample * frequency;
-	ticks_per_sample = DIV_NEAREST(acq_g.adc_clock, samples_per_second);
+	/* Find prime factors and increase prescale. */
+	uint32_t prescale = ((ticks_per_sample & 1) ? 1 : 2);
+	uint32_t ticks   = ticks_per_sample / prescale;
+	for (unsigned i = 3; (i * i) < prescale; i += 2) {
+		if ((ticks % i) == 0) {
+			if ((prescale * i) > 65536) {
+				break;
+			}
 
-	*prescale_out = 1 + (ticks_per_sample >> 16);
-	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
+			ticks    /= i;
+			prescale *= i;
+		}
+	}
+
+	/* It's very unlikely that ticks_per_sample is a prime above 65536,
+	 * however we handle that via division here. */
+	while (ticks > 65536) {
+		ticks = DIV_NEAREST(ticks, 2);
+		prescale *= 2;
+	}
+
+	*prescale_out = prescale;
+	*period_out   = ticks;
 }
 
 /**
