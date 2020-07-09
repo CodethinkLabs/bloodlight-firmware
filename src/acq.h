@@ -44,7 +44,7 @@ enum bl_acq_source {
 /**
  * Initialise the acquisition module.
  */
-void bl_acq_init(void);
+void bl_acq_init(uint32_t clock);
 
 /**
  * Start an acquisition.
@@ -56,8 +56,8 @@ void bl_acq_init(void);
  */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
-		uint16_t src_mask,
-		uint32_t oversample);
+		uint32_t oversample,
+		uint16_t src_mask);
 
 /**
  * Set the per-channel configuration

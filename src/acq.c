@@ -105,6 +105,8 @@ struct {
 
 	uint8_t  opamp_trimoffsetn[ACQ_OPAMP__COUNT];
 	uint8_t  opamp_trimoffsetp[ACQ_OPAMP__COUNT];
+
+	uint32_t adc_clock;
 } acq_g;
 
 #define ACQ_DMA_MAX 128
@@ -361,17 +363,15 @@ static void bl_acq__opamp_calibrate(
 }
 
 /* Exported function, documented in acq.h */
-void bl_acq_init(void)
+void bl_acq_init(uint32_t clock)
 {
 	rcc_periph_clock_enable(RCC_ADC12);
 	rcc_periph_clock_enable(RCC_ADC34);
-	/* TODO: Find out whether SYSCFG needs enabling for the opamps. */
 	rcc_periph_clock_enable(RCC_SYSCFG);
 	rcc_periph_clock_enable(RCC_DMA1);
 	rcc_periph_clock_enable(RCC_DMA2);
 	rcc_periph_clock_enable(RCC_TIM1);
 
-	/* TODO: Consider moving to setup and disabling on abort. */
 	nvic_enable_irq(NVIC_DMA1_CHANNEL1_IRQ);
 	nvic_enable_irq(NVIC_DMA2_CHANNEL1_IRQ);
 	nvic_enable_irq(NVIC_DMA2_CHANNEL5_IRQ);
@@ -393,6 +393,7 @@ void bl_acq_init(void)
 	adc_set_clk_prescale(ADC3, ADC_CCR_CKMODE_DIV1);
 	adc_set_multi_mode(ADC1, ADC_CCR_DUAL_INDEPENDENT);
 	adc_set_multi_mode(ADC3, ADC_CCR_DUAL_INDEPENDENT);
+	acq_g.adc_clock = clock;
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		bl_acq__adc_calibrate(acq_adc_table[i].adc_addr);
@@ -479,11 +480,13 @@ static bool bl_acq__adc_is_fast(unsigned channel)
 	return (channel <= 5);
 }
 
-static void bl_acq__setup_adc(
+static enum bl_error bl_acq__setup_adc(
 		uint32_t adc,
 		uint8_t channels[],
 		uint8_t channel_count)
 {
+	enum bl_error status = BL_ERROR_NONE;
+
 	uint32_t smp[channel_count];
 	uint32_t smp_time = 0;
 	for (unsigned i = 0; i < channel_count; i++) {
@@ -491,12 +494,11 @@ static void bl_acq__setup_adc(
 		smp_time += 13 + acq_adc_smp_table[smp[i]].time;
 	}
 
-	/* TODO: Get clock-speed properly. */
-	uint32_t clock = 72000000;
-	uint32_t smp_max = (clock / (acq_g.frequency * acq_g.oversample));
+	uint32_t smp_max = (acq_g.adc_clock /
+		(acq_g.frequency * acq_g.oversample));
 
 	if (smp_time > smp_max) {
-		/* TODO: Report error if target frequency is not achievable. */
+		status = BL_ERROR_BAD_FREQUENCY;
 	}
 
 	/* We continue to increase sampling time as long as we have headroom. */
@@ -539,9 +541,10 @@ static void bl_acq__setup_adc(
 			ADC_CFGR1_EXTSEL_VAL(extsel_tim1_trgo),
 			ADC_CFGR1_EXTEN_BOTH_EDGES);
 	adc_start_conversion_regular(adc);
+	return status;
 }
 
-static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
+static enum bl_error bl_acq__setup_adc_dma(struct adc_table *adc_info)
 {
 	uint32_t addr = adc_info->dma_addr;
 	uint32_t chan = adc_info->dma_chan;
@@ -575,7 +578,7 @@ static void bl_acq__setup_adc_dma(struct adc_table *adc_info)
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
 
-	bl_acq__setup_adc(
+	return bl_acq__setup_adc(
 			adc_info->adc_addr,
 			adc_info->channels,
 			adc_info->channel_count);
@@ -800,15 +803,33 @@ static void bl_frequency_to_acq_params(
 		uint32_t *prescale_out,
 		uint32_t *period_out)
 {
-	const uint32_t device_clock_speed = (72 * 1000 * 1000);
-	uint32_t samples_per_second;
-	uint32_t ticks_per_sample;
+	uint32_t samples_per_second = oversample * frequency;
+	uint32_t ticks_per_sample = DIV_NEAREST(
+			acq_g.adc_clock, samples_per_second);
 
-	samples_per_second = oversample * frequency;
-	ticks_per_sample = DIV_NEAREST(device_clock_speed, samples_per_second);
+	/* Find prime factors and increase prescale. */
+	uint32_t prescale = ((ticks_per_sample & 1) ? 1 : 2);
+	uint32_t ticks   = ticks_per_sample / prescale;
+	for (unsigned i = 3; (i * i) < prescale; i += 2) {
+		if ((ticks % i) == 0) {
+			if ((prescale * i) > 65536) {
+				break;
+			}
 
-	*prescale_out = 1 + (ticks_per_sample >> 16);
-	*period_out = DIV_NEAREST(ticks_per_sample, *prescale_out);
+			ticks    /= i;
+			prescale *= i;
+		}
+	}
+
+	/* It's very unlikely that ticks_per_sample is a prime above 65536,
+	 * however we handle that via division here. */
+	while (ticks > 65536) {
+		ticks = DIV_NEAREST(ticks, 2);
+		prescale *= 2;
+	}
+
+	*prescale_out = prescale;
+	*period_out   = ticks;
 }
 
 /**
@@ -821,7 +842,6 @@ static enum bl_error bl_acq_setup_timer(
 		uint16_t period,
 		uint16_t prescale)
 {
-	/* Prescale of 72 (set as 71) means timer runs at 1MHz. */
 	timer_set_prescaler(TIM1, prescale - 1);
 
 	/* Timer will trigger TRGO every OC1 match (once per period). */
@@ -896,18 +916,21 @@ static enum bl_error bl_acq_setup(
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_adc_table); i++) {
 		if (acq_adc_table[i].enabled) {
-			bl_acq__setup_adc_dma(&acq_adc_table[i]);
+			error = bl_acq__setup_adc_dma(&acq_adc_table[i]);
+			if (error != BL_ERROR_NONE) {
+				return error;
+			}
 		}
 	}
 
-	return BL_ERROR_NONE;
+	return error;
 }
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
-		uint16_t src_mask,
-		uint32_t oversample)
+		uint32_t oversample,
+		uint16_t src_mask)
 {
 	enum bl_error error;
 

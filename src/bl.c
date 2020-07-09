@@ -48,7 +48,7 @@ void bl_init(void)
 	bl_tick_init();
 	bl_usb_init();
 	bl_led_init();
-	bl_acq_init();
+	bl_acq_init(rcc_hse16mhz_config.ahb_frequency);
 }
 
 int main(void)

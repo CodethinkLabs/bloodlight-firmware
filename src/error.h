@@ -26,6 +26,7 @@ enum bl_error {
 	BL_ERROR_BAD_SOURCE_MASK,    /**< No sources would be sampled. */
 	BL_ERROR_ACTIVE_ACQUISITION, /**< There is an active acquisition. */
 	BL_ERROR_FIFO_CONFIG_FAILED, /**< Fifo configuration failed. */
+	BL_ERROR_BAD_FREQUENCY,      /**< Frequency combo not supported. */
 };
 
 #endif

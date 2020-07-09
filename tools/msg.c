@@ -52,6 +52,7 @@ static const char *msg_errors[] = {
 	[BL_ERROR_BAD_SOURCE_MASK]    = "Bad source mask",
 	[BL_ERROR_ACTIVE_ACQUISITION] = "In acquisition state",
 	[BL_ERROR_FIFO_CONFIG_FAILED] = "Failed to configure FIFO",
+	[BL_ERROR_BAD_FREQUENCY]      = "Unsupported frequency combination",
 };
 
 static inline unsigned bl_msg_str_to_index(

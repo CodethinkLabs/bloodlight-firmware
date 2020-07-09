@@ -59,8 +59,8 @@ static enum bl_error bl_msg_start(const union bl_msg_data *msg)
 {
 	return bl_acq_start(
 			msg->start.frequency,
-			msg->start.src_mask,
-			msg->start.oversample);
+			msg->start.oversample,
+			msg->start.src_mask);
 }
 
 /**
