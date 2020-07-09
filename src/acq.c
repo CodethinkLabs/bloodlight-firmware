@@ -493,7 +493,7 @@ static void bl_acq__setup_adc(
 
 	/* TODO: Get clock-speed properly. */
 	uint32_t clock = 72000000;
-	uint32_t smp_max = (clock / acq_g.frequency);
+	uint32_t smp_max = (clock / (acq_g.frequency * acq_g.oversample));
 
 	if (smp_time > smp_max) {
 		/* TODO: Report error if target frequency is not achievable. */
