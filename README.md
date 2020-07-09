@@ -1,8 +1,18 @@
 Bloodlight Firmware
 ===================
 
-This project provides firmware for the Medical Plethysmograph Device (MPD).
+This repository contains firmware for the Bloodlight Medical Plethysmograph
+(PPG) testbed hardware.
 It is a [libopencm3](https://github.com/libopencm3/libopencm3) based project.
+
+The aim of the project is to provide a testbed for researching what sort
+of information can be obtained with different wavelengths of light for
+[heart rate monitors](https://en.wikipedia.org/wiki/Heart_rate_monitor) and
+[photoplethysmography devices](https://en.wikipedia.org/wiki/Photoplethysmogram).
+
+The open-source hardware is available in the
+[bloodlight-hardware](https://github.com/CodethinkLabs/bloodlight-hardware)
+repository.
 
 Building
 --------
