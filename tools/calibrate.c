@@ -44,30 +44,33 @@ union {
 	uint8_t raw[USB_PACKET_MAX];
 } input;
 
+struct channel_conf {
+	bool     enabled;
+	uint8_t  gain;
+	uint8_t  shift;
+	uint32_t offset;
+	uint8_t  saturate;
+};
+
 static void bl__calibrate_channel(
 		unsigned channel,
 		uint32_t min,
 		uint32_t max,
-		uint8_t bits)
+		uint8_t bits,
+		struct channel_conf *conf)
 {
-	uint32_t max_range = (1U << bits);
-	uint32_t margin = (max_range / 4);
+	uint32_t max_range    = (1U << bits) - 1;
+	uint32_t margin       = max_range / 4;
+	uint32_t target_range = max_range - (margin * 2);
+	uint32_t range        = max - min;
+	uint32_t shift        = 0;
+	uint32_t offset;
 
-	uint32_t target_range = max_range - (2 * margin);
-	uint32_t target_mid   = max_range / 2;
-	uint32_t offset = 0;
-	uint32_t shift = 0;
-	uint32_t range = max - min;
-
-	if (target_range > range) {
-		offset = (margin < min) ? (min - margin) : 0;
-	} else {
-		while ((range >> shift) > target_range) {
-			shift++;
-		}
-
-		offset = ((min + max) / 2) - (target_mid << shift);
+	while ((range >> shift) > target_range) {
+		shift++;
 	}
+
+	offset = (margin < min) ? (min - margin) : 0;
 
 	printf("Channel: %u\n", channel);
 	if (min > max) {
@@ -81,26 +84,61 @@ static void bl__calibrate_channel(
 		printf("    Offset: %"PRIu32"\n", offset);
 		printf("    Shift:  %"PRIu32"\n", shift);
 	}
+
+	conf->offset = offset;
+	conf->shift  = shift;
 }
 
-static void bl__handle_aborted(union bl_msg_data *msg)
+static void bl__handle_aborted(
+		const union bl_msg_data *msg,
+		struct channel_conf conf[BL_ACQ__SRC_COUNT])
 {
-	uint32_t *sample_min = msg->aborted.sample_min;
-	uint32_t *sample_max = msg->aborted.sample_max;
+	const uint32_t *sample_min = msg->aborted.sample_min;
+	const uint32_t *sample_max = msg->aborted.sample_max;
 
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl__calibrate_channel(i, sample_min[i], sample_max[i], 16);
+		bl__calibrate_channel(i, sample_min[i], sample_max[i], 16, &conf[i]);
 	}
 }
 
-static int bl__calibrate(void)
+static void bl__handle_start(
+		const union bl_msg_data *msg,
+		struct channel_conf conf[BL_ACQ__SRC_COUNT])
 {
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		if ((1U << i) & msg->start.src_mask) {
+			conf[i].enabled = true;
+		}
+	}
+}
+
+static void bl__handle_channel_conf(
+		const union bl_msg_data *msg,
+		struct channel_conf conf[BL_ACQ__SRC_COUNT])
+{
+	unsigned channel = msg->channel_conf.channel;
+
+	conf[channel].gain     = msg->channel_conf.gain;
+	conf[channel].shift    = msg->channel_conf.shift;
+	conf[channel].offset   = msg->channel_conf.offset;
+	conf[channel].saturate = msg->channel_conf.saturate;
+}
+
+static int bl__calibrate(const char *dev_path)
+{
+	struct channel_conf conf[BL_ACQ__SRC_COUNT] = { 0 };
 	union bl_msg_data *msg = &input.msg;
 
 	while (bl_msg_parse(msg)) {
 		switch (msg->type) {
+		case BL_MSG_START:
+			bl__handle_start(msg, conf);
+			break;
 		case BL_MSG_ABORTED:
-			bl__handle_aborted(msg);
+			bl__handle_aborted(msg, conf);
+			break;
+		case BL_MSG_CHANNEL_CONF:
+			bl__handle_channel_conf(msg, conf);
 			break;
 		case BL_MSG_SAMPLE_DATA:
 			/* Ignore because it's noisy. */
@@ -112,15 +150,26 @@ static int bl__calibrate(void)
 		}
 	}
 
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		if (conf[i].enabled) {
+			printf("./tools/bl chancfg %s %u %u %u %u %u\n",
+					dev_path, i,
+					(unsigned) conf[i].gain,
+					(unsigned) conf[i].offset,
+					(unsigned) conf[i].shift,
+					(unsigned) conf[i].saturate);
+		}
+	}
+
 	return EXIT_SUCCESS;
 }
 
 static void bl__help(const char *prog)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "  %s\n", prog);
+	fprintf(stderr, "  %s DEV_PATH\n", prog);
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Reads an ABORTED message from stdin, and prints\n");
+	fprintf(stderr, "Reads an aqcuisition log message from stdin, and prints\n");
 	fprintf(stderr, "suggested acquisition parameters to stdout\n");
 }
 
@@ -166,6 +215,7 @@ int main(int argc, char *argv[])
 {
 	enum {
 		ARG_PROG,
+		ARG_DEV_PATH,
 		ARG__COUNT,
 	};
 
@@ -178,6 +228,6 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	return bl__calibrate();
+	return bl__calibrate(argv[ARG_DEV_PATH]);
 }
 
