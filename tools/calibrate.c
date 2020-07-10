@@ -59,24 +59,18 @@ static void bl__calibrate_channel(
 		uint8_t bits,
 		struct channel_conf *conf)
 {
-	uint32_t max_range = (1U << bits);
-	uint32_t margin = (max_range / 4);
+	uint32_t max_range    = (1U << bits) - 1;
+	uint32_t margin       = max_range / 4;
+	uint32_t target_range = max_range - (margin * 2);
+	uint32_t range        = max - min;
+	uint32_t shift        = 0;
+	uint32_t offset;
 
-	uint32_t target_range = max_range - (2 * margin);
-	uint32_t target_mid   = max_range / 2;
-	uint32_t range = max - min;
-	uint32_t offset = 0;
-	uint32_t shift = 0;
-
-	if (target_range > range) {
-		offset = (margin < min) ? (min - margin) : 0;
-	} else {
-		while ((range >> shift) > target_range) {
-			shift++;
-		}
-
-		offset = ((min + max) / 2) - (target_mid << shift);
+	while ((range >> shift) > target_range) {
+		shift++;
 	}
+
+	offset = (margin < min) ? (min - margin) : 0;
 
 	printf("Channel: %u\n", channel);
 	if (min > max) {
