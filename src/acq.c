@@ -29,9 +29,9 @@
 #include "delay.h"
 #include "error.h"
 #include "util.h"
-#include "fifo.h"
 #include "acq.h"
 #include "msg.h"
+#include "msg_queue.h"
 #include "usb.h"
 
 /**
@@ -47,15 +47,12 @@
 
 #define ADC_MAX_CHANNELS 8
 
-static struct fifo_channel fifo_channels[FIFO_CHANNEL_MAX];
-
 #define IS_POWER_OF_TWO(x) (((x) & ((x) - 1)) == 0)
 
 /** Current acquisition state. */
 enum acq_state {
 	ACQ_STATE_IDLE,
 	ACQ_STATE_ACTIVE,
-	ACQ_STATE_ABORT,
 };
 
 enum acq_adc {
@@ -80,21 +77,19 @@ struct acq_chan_cfg {
 	uint8_t  gain;
 	uint32_t offset;
 	uint8_t  shift;
-	bool     saturate;
+	bool     sample32;
 
 	uint8_t  opamp;
 
 	uint32_t sample;
-	uint32_t sample_min;
-	uint32_t sample_max;
 	uint32_t sample_count;
+
+	union bl_msg_data *msg;
 };
 
 /** Acquisition globals. */
 struct {
 	enum acq_state state;
-
-	unsigned fifo_count;
 
 	uint16_t frequency;
 	uint32_t oversample;
@@ -123,8 +118,6 @@ static struct adc_table {
 	uint16_t src_mask;
 	uint8_t channel_count;
 	uint8_t channels[ADC_MAX_CHANNELS];
-
-	unsigned fifo_channel_index[ADC_MAX_CHANNELS];
 
 	unsigned samples_per_dma;
 	volatile uint16_t dma_buffer[ACQ_DMA_MAX];
@@ -274,17 +267,6 @@ static struct acq_adc_smp_table {
 };
 #define ACQ_ADC_SMP_TABLE_COUNT 8
 
-struct send_ctx {
-	union {
-		uint8_t raw[64];
-		union bl_msg_data msg;
-	};
-	unsigned samples;
-	unsigned channel;
-};
-
-static struct send_ctx send_ctx;
-
 /**
  * Make an ADC auto-calibrate.
  *
@@ -425,8 +407,6 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 		acq_adc_table[i].channel_count = 0;
 	}
 
-	acq_g.fifo_count = 0;
-
 	/* Set up ADC table according to sources enabled by `src_mask`. */
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_source_table); i++) {
 		uint16_t src_bit = (1 << i);
@@ -443,28 +423,30 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 					acq_g.chan[i].opamp].adc_channel;
 			}
 
-			fifo_channels[acq_g.fifo_count].offset   = acq_g.chan[i].offset;
-			fifo_channels[acq_g.fifo_count].shift    = acq_g.chan[i].shift;
-			fifo_channels[acq_g.fifo_count].saturate = acq_g.chan[i].saturate;
+			if (acq_g.chan[i].msg == NULL) {
+				acq_g.chan[i].msg = bl_msg_queue_acquire();
+			}
+
+			union bl_msg_data *msg = acq_g.chan[i].msg;
+			if (msg != NULL) {
+				msg->type = acq_g.chan[i].sample32
+					? BL_MSG_SAMPLE_DATA32: BL_MSG_SAMPLE_DATA16;
+				msg->sample_data.channel  = i;
+				msg->sample_data.count    = 0;
+				msg->sample_data.reserved = 0x00;
+			}
 
 			enabled = true;
-			acq_adc_table[adc].fifo_channel_index[channels] = acq_g.fifo_count;
 			acq_adc_table[adc].enabled = true;
 			acq_adc_table[adc].src_mask |= src_bit;
 			acq_adc_table[adc].channels[channels] = channel;
 			acq_adc_table[adc].source[channels] = i;
 			acq_adc_table[adc].channel_count++;
-
-			acq_g.fifo_count++;
 		}
 	}
 
 	if (!enabled) {
 		return BL_ERROR_BAD_SOURCE_MASK;
-	}
-
-	if (!fifo_config(acq_g.fifo_count, fifo_channels, acq_g.sample_size)) {
-		return BL_ERROR_FIFO_CONFIG_FAILED;
 	}
 
 	if (src_mask & (1 << BL_ACQ_TMP)) {
@@ -564,16 +546,9 @@ static enum bl_error bl_acq__setup_adc_dma(struct adc_table *adc_info)
 
 	dma_enable_transfer_complete_interrupt(addr, chan);
 
-	unsigned fifo_channel_size = FIFO_SIZE / acq_g.fifo_count / acq_g.sample_size;
-
-	/* Allow four DMAs before the fifo must be emptied, and ensure a
-	 * multiple of the number of channels for this ADC. */
-	adc_info->samples_per_dma = (fifo_channel_size / 4);
-	if (adc_info->samples_per_dma > ACQ_DMA_MAX) {
-		adc_info->samples_per_dma = ACQ_DMA_MAX;
-	}
-	adc_info->samples_per_dma = adc_info->samples_per_dma / channels * channels;
-
+	/* Ensure samples_per_dma is a multiple of channels
+	 * to simplify interrupt handler. */
+	adc_info->samples_per_dma = (ACQ_DMA_MAX / channels) * channels;
 	dma_set_number_of_data(addr, chan, adc_info->samples_per_dma);
 	dma_enable_circular_mode(addr, chan);
 	dma_enable_channel(addr, chan);
@@ -582,6 +557,65 @@ static enum bl_error bl_acq__setup_adc_dma(struct adc_table *adc_info)
 			adc_info->adc_addr,
 			adc_info->channels,
 			adc_info->channel_count);
+}
+
+static inline uint16_t bl_acq__sample_pack16(
+		uint32_t sample, uint32_t offset, uint8_t shift)
+{
+	if (sample < offset) return 0;
+	sample -= offset;
+	sample >>= shift;
+	return (sample > 0xFFFF) ? 0xFFFF : sample;
+}
+
+static inline void bl_acq__sample_commit(
+		struct acq_chan_cfg *chan, unsigned index)
+{
+	union bl_msg_data *msg = chan->msg;
+	/* Note: We don't check for NULL due to cost. */
+
+	if (chan->sample32) {
+		uint8_t count = msg->sample_data.count++;
+		msg->sample_data.data32[count] = chan->sample;
+
+		if (msg->sample_data.count >= MSG_SAMPLE_DATA32_MAX) {
+			bl_msg_queue_commit(msg);
+			msg = bl_msg_queue_acquire();
+
+			/* Note: We dont' check for failure to acquire a msg
+			 * due to the cost of checking in an interrupt. */
+
+			msg->type = BL_MSG_SAMPLE_DATA32;
+			msg->sample_data.channel  = index;
+			msg->sample_data.count    = 0;
+			msg->sample_data.reserved = 0;
+
+			chan->msg = msg;
+		}
+	} else {
+		uint8_t count = msg->sample_data.count++;
+		uint16_t sample16 = bl_acq__sample_pack16(
+				chan->sample, chan->offset, chan->shift);
+		msg->sample_data.data16[count] = sample16;
+
+		if (msg->sample_data.count >= MSG_SAMPLE_DATA16_MAX) {
+			bl_msg_queue_commit(msg);
+			msg = bl_msg_queue_acquire();
+
+			/* Note: We dont' check for failure to acquire a msg
+			 * due to the cost of checking in an interrupt. */
+
+			msg->type = BL_MSG_SAMPLE_DATA16;
+			msg->sample_data.channel  = index;
+			msg->sample_data.count    = 0;
+			msg->sample_data.reserved = 0;
+
+			chan->msg = msg;
+		}
+	}
+
+	chan->sample = 0;
+	chan->sample_count = 0;
 }
 
 /**
@@ -600,16 +634,8 @@ static inline void dma_interrupt_helper(struct adc_table *adc)
 		chan->sample += *p++;
 		chan->sample_count++;
 
-		if (chan->sample_count == acq_g.oversample) {
-			fifo_write(adc->fifo_channel_index[channel], chan->sample);
-
-			if (chan->sample > chan->sample_max)
-				chan->sample_max = chan->sample;
-			if (chan->sample < chan->sample_min)
-				chan->sample_min = chan->sample;
-
-			chan->sample = 0;
-			chan->sample_count = 0;
+		if (chan->sample_count >= acq_g.oversample) {
+			bl_acq__sample_commit(chan, adc->source[channel]);
 		}
 
 		channel++;
@@ -859,7 +885,7 @@ enum bl_error bl_acq_channel_conf(
 		uint8_t  gain,
 		uint8_t  shift,
 		uint32_t offset,
-		bool     saturate)
+		bool     sample32)
 {
 	if (acq_g.state == ACQ_STATE_ACTIVE) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
@@ -867,7 +893,7 @@ enum bl_error bl_acq_channel_conf(
 	acq_g.chan[channel].gain     = gain;
 	acq_g.chan[channel].shift    = shift;
 	acq_g.chan[channel].offset   = offset;
-	acq_g.chan[channel].saturate = saturate;
+	acq_g.chan[channel].sample32 = sample32;
 
 	return BL_ERROR_NONE;
 }
@@ -937,8 +963,6 @@ enum bl_error bl_acq_start(
 	/* Clear sample min/max variables. */
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		acq_g.chan[i].sample       = 0;
-		acq_g.chan[i].sample_min   = 0xFFFFFFFF;
-		acq_g.chan[i].sample_max   = 0;
 		acq_g.chan[i].sample_count = 0;
 	}
 
@@ -952,11 +976,6 @@ enum bl_error bl_acq_start(
 	}
 
 	acq_g.state = ACQ_STATE_ACTIVE;
-
-	/* Send context will only send sample data while active. */
-	send_ctx.msg.type = BL_MSG_SAMPLE_DATA;
-	send_ctx.samples  = 0;
-	send_ctx.channel  = 0;
 
 	/* Enabling the timer will start triggering ADC. */
 	timer_enable_counter(TIM1);
@@ -989,52 +1008,31 @@ enum bl_error bl_acq_abort(void)
 		adc_disable_temperature_sensor();
 	}
 
-	acq_g.state = ACQ_STATE_ABORT;
-
-	/* Send context will stay in ABORT mode until ABORTED message sends. */
-	send_ctx.msg.type = BL_MSG_ABORTED;
+	/* Send remaining queued samples. */
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		send_ctx.msg.aborted.sample_min[i] = acq_g.chan[i].sample_min;
-		send_ctx.msg.aborted.sample_max[i] = acq_g.chan[i].sample_max;
-	}
-
-	return BL_ERROR_NONE;
-}
-
-/* Exported function, documented in acq.h */
-void bl_acq_poll(void)
-{
-	if (acq_g.state == ACQ_STATE_ABORT) {
-		if (usb_send_message(&send_ctx.msg)) {
-			acq_g.state = ACQ_STATE_IDLE;
+		union bl_msg_data *msg = acq_g.chan[i].msg;
+		if (msg == NULL) {
+			continue;
 		}
-		return;
-	}
 
-	if (acq_g.state != ACQ_STATE_ACTIVE) {
-		return;
-	}
-
-	while (send_ctx.samples < MSG_SAMPLES_MAX) {
-		uint16_t *samples = send_ctx.msg.sample_data.data;
-		if (!fifo_read(send_ctx.channel, &samples[send_ctx.samples])) {
+		bool empty;
+		switch (msg->type) {
+		case BL_MSG_SAMPLE_DATA16:
+		case BL_MSG_SAMPLE_DATA32:
+			empty = (msg->sample_data.count == 0);
+			break;
+		default:
+			empty = true;
 			break;
 		}
 
-		send_ctx.samples++;
-		send_ctx.channel++;
-
-		if (send_ctx.channel == acq_g.fifo_count) {
-			send_ctx.channel = 0;
+		if (empty) {
+			bl_msg_queue_release(msg);
+		} else {
+			bl_msg_queue_commit(msg);
 		}
 	}
 
-	/* If we have data we didn't manage to send last time, send it here first. */
-	if (send_ctx.samples == MSG_SAMPLES_MAX) {
-		send_ctx.msg.sample_data.count = send_ctx.samples;
-
-		if (usb_send_message(&send_ctx.msg)) {
-			send_ctx.samples = 0;
-		}
-	}
+	acq_g.state = ACQ_STATE_IDLE;
+	return BL_ERROR_NONE;
 }

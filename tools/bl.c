@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <stdint.h>
@@ -38,7 +39,7 @@
 #include "find_device.h"
 
 /* Whether we've had a `ctrl-c`. */
-volatile bool killed;
+static volatile bool killed = false;
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -177,13 +178,19 @@ static int bl_cmd_read_message(
 		return -read_len;
 	}
 
-	if (msg->type == BL_MSG_SAMPLE_DATA) {
-		expected_len = sizeof(uint16_t) * msg->sample_data.count;
-		read_len = bl_read(dev_fd, &msg->sample_data.data[0],
+	if ((msg->type == BL_MSG_SAMPLE_DATA16) ||
+			(msg->type == BL_MSG_SAMPLE_DATA32)) {
+
+		size_t sample_size = msg->type == BL_MSG_SAMPLE_DATA32 ?
+				sizeof(uint32_t) : sizeof(uint16_t);
+
+		expected_len = sample_size * msg->sample_data.count;
+		read_len = bl_read(dev_fd, msg->sample_data.data16,
 				expected_len, timeout_ms);
+
 		if (read_len != expected_len) {
-			fprintf(stderr, "Failed to read %u samples from device",
-					(unsigned) msg->sample_data.count);
+			fprintf(stderr, "Failed to read %"PRIu8" samples from device",
+					msg->sample_data.count);
 			if (read_len < 0)
 				fprintf(stderr, ": %s", strerror(-read_len));
 			fprintf(stderr, "\n");
@@ -200,14 +207,9 @@ int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 	int ret = bl_cmd_read_message(dev_fd, timeout_ms, &msg);
 	if (ret == 0) {
 		bl_msg_print(msg, stdout);
-		switch (msg->type) {
-		case BL_MSG_RESPONSE:
-			if (msg->response.error_code != BL_ERROR_NONE) {
-				return msg->response.error_code;
-			}
-			break;
-		case BL_MSG_ABORTED:
-			return -ECONNABORTED;
+		if ((msg->type == BL_MSG_RESPONSE) &&
+				(msg->response.error_code != BL_ERROR_NONE)) {
+			return msg->response.error_code;
 		}
 	}
 
@@ -327,7 +329,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		}
 	};
 	unsigned arg_optional_count;
-	uint32_t saturate;
+	uint32_t sample32;
 	uint32_t channel;
 	uint32_t offset;
 	uint32_t shift;
@@ -342,7 +344,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		ARG_GAIN,
 		ARG_OFFSET,
 		ARG_SHIFT,
-		ARG_SATURATE,
+		ARG_SAMPLE32,
 		ARG__COUNT,
 	};
 
@@ -355,15 +357,15 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 				"  \t<GAIN> \\\n"
 				"  \t[OFFSET] \\\n"
 				"  \t[SHIFT] \\\n"
-				"  \t[SATURATE]\n",
+				"  \t[SAMPLE32]\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
 		fprintf(stderr, "\n");
+		fprintf(stderr, "Provide the channel specific configuration, including optional\n");
+		fprintf(stderr, "shift and offset which can be used to fit values to 16-bit.\n");
+		fprintf(stderr, "\n");
 		fprintf(stderr, "A GAIN value must be a power of two"
 				" up to 16.\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "Provide the amount to subtract from accumulated values in-chip,\n");
-		fprintf(stderr, "optional shift and saturate can be used to fit values to 16-bit.\n");
 		fprintf(stderr, "\n");
 		fprintf(stderr, "If an OFFSET is not provided, "
 				"it will default to 0 (no offset).\n");
@@ -371,8 +373,8 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		fprintf(stderr, "If a SHIFT value is not provided, "
 				"it will default to 0 (no shift).\n");
 		fprintf(stderr, "\n");
-		fprintf(stderr, "If a SATURATE flag is not provided, "
-				"it will default to 1 (saturation enabled).\n");
+		fprintf(stderr, "If a SAMPLE32 flag is not provided, "
+				"it will default to 0 (16-bit).\n");
 		return EXIT_FAILURE;
 	}
 
@@ -391,11 +393,11 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	switch (arg_optional_count)
 	{
 	case 3:
-		if (!read_sized_uint(argv[ARG_SATURATE], &saturate, sizeof(msg.channel_conf.saturate))) {
-			fprintf(stderr, "Failed to parse saturate value.\n");
+		if (!read_sized_uint(argv[ARG_SAMPLE32], &sample32, sizeof(msg.channel_conf.sample32))) {
+			fprintf(stderr, "Failed to parse sample32 value.\n");
 			return EXIT_FAILURE;
 		}
-		msg.channel_conf.saturate = saturate;
+		msg.channel_conf.sample32 = sample32;
 		/* Fall through */
 
 	case 2:

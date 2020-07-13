@@ -19,11 +19,17 @@
 
 #include "acq.h"
 #include "led.h"
+#include <stddef.h>
 
 /**
- * Maximum number of channels a \ref BL_MSG_SAMPLE_DATA message can contain.
+ * Maximum number of channels a \ref BL_MSG_SAMPLE_DATA16 message can contain.
  */
-#define MSG_SAMPLES_MAX 30
+#define MSG_SAMPLE_DATA16_MAX 30
+
+/**
+ * Maximum number of channels a \ref BL_MSG_SAMPLE_DATA32 message can contain.
+ */
+#define MSG_SAMPLE_DATA32_MAX 15
 
 enum bl_error;
 
@@ -34,80 +40,82 @@ enum bl_msg_type {
 	BL_MSG_CHANNEL_CONF,
 	BL_MSG_START,
 	BL_MSG_ABORT,
-	BL_MSG_ABORTED,
-	BL_MSG_SAMPLE_DATA,
+	BL_MSG_SAMPLE_DATA16,
+	BL_MSG_SAMPLE_DATA32,
 
 	BL_MSG__COUNT
 };
+
+/** Data for \ref BL_MSG_RESPONSE. */
+typedef struct {
+	uint8_t  type;        /**< Must be \ref BL_MSG_RESPONSE */
+	uint8_t  response_to; /**< Type of message response is to. */
+	uint16_t error_code;  /**< Result of command. */
+} bl_msg_response_t;
+
+/**
+	* Data for \ref BL_MSG_LED.
+	*
+	* This simply turns LEDs on and off.
+	*
+	* While the interface allows multiple LEDs to be on simultaniously,
+	* it may not be possible to achieve on the hardware, due to power
+	* limitations.  Setting a value of 0x00 turns all LEDs off.  The
+	* least significant bit is \ref BL_LED_ID_0.
+	*/
+typedef struct {
+	uint8_t  type;     /**< Must be \ref BL_MSG_LED */
+	uint16_t led_mask; /**< One bit per LED. */
+} bl_msg_led_t;
+
+typedef struct {
+	uint8_t  type;
+	uint8_t  channel;
+	uint8_t  gain;
+	uint8_t  shift;
+	uint32_t offset;
+	uint8_t  sample32;
+} bl_msg_channel_conf_t;
+
+/**
+	* Data for \ref BL_MSG_SETUP.
+	*/
+typedef struct {
+	uint8_t  type;       /**< Must be \ref BL_MSG_SETUP */
+	uint16_t frequency;  /**< Sampling rate in Hz. */
+	uint32_t oversample; /**< Numver of sample readings per sample */
+	uint16_t src_mask;   /**< Mask of sources to enable. */
+} bl_msg_start_t;
+
+/** Data for \ref BL_MSG_ABORT. */
+typedef struct {
+	uint8_t type; /**< Must be \ref BL_MSG_ABORT */
+} bl_msg_abort_t;
+
+/** Data for \ref BL_MSG_SAMPLE_DATA16. */
+typedef struct {
+	uint8_t  type;     /**< Must be \ref BL_MSG_SAMPLE_DATA */
+	uint8_t  channel;  /**< Channel of sample data. */
+	uint8_t  count;    /**< Number of samples in packet. */
+	uint8_t  reserved;
+
+	union {
+		uint16_t data16[MSG_SAMPLE_DATA16_MAX]; /**< Sample data for \ref count samples. */
+		uint32_t data32[MSG_SAMPLE_DATA32_MAX]; /**< Sample data for \ref count samples. */
+	};
+} bl_msg_sample_data_t;
 
 /** Message data */
 union bl_msg_data {
 	/** Message type. */
 	uint8_t type;
 
-	/** Data for \ref BL_MSG_RESPONSE. */
-	struct {
-		uint8_t  type;        /**< Must be \ref BL_MSG_RESPONSE */
-		uint8_t  response_to; /**< Type of message response is to. */
-		uint16_t error_code;  /**< Result of command. */
-	} response;
-
-	/**
-	 * Data for \ref BL_MSG_LED.
-	 *
-	 * This simply turns LEDs on and off.
-	 *
-	 * While the interface allows multiple LEDs to be on simultaniously,
-	 * it may not be possible to achieve on the hardware, due to power
-	 * limitations.  Setting a value of 0x00 turns all LEDs off.  The
-	 * least significant bit is \ref BL_LED_ID_0.
-	 */
-	struct {
-		uint8_t  type;     /**< Must be \ref BL_MSG_LED */
-		uint16_t led_mask; /**< One bit per LED. */
-	} led;
-
-	struct {
-		uint8_t  type;
-		uint8_t  channel;
-		uint8_t  gain;
-		uint8_t  shift;
-		uint32_t offset;
-		uint8_t  saturate;
-	} channel_conf;
-
-	/**
-	 * Data for \ref BL_MSG_SETUP.
-	 */
-	struct {
-		uint8_t  type;           /**< Must be \ref BL_MSG_SETUP */
-		uint16_t frequency;      /**< Sampling rate in Hz. */
-		uint32_t oversample;     /**< Numver of sample readings per sample */
-		uint16_t src_mask;       /**< Mask of sources to enable. */
-	} start;
-
-	/** Data for \ref BL_MSG_ABORT. */
-	struct {
-		uint8_t type; /**< Must be \ref BL_MSG_ABORT */
-	} abort;
-
-	/**
-	 * Data for \ref BL_MSG_ABORTED.
-	 *
-	 * Response message for \ref BL_MSG_ABORT.
-	 */
-	struct {
-		uint8_t type; /**< Must be \ref BL_MSG_ABORTED */
-		uint32_t sample_min[BL_ACQ__SRC_COUNT];
-		uint32_t sample_max[BL_ACQ__SRC_COUNT];
-	} aborted;
-
-	/** Data for \ref BL_MSG_SAMPLE_DATA. */
-	struct {
-		uint8_t  type;     /**< Must be \ref BL_MSG_SAMPLE_DATA */
-		uint8_t  count;    /**< Number of samples in packet. */
-		uint16_t data[];   /**< Sample data for \ref count samples. */
-	} sample_data;
+	bl_msg_response_t     response;
+	bl_msg_led_t          led;
+	bl_msg_channel_conf_t channel_conf;
+	bl_msg_start_t        start;
+	bl_msg_abort_t        abort;
+	bl_msg_sample_data_t  sample_data;
 };
 
 /**
@@ -130,21 +138,34 @@ union bl_msg_data {
  */
 static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 {
-	static const uint8_t len[BL_MSG__COUNT] = {
-		[BL_MSG_RESPONSE]     = BL_SIZEOF_MSG(response),
-		[BL_MSG_LED]          = BL_SIZEOF_MSG(led),
-		[BL_MSG_START]        = BL_SIZEOF_MSG(start),
-		[BL_MSG_ABORT]        = BL_SIZEOF_MSG(abort),
-		[BL_MSG_ABORTED]      = BL_SIZEOF_MSG(aborted),
-		[BL_MSG_SAMPLE_DATA]  = BL_SIZEOF_MSG(sample_data),
-		[BL_MSG_CHANNEL_CONF] = BL_SIZEOF_MSG(channel_conf),
+	static const uint8_t len_table[BL_MSG__COUNT] = {
+		[BL_MSG_RESPONSE]      = BL_SIZEOF_MSG(response),
+		[BL_MSG_LED]           = BL_SIZEOF_MSG(led),
+		[BL_MSG_CHANNEL_CONF]  = BL_SIZEOF_MSG(channel_conf),
+		[BL_MSG_START]         = BL_SIZEOF_MSG(start),
+		[BL_MSG_ABORT]         = BL_SIZEOF_MSG(abort),
+		[BL_MSG_SAMPLE_DATA16] = BL_SIZEOF_MSG(sample_data),
+		[BL_MSG_SAMPLE_DATA32] = BL_SIZEOF_MSG(sample_data),
 	};
 
 	if (type >= BL_MSG__COUNT) {
 		return 0;
 	}
 
-	return len[type];
+	uint8_t len = len_table[type];
+
+	switch (type) {
+	case BL_MSG_SAMPLE_DATA16:
+		len -= sizeof(((union bl_msg_data *)NULL)->sample_data.data16);
+		break;
+	case BL_MSG_SAMPLE_DATA32:
+		len -= sizeof(((union bl_msg_data *)NULL)->sample_data.data32);
+		break;
+	default:
+		break;
+	}
+
+	return len;
 }
 
 /**
@@ -159,8 +180,15 @@ static inline uint8_t bl_msg_len(union bl_msg_data *msg)
 {
 	uint8_t len = bl_msg_type_to_len(msg->type);
 
-	if (msg->type == BL_MSG_SAMPLE_DATA) {
+	switch (msg->type) {
+	case BL_MSG_SAMPLE_DATA16:
 		len += msg->sample_data.count * sizeof(uint16_t);
+		break;
+	case BL_MSG_SAMPLE_DATA32:
+		len += msg->sample_data.count * sizeof(uint32_t);
+		break;
+	default:
+		break;
 	}
 
 	return len;

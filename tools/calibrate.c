@@ -34,36 +34,27 @@
 #include "find_device.h"
 
 /** Whether we've had a `ctrl-c`. */
-volatile bool killed;
-
-/** Max USB packet size in bytes. */
-#define USB_PACKET_MAX 64
-
-/** Storage for incomming messages to read into. */
-union {
-	union bl_msg_data msg;
-	uint8_t raw[USB_PACKET_MAX];
-} input;
+static volatile bool killed = false;
 
 struct channel_conf {
 	bool     enabled;
+
 	uint8_t  gain;
 	uint8_t  shift;
 	uint32_t offset;
-	uint8_t  saturate;
+
+	uint32_t sample_min, sample_max;
 };
 
 static void bl__calibrate_channel(
 		unsigned channel,
-		uint32_t min,
-		uint32_t max,
 		uint8_t bits,
 		struct channel_conf *conf)
 {
 	uint32_t max_range    = (1U << bits) - 1;
 	uint32_t margin       = max_range / 4;
 	uint32_t target_range = max_range - (margin * 2);
-	uint32_t range        = max - min;
+	uint32_t range        = conf->sample_max - conf->sample_min;
 	uint32_t shift        = 0;
 	uint32_t offset;
 
@@ -71,17 +62,20 @@ static void bl__calibrate_channel(
 		shift++;
 	}
 
-	offset = (margin < min) ? (min - margin) : 0;
+	offset = (margin < conf->sample_min) ? (conf->sample_min - margin) : 0;
 
 	printf("Channel: %u\n", channel);
-	if (min > max) {
-		if ((min == 0xFFFFFFFF) && (max == 0)) {
+	if (conf->sample_min > conf->sample_max) {
+		if ((conf->sample_min == 0xFFFFFFFF) &&
+				(conf->sample_max == 0)) {
 			printf("    Disabled\n");
 		} else {
-			printf("    Range:  %"PRIu32" - %"PRIu32" (INVERTED)\n", min, max);
+			printf("    Range:  %"PRIu32" - %"PRIu32" (INVERTED)\n",
+					conf->sample_min, conf->sample_max);
 		}
 	} else {
-		printf("    Range:  %"PRIu32" (%"PRIu32"..%"PRIu32")\n", range, min, max);
+		printf("    Range:  %"PRIu32" (%"PRIu32"..%"PRIu32")\n",
+				range, conf->sample_min, conf->sample_max);
 		printf("    Offset: %"PRIu32"\n", offset);
 		printf("    Shift:  %"PRIu32"\n", shift);
 	}
@@ -90,26 +84,16 @@ static void bl__calibrate_channel(
 	conf->shift  = shift;
 }
 
-static void bl__handle_aborted(
-		const union bl_msg_data *msg,
-		struct channel_conf conf[BL_ACQ__SRC_COUNT])
-{
-	const uint32_t *sample_min = msg->aborted.sample_min;
-	const uint32_t *sample_max = msg->aborted.sample_max;
-
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl__calibrate_channel(i, sample_min[i], sample_max[i], 16, &conf[i]);
-	}
-}
-
 static void bl__handle_start(
 		const union bl_msg_data *msg,
 		struct channel_conf conf[BL_ACQ__SRC_COUNT])
 {
+	(void) msg;
+
+	/* Re-start calibration on start message. */
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		if ((1U << i) & msg->start.src_mask) {
-			conf[i].enabled = true;
-		}
+		conf[i].sample_min = 0xFFFFFFFF;
+		conf[i].sample_max = 0x00000000;
 	}
 }
 
@@ -119,46 +103,73 @@ static void bl__handle_channel_conf(
 {
 	unsigned channel = msg->channel_conf.channel;
 
-	conf[channel].gain     = msg->channel_conf.gain;
-	conf[channel].shift    = msg->channel_conf.shift;
-	conf[channel].offset   = msg->channel_conf.offset;
-	conf[channel].saturate = msg->channel_conf.saturate;
+	/* Channel is only enabled if we receive sample32. */
+	conf[channel].enabled = false;
+
+	conf[channel].gain   = msg->channel_conf.gain;
+	conf[channel].shift  = msg->channel_conf.shift;
+	conf[channel].offset = msg->channel_conf.offset;
+
+	/* Set these here in-case we never see a start. */
+	conf[channel].sample_min = 0xFFFFFFFF;
+	conf[channel].sample_max = 0x00000000;
+}
+
+static void bl__handle_sample_data32(
+		const union bl_msg_data *msg,
+		struct channel_conf conf[BL_ACQ__SRC_COUNT])
+{
+	unsigned channel = msg->sample_data.channel;
+
+	for (unsigned i = 0; i < msg->sample_data.count; i++) {
+		uint32_t sample = msg->sample_data.data32[i];
+		if (sample < conf[channel].sample_min) {
+			conf[channel].sample_min = sample;
+		}
+		if (sample > conf[channel].sample_max) {
+			conf[channel].sample_max = sample;
+		}
+	}
+
+	/* If we're receiving 32-bit samples it's enabled. */
+	conf[channel].enabled = true;
 }
 
 static int bl__calibrate(const char *dev_path)
 {
 	struct channel_conf conf[BL_ACQ__SRC_COUNT] = { 0 };
-	union bl_msg_data *msg = &input.msg;
+	union bl_msg_data msg;
 
-	while (bl_msg_parse(msg)) {
-		switch (msg->type) {
+	while (!killed && bl_msg_parse(&msg)) {
+		switch (msg.type) {
 		case BL_MSG_START:
-			bl__handle_start(msg, conf);
-			break;
-		case BL_MSG_ABORTED:
-			bl__handle_aborted(msg, conf);
+			bl__handle_start(&msg, conf);
 			break;
 		case BL_MSG_CHANNEL_CONF:
-			bl__handle_channel_conf(msg, conf);
+			bl__handle_channel_conf(&msg, conf);
 			break;
-		case BL_MSG_SAMPLE_DATA:
+		case BL_MSG_SAMPLE_DATA16:
 			/* Ignore because it's noisy. */
+			break;
+		case BL_MSG_SAMPLE_DATA32:
+			bl__handle_sample_data32(&msg, conf);
 			break;
 		default:
 			/* Print so we can see what's going on. */
-			bl_msg_print(msg, stdout);
+			bl_msg_print(&msg, stdout);
 			break;
 		}
 	}
 
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		if (conf[i].enabled) {
-			printf("./tools/bl chancfg %s %u %u %u %u %u\n",
+			bl__calibrate_channel(i, 16, &conf[i]);
+
+			printf("./tools/bl chancfg %s %u %u %u %u\n",
 					dev_path, i,
 					(unsigned) conf[i].gain,
 					(unsigned) conf[i].offset,
-					(unsigned) conf[i].shift,
-					(unsigned) conf[i].saturate);
+					(unsigned) conf[i].shift);
 		}
 	}
 

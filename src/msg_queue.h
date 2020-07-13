@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef BL_ERROR_H
-#define BL_ERROR_H
+#ifndef BL_MSG_QUEUE_H
+#define BL_MSG_QUEUE_H
 
-/** Error codes. */
-enum bl_error {
-	BL_ERROR_NONE,               /**< Success. */
-	BL_ERROR_OUT_OF_RANGE,       /**< Value is out of allowed range. */
-	BL_ERROR_BAD_MESSAGE_TYPE,   /**< Unknown message type. */
-	BL_ERROR_BAD_MESSAGE_LENGTH, /**< Unexpected message length. */
-	BL_ERROR_BAD_SOURCE_MASK,    /**< No sources would be sampled. */
-	BL_ERROR_ACTIVE_ACQUISITION, /**< There is an active acquisition. */
-	BL_ERROR_BAD_FREQUENCY,      /**< Frequency combo not supported. */
-};
+#include "msg.h"
+
+void bl_msg_queue_init(void);
+
+union bl_msg_data *bl_msg_queue_acquire(void);
+void               bl_msg_queue_commit(union bl_msg_data *msg);
+union bl_msg_data *bl_msg_queue_peek(void);
+void               bl_msg_queue_release(union bl_msg_data *msg);
 
 #endif

@@ -17,6 +17,8 @@
 #ifndef BL_LED_H
 #define BL_LED_H
 
+#include <stdint.h>
+
 union bl_msg_data;
 enum bl_error;
 

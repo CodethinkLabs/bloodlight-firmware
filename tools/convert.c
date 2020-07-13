@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <stdint.h>
@@ -32,7 +33,7 @@
 #include "msg.h"
 
 /* Whether we've had a `ctrl-c`. */
-volatile bool killed;
+static volatile bool killed = false;
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -49,9 +50,9 @@ uint16_t bl_count_channels(uint16_t src_mask)
 	return bit_count;
 }
 
-static inline int32_t bl_sample_to_signed(uint16_t in)
+static inline int32_t bl_sample_to_signed(uint32_t in)
 {
-	return in - INT16_MIN;
+	return in - INT32_MIN;
 }
 
 enum bl_format {
@@ -61,10 +62,7 @@ enum bl_format {
 };
 
 /* Note: We'll break if there are more than MAX_SAMPLES in a message. */
-union {
-	union bl_msg_data msg;
-	uint8_t samples[sizeof(union bl_msg_data) + sizeof(uint16_t) * MSG_SAMPLES_MAX];
-} input;
+union bl_msg_data msg_g;
 
 int bl_cmd_wav_write_riff_header(FILE *file)
 {
@@ -74,9 +72,9 @@ int bl_cmd_wav_write_riff_header(FILE *file)
 		uint32_t chunk_size;
 		char format[4];
 	} riff_header = {
-		.chunk_id = { 'R', 'I', 'F', 'F' },
-		.format   = { 'W', 'A', 'V', 'E' },
-		.chunk_size= 0xffffffff, /* Trick value for "streaming" samples */
+		.chunk_id   = { 'R', 'I', 'F', 'F' },
+		.format     = { 'W', 'A', 'V', 'E' },
+		.chunk_size = 0xffffffff, /* Trick value for "streaming" samples */
 	};
 
 	written = fwrite(&riff_header, sizeof(riff_header), 1, file);
@@ -107,7 +105,7 @@ int bl_cmd_wav_write_format_header(
 		.subchunk_id = { 'f', 'm', 't', ' ' },
 		.subchunk_size = 16, /* For PCM format. */
 		.audio_format = 1, /* PCM format. */
-		.bits_per_sample = 16,
+		.bits_per_sample = 32,
 		.sample_rate = frequency,
 		.num_channels = bl_count_channels(src_mask),
 	};
@@ -156,32 +154,43 @@ int bl_sample_msg_to_file(
 {
 	static unsigned curr_channel = 0;
 
+	unsigned count = msg->sample_data.count;
+
 	if (format == BL_FORMAT_CSV) {
 		static unsigned counter;
 
 		float period = 1000.0 / frequency;
+		for (unsigned s = 0; s < count; s++) {
+			uint32_t sample = msg->type == BL_MSG_SAMPLE_DATA16 ?
+				msg->sample_data.data16[s] : msg->sample_data.data32[s];
 
-		for (unsigned s = 0; s < msg->sample_data.count; s++) {
 			float x_ms = period * counter;
 			unsigned c = curr_channel++;
-			fprintf(file, "%d,%f,%d\n", c, x_ms, msg->sample_data.data[s]);
-			if (curr_channel == num_channels) {
+			fprintf(file, "%d,%f,%"PRIu32"\n", c, x_ms, sample);
+			if (curr_channel >= num_channels) {
 				curr_channel = 0;
 			}
 			counter++;
 		}
 	} else {
 		size_t written;
-		unsigned count = msg->sample_data.count;
 
-		if (format == BL_FORMAT_WAV) {
-			for (unsigned i = 0; i < count; i++) {
-				unsigned sample = msg->sample_data.data[i];
-				msg->sample_data.data[i] = (int16_t)bl_sample_to_signed(sample);
+		uint32_t data[MSG_SAMPLE_DATA16_MAX];
+		for (unsigned i = 0; i < count; i++) {
+			if (msg->type == BL_MSG_SAMPLE_DATA16) {
+				/* Upscale 16-bit samples to 32-bit. */
+				data[i] = msg->sample_data.data16[i];
+				data[i] = (data[i] << 16) | data[i];
+			} else {
+				data[i] = msg->sample_data.data32[i];
+			}
+
+			if (format == BL_FORMAT_WAV) {
+				data[i] = (uint32_t)bl_sample_to_signed(data[i]);
 			}
 		}
 
-		written = fwrite(msg->sample_data.data, sizeof(int16_t), count, file);
+		written = fwrite(data, sizeof(uint32_t), count, file);
 		if (written != count) {
 			fprintf(stderr, "Failed to write wave_data\n");
 			return EXIT_FAILURE;
@@ -195,7 +204,7 @@ int bl_sample_msg_to_file(
 
 int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 {
-	union bl_msg_data *msg = &input.msg;
+	union bl_msg_data *msg = &msg_g;
 	bool had_setup = false;
 	unsigned frequency;
 	FILE *file;
@@ -264,7 +273,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 
 		/* If the message isn't sample data, print to stderr, so
 		 * the user can see what's going on. */
-		if (msg->type != BL_MSG_SAMPLE_DATA) {
+		if (msg->type != BL_MSG_SAMPLE_DATA16) {
 			bl_msg_print(msg, stderr);
 			continue;
 		}
@@ -305,7 +314,7 @@ int bl_cmd_csv(int argc, char *argv[])
 
 int bl_cmd_relay(int argc, char *argv[])
 {
-	union bl_msg_data *msg = &input.msg;
+	union bl_msg_data *msg = &msg_g;
 	enum {
 		ARG_PROG,
 		ARG_CMD,

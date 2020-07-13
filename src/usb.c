@@ -25,6 +25,7 @@
 #include "error.h"
 #include "util.h"
 #include "msg.h"
+#include "msg_queue.h"
 #include "usb.h"
 
 struct {
@@ -227,15 +228,13 @@ static void bl_usb__send_response(
 		enum bl_msg_type response_to,
 		enum bl_error error)
 {
-	union bl_msg_data msg = {
-		.response = {
-			.type = BL_MSG_RESPONSE,
-			.response_to = response_to,
-			.error_code = error,
-		},
+	bl_msg_response_t msg = {
+		.type = BL_MSG_RESPONSE,
+		.response_to = response_to,
+		.error_code = error,
 	};
 
-	(void) usb_send_message(&msg);
+	usbd_ep_write_packet(usb_g.handle, 0x82, &msg, sizeof(msg));
 }
 
 static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
@@ -307,10 +306,17 @@ void bl_usb_init(void)
 
 	usbd_register_set_config_callback(usb_g.handle,
 			bl_usb__cdcacm_set_config);
+
+	bl_msg_queue_init();
 }
 
 /* Exported function, documented in usb.h */
 void bl_usb_poll(void)
 {
+	union bl_msg_data *msg = bl_msg_queue_peek();
+	if (msg && usb_send_message(msg)) {
+		bl_msg_queue_release(msg);
+	}
+
 	usbd_poll(usb_g.handle);
 }
