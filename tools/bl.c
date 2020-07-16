@@ -35,7 +35,7 @@
 
 /* Common helper functionality. */
 #include "msg.h"
-
+#include "find_device.h"
 /* Whether we've had a `ctrl-c`. */
 volatile bool killed;
 
@@ -679,6 +679,38 @@ static int bl_setup_signal_handler(void)
 	return EXIT_SUCCESS;
 }
 
+static void bl_auto_dev(char *argv[])
+{
+	enum
+	{
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG__COUNT,
+	};
+
+	if ((strncmp(argv[ARG_DEV_PATH], "auto", 4) ||
+		 strncmp(argv[ARG_DEV_PATH], "--auto", 6) ||
+		 strncmp(argv[ARG_DEV_PATH], "-a", 2)))
+	{
+		int found = scan();
+		switch (found)
+		{
+		case 0:
+			fprintf(stderr, "No MPD device found.\n");
+			exit(EXIT_FAILURE);
+		case 1:
+			printf("valid device at: %s\n", dev_node);
+			argv[ARG_DEV_PATH] = dev_node;
+			break;
+		default:
+			fprintf(stderr, "More than one device found, please specify which device to use.\n");
+			bl_cmd_help(argv[ARG_PROG]);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	bl_cmd_fn cmd_fn;
@@ -692,6 +724,10 @@ int main(int argc, char *argv[])
 		bl_cmd_help(argv[ARG_PROG]);
 		return EXIT_FAILURE;
 	}
+
+	/* All valid comments using device path have more than 2 arguments */
+	if (argc > ARG__COUNT)
+		bl_auto_dev(argv);
 
 	cmd_fn = bl_cmd_lookup(argv[ARG_CMD]);
 	if (cmd_fn == NULL) {

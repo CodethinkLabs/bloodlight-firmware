@@ -161,6 +161,7 @@ int scan(void)
 	return found;
 }
 
+/*
 int main(void)
 {
 	int found = scan();
@@ -177,3 +178,4 @@ int main(void)
 	}
 	exit(EXIT_SUCCESS);
 }
+*/
