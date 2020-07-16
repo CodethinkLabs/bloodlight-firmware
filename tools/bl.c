@@ -286,7 +286,7 @@ static int bl_cmd_led(int argc, char *argv[])
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
+				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
 				"  \t<LED_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
@@ -349,7 +349,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	if (argc < (ARG_OFFSET) || argc > ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
+				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
 				"  \t<CHANNEL> \\\n"
 				"  \t<GAIN> \\\n"
 				"  \t[OFFSET] \\\n"
@@ -450,7 +450,7 @@ static int bl_cmd__no_params_helper(
 
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
-		fprintf(stderr, "  %s %s <DEVICE_PATH>\n",
+		fprintf(stderr, "  %s %s <DEVICE_PATH|auto|--auto|-a>\n",
 				argv[ARG_PROG], argv[ARG_CMD]);
 		return EXIT_FAILURE;
 	}
@@ -511,7 +511,7 @@ static int bl_cmd_start_stream(
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
+				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
 				"  \t<FREQUENCY> \\\n"
 				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n",
