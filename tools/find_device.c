@@ -127,7 +127,7 @@ static int dev_match(const struct dirent *entry)
 	return !strncmp(entry->d_name, "ttyACM", 6);
 }
 
-int scan(void)
+static int scan(void)
 {
 	struct dirent **namelist;
 	int n, found = 0;
@@ -145,7 +145,7 @@ int scan(void)
 		{
 			int ret = snprintf(dev_node, sizeof(dev_node) - 1,
 							   "/dev/%s", namelist[n]->d_name);
-			if (ret < 0 || ret >= sizeof(dev_node) - 1)
+			if (ret < 0 || ret >= (int)(sizeof(dev_node) - 1))
 			{
 				fprintf(stderr, "Error on saving device path: %s\n",
 						namelist[n]->d_name);
@@ -160,6 +160,28 @@ int scan(void)
 	free(namelist);
 
 	return found;
+}
+
+void get_dev(int dev, char *argv[])
+{
+    if ((strncmp(argv[dev], "auto", 4) ||
+         strncmp(argv[dev], "--auto", 6) ||
+         strncmp(argv[dev], "-a", 2)))
+    {
+        int found = scan();
+        switch (found)
+        {
+        case 0:
+            fprintf(stderr, "No MPD device found.\n");
+            exit(EXIT_FAILURE);
+        case 1:
+            argv[dev] = dev_node;
+            break;
+        default:
+            fprintf(stderr, "More than one device found, please specify which device to use.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
 /*
