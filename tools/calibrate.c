@@ -31,6 +31,7 @@
 
 /* Common helper functionality. */
 #include "msg.h"
+#include "find_device.h"
 
 /** Whether we've had a `ctrl-c`. */
 volatile bool killed;
@@ -167,7 +168,7 @@ static int bl__calibrate(const char *dev_path)
 static void bl__help(const char *prog)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "  %s DEV_PATH\n", prog);
+	fprintf(stderr, "  %s <DEV_PATH|auto|--auto|-a>\n", prog);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Reads an aqcuisition log message from stdin, and prints\n");
 	fprintf(stderr, "suggested acquisition parameters to stdout\n");
@@ -227,6 +228,8 @@ int main(int argc, char *argv[])
 	if (bl__setup_signal_handler() != EXIT_SUCCESS) {
 		return EXIT_FAILURE;
 	}
+
+	get_dev(ARG_DEV_PATH, argv);
 
 	return bl__calibrate(argv[ARG_DEV_PATH]);
 }
