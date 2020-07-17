@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#include "../src/usb.h"
 #include "find_device.h"
 
 /* Valid Codethink Medical Plethysmograph Device path */
@@ -104,9 +105,9 @@ static bool match(char *sysname)
 	 encoded, but the strings returned from
 	 udev_device_get_sysattr_value() are UTF-8 encoded. */
 	if (!strncmp(udev_device_get_sysattr_value(dev, "manufacturer"),
-				 "Codethink", 9) &&
+				 BL_STR_MANUFACTURER, 9) &&
 		!strncmp(udev_device_get_sysattr_value(dev, "product"),
-				 "Medical Plethysmograph Device", 29))
+				 BL_STR_PRODUCT, 29))
 		return true;
 
 dev_out:

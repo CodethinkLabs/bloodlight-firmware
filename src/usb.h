@@ -17,6 +17,10 @@
 #ifndef BL_USB_H
 #define BL_USB_H
 
+#define BL_STR_MANUFACTURER "Codethink"
+#define BL_STR_PRODUCT      "Medical Plethysmograph Device"
+#define BL_STR_SERIAL_NUM   "ct-mpd:000000"
+
 /**
  * Initialise the USB module.
  */

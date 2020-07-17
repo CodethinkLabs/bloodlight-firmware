@@ -40,9 +40,9 @@ enum usb_bl_strings {
 };
 
 static const char *bl_usb_strings[] = {
-	[BL_USB_STRING_MANUFACTURER]  = "Codethink",
-	[BL_USB_STRING_PRODUCT]       = "Medical Plethysmograph Device",
-	[BL_USB_STRING_SERIAL_NUMBER] = "ct-mpd:000000",
+	[BL_USB_STRING_MANUFACTURER]  = BL_STR_MANUFACTURER,
+	[BL_USB_STRING_PRODUCT]       = BL_STR_PRODUCT,
+	[BL_USB_STRING_SERIAL_NUMBER] = BL_STR_SERIAL_NUM,
 };
 
 static const struct usb_device_descriptor device_descriptor = {
