@@ -35,6 +35,7 @@
 
 /* Common helper functionality. */
 #include "msg.h"
+#include "find_device.h"
 
 /* Whether we've had a `ctrl-c`. */
 volatile bool killed;
@@ -286,7 +287,7 @@ static int bl_cmd_led(int argc, char *argv[])
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
+				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
 				"  \t<LED_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
@@ -349,7 +350,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	if (argc < (ARG_OFFSET) || argc > ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
+				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
 				"  \t<CHANNEL> \\\n"
 				"  \t<GAIN> \\\n"
 				"  \t[OFFSET] \\\n"
@@ -450,7 +451,7 @@ static int bl_cmd__no_params_helper(
 
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
-		fprintf(stderr, "  %s %s <DEVICE_PATH>\n",
+		fprintf(stderr, "  %s %s <DEVICE_PATH|auto|--auto|-a>\n",
 				argv[ARG_PROG], argv[ARG_CMD]);
 		return EXIT_FAILURE;
 	}
@@ -511,7 +512,7 @@ static int bl_cmd_start_stream(
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH> \\\n"
+				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
 				"  \t<FREQUENCY> \\\n"
 				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n",
@@ -685,13 +686,18 @@ int main(int argc, char *argv[])
 	enum {
 		ARG_PROG,
 		ARG_CMD,
+		ARG_DEV_PATH,
 		ARG__COUNT,
 	};
 
-	if (argc < ARG__COUNT) {
+	if (argc < ARG_DEV_PATH) {
 		bl_cmd_help(argv[ARG_PROG]);
 		return EXIT_FAILURE;
 	}
+
+	/* All valid comments using device path have more than 2 arguments */
+	if (argc > ARG_DEV_PATH)
+		get_dev(ARG_DEV_PATH, argv);
 
 	cmd_fn = bl_cmd_lookup(argv[ARG_CMD]);
 	if (cmd_fn == NULL) {

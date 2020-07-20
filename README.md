@@ -164,12 +164,14 @@ command:
 
 Usage:
   ./tools/bl led \
-  	<DEVICE_PATH> \
+  	<DEVICE_PATH|auto|--auto|-a> \
   	<LED_MASK>
 ```
 
 The DEVICE_PATH is the tty device reported in `dmesg` when the device was
-connected.
+connected. When `auto` and friends are provided, it will try to guess the
+tty deivce name based on the `manufactuer` and `product` fields of USB
+devices.
 
 The LED_MASK is a 16-bit mask of the 16 LEDs on the device.  If a bit is
 set, then the corresponding LED is turned on:

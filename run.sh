@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Example: `sudo ./run.sh /dev/ttyACM1`
+# Example: `sudo ./run.sh auto`
 
 declare DEVICE="$1"
 
