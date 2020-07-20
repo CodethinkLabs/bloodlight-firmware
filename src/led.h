@@ -19,8 +19,9 @@
 
 #include <stdint.h>
 
+#include "error.h"
+
 union bl_msg_data;
-enum bl_error;
 
 /** LED identifiers. */
 enum bl_led_id {
