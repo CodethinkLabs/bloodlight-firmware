@@ -216,17 +216,17 @@ static enum usbd_request_return_codes bl_usb__cdcacm_control_request(
 	return USBD_REQ_NOTSUPP;
 }
 
+static bool usb_response_used;
+static bl_msg_response_t usb_response;
+
 static void bl_usb__send_response(
 		enum bl_msg_type response_to,
 		enum bl_error error)
 {
-	bl_msg_response_t msg = {
-		.type = BL_MSG_RESPONSE,
-		.response_to = response_to,
-		.error_code = error,
-	};
-
-	usbd_ep_write_packet(usb_g.handle, 0x82, &msg, sizeof(msg));
+	usb_response.type = BL_MSG_RESPONSE;
+	usb_response.response_to = response_to;
+	usb_response.error_code = error;
+	usb_response_used = true;
 }
 
 static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
@@ -321,6 +321,10 @@ void bl_usb_poll(void)
 		union bl_msg_data *msg = bl_mq_peek(channel);
 		if (msg && bl_usb__send_message(msg)) {
 			bl_mq_release(channel);
+		}
+	} else if (usb_response_used) {
+		if (bl_usb__send_message((union bl_msg_data *)&usb_response)) {
+			usb_response_used = false;
 		}
 	}
 
