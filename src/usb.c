@@ -25,7 +25,7 @@
 #include "error.h"
 #include "util.h"
 #include "msg.h"
-#include "msg_queue.h"
+#include "mq.h"
 #include "usb.h"
 
 struct {
@@ -216,14 +216,6 @@ static enum usbd_request_return_codes bl_usb__cdcacm_control_request(
 	return USBD_REQ_NOTSUPP;
 }
 
-/* Exported function, documented in usb.h */
-bool usb_send_message(union bl_msg_data *msg)
-{
-	uint16_t len = bl_msg_len(msg);
-
-	return (len == usbd_ep_write_packet(usb_g.handle, 0x82, msg, len));
-}
-
 static void bl_usb__send_response(
 		enum bl_msg_type response_to,
 		enum bl_error error)
@@ -306,16 +298,30 @@ void bl_usb_init(void)
 
 	usbd_register_set_config_callback(usb_g.handle,
 			bl_usb__cdcacm_set_config);
+}
 
-	bl_msg_queue_init();
+/**
+ * Send a message to the host.
+ *
+ * \param[in]  msg  Message to send to host.
+ * \return True on success.
+ */
+static bool bl_usb__send_message(union bl_msg_data *msg)
+{
+	uint16_t len = bl_msg_len(msg);
+	return (len == usbd_ep_write_packet(usb_g.handle, 0x82, msg, len));
 }
 
 /* Exported function, documented in usb.h */
 void bl_usb_poll(void)
 {
-	union bl_msg_data *msg = bl_msg_queue_peek();
-	if (msg && usb_send_message(msg)) {
-		bl_msg_queue_release(msg);
+	if (mq_pending != 0x00) {
+		unsigned channel = bl_mq_pending_channel();
+
+		union bl_msg_data *msg = bl_mq_peek(channel);
+		if (msg && bl_usb__send_message(msg)) {
+			bl_mq_release(channel);
+		}
 	}
 
 	usbd_poll(usb_g.handle);

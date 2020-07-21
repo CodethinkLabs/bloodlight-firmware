@@ -31,7 +31,7 @@
 #include "util.h"
 #include "acq.h"
 #include "msg.h"
-#include "msg_queue.h"
+#include "mq.h"
 #include "usb.h"
 
 /**
@@ -411,6 +411,7 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 	for (unsigned i = 0; i < BL_ARRAY_LEN(acq_source_table); i++) {
 		uint16_t src_bit = (1 << i);
 
+		acq_g.chan[i].msg = NULL;
 		if (src_mask & src_bit) {
 			uint8_t adc = acq_source_table[i].adc;
 			uint8_t channel = acq_source_table[i].adc_channel;
@@ -423,14 +424,11 @@ static enum bl_error bl_acq__setup_adc_table(uint16_t src_mask)
 					acq_g.chan[i].opamp].adc_channel;
 			}
 
-			if (acq_g.chan[i].msg == NULL) {
-				acq_g.chan[i].msg = bl_msg_queue_acquire();
-			}
-
+			acq_g.chan[i].msg = bl_mq_acquire(i);
 			union bl_msg_data *msg = acq_g.chan[i].msg;
 			if (msg != NULL) {
-				msg->type = acq_g.chan[i].sample32
-					? BL_MSG_SAMPLE_DATA32: BL_MSG_SAMPLE_DATA16;
+				msg->type = acq_g.chan[i].sample32 ?
+					BL_MSG_SAMPLE_DATA32 : BL_MSG_SAMPLE_DATA16;
 				msg->sample_data.channel  = i;
 				msg->sample_data.count    = 0;
 				msg->sample_data.reserved = 0x00;
@@ -579,8 +577,8 @@ static inline void bl_acq__sample_commit(
 		msg->sample_data.data32[count] = chan->sample;
 
 		if (msg->sample_data.count >= MSG_SAMPLE_DATA32_MAX) {
-			bl_msg_queue_commit(msg);
-			msg = bl_msg_queue_acquire();
+			bl_mq_commit(index);
+			msg = bl_mq_acquire(index);
 
 			/* Note: We dont' check for failure to acquire a msg
 			 * due to the cost of checking in an interrupt. */
@@ -599,8 +597,8 @@ static inline void bl_acq__sample_commit(
 		msg->sample_data.data16[count] = sample16;
 
 		if (msg->sample_data.count >= MSG_SAMPLE_DATA16_MAX) {
-			bl_msg_queue_commit(msg);
-			msg = bl_msg_queue_acquire();
+			bl_mq_commit(index);
+			msg = bl_mq_acquire(index);
 
 			/* Note: We dont' check for failure to acquire a msg
 			 * due to the cost of checking in an interrupt. */
@@ -960,6 +958,8 @@ enum bl_error bl_acq_start(
 {
 	enum bl_error error;
 
+	bl_mq_init();
+
 	/* Clear sample min/max variables. */
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		acq_g.chan[i].sample       = 0;
@@ -1015,21 +1015,19 @@ enum bl_error bl_acq_abort(void)
 			continue;
 		}
 
-		bool empty;
+		bool pending;
 		switch (msg->type) {
 		case BL_MSG_SAMPLE_DATA16:
 		case BL_MSG_SAMPLE_DATA32:
-			empty = (msg->sample_data.count == 0);
+			pending = (msg->sample_data.count > 0);
 			break;
 		default:
-			empty = true;
+			pending = false;
 			break;
 		}
 
-		if (empty) {
-			bl_msg_queue_release(msg);
-		} else {
-			bl_msg_queue_commit(msg);
+		if (pending) {
+			bl_mq_commit(i);
 		}
 	}
 
