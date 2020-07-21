@@ -31,7 +31,6 @@
 
 /* Common helper functionality. */
 #include "msg.h"
-#include "find_device.h"
 
 /** Whether we've had a `ctrl-c`. */
 static volatile bool killed = false;
@@ -135,7 +134,7 @@ static void bl__handle_sample_data32(
 	conf[channel].enabled = true;
 }
 
-static int bl__calibrate(const char *dev_path)
+static int bl__calibrate(void)
 {
 	struct channel_conf conf[BL_ACQ__SRC_COUNT] = { 0 };
 	union bl_msg_data msg;
@@ -164,9 +163,12 @@ static int bl__calibrate(const char *dev_path)
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		if (conf[i].enabled) {
 			bl__calibrate_channel(i, 16, &conf[i]);
+		}
+	}
 
-			printf("./tools/bl chancfg %s %u %u %u %u\n",
-					dev_path, i,
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		if (conf[i].enabled) {
+			printf("./tools/bl chancfg \"$device\" %u %u %u %u\n", i,
 					(unsigned) conf[i].gain,
 					(unsigned) conf[i].offset,
 					(unsigned) conf[i].shift);
@@ -179,7 +181,7 @@ static int bl__calibrate(const char *dev_path)
 static void bl__help(const char *prog)
 {
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "  %s <DEV_PATH|auto|--auto|-a>\n", prog);
+	fprintf(stderr, "  %s", prog);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Reads an aqcuisition log message from stdin, and prints\n");
 	fprintf(stderr, "suggested acquisition parameters to stdout\n");
@@ -227,11 +229,10 @@ int main(int argc, char *argv[])
 {
 	enum {
 		ARG_PROG,
-		ARG_DEV_PATH,
 		ARG__COUNT,
 	};
 
-	if (argc < ARG__COUNT) {
+	if (argc != ARG__COUNT) {
 		bl__help(argv[ARG_PROG]);
 		return EXIT_FAILURE;
 	}
@@ -240,8 +241,6 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	get_dev(ARG_DEV_PATH, argv);
-
-	return bl__calibrate(argv[ARG_DEV_PATH]);
+	return bl__calibrate();
 }
 
