@@ -211,6 +211,10 @@ int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 				(msg->response.error_code != BL_ERROR_NONE)) {
 			return msg->response.error_code;
 		}
+		if ((msg->type == BL_MSG_RESPONSE) &&
+				(msg->response.response_to == BL_MSG_ABORT)) {
+			return ECONNABORTED;
+		}
 	}
 
 	return ret;
@@ -480,7 +484,8 @@ int bl_cmd_receive_and_print_loop(int dev_fd)
 		ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 		if (ret == EINTR) {
 			killed = true;
-
+		} else if (ret == ECONNABORTED) {
+			return EXIT_SUCCESS;
 		} else if (ret != 0) {
 			ret = EXIT_FAILURE;
 		}
