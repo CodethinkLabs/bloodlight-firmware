@@ -33,10 +33,15 @@ jobs:
       run: sudo apt-get update -qq &&
            sudo apt-get install --no-install-recommends -y
                make
+               cppcheck
                shellcheck
                clang-tools
                libudev-dev
     - name: Shellcheck
       run: shellcheck run.sh
-    - name: Clang scan-build
+    - name: Clang scan-build tools
       run: scan-build make -BC tools
+    - name: Cppcheck tools
+      run: cppcheck --enable=warning,performance,portability,information --std=c11 tools/
+    - name: Cppcheck firmware
+      run: cppcheck --enable=warning,performance,portability,information --std=c11 src/
