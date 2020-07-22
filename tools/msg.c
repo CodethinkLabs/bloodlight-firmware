@@ -115,7 +115,7 @@ static enum bl_msg_type bl_msg__read_type(bool *success)
 	return bl_msg_str_to_type(str_type);
 }
 
-static enum bl_msg_type bl_msg__read_error(bool *success)
+static enum bl_error bl_msg__read_error(bool *success)
 {
 	const char *str_type = bl_msg__read_str_error(success);
 

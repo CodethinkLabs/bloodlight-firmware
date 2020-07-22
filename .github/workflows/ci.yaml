@@ -1,0 +1,47 @@
+name: CI
+on: [push]
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: apt-get install packages
+      run: sudo apt-get update -qq &&
+           sudo apt-get install --no-install-recommends -y
+               gcc
+               make
+               clang
+               libudev-dev
+               gcc-arm-none-eabi
+               libnewlib-arm-none-eabi
+    - name: Build libopencm3
+      run: make -j4 -C libopencm3
+    - name: Build firmware
+      run: make
+    - name: Build tools (gcc)
+      run: make -BC tools
+    - name: Build tools (clang)
+      run: CC=clang make -BC tools
+
+  Code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: apt-get install packages
+      run: sudo apt-get update -qq &&
+           sudo apt-get install --no-install-recommends -y
+               make
+               cppcheck
+               shellcheck
+               clang-tools
+               libudev-dev
+    - name: Shellcheck
+      run: shellcheck run.sh
+    - name: Clang scan-build tools
+      run: scan-build make -BC tools
+    - name: Cppcheck tools
+      run: cppcheck --enable=warning,performance,portability,information --std=c11 tools/
+    - name: Cppcheck firmware
+      run: cppcheck --enable=warning,performance,portability,information --std=c11 src/

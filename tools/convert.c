@@ -367,7 +367,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			goto cleanup;
 		}
 
-		bl_sample_msg_to_file(file, frequency, msg, src_mask,
+		ret = bl_sample_msg_to_file(file, frequency, msg, src_mask,
 				num_channels, format);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;

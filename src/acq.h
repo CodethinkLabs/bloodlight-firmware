@@ -22,7 +22,6 @@
 #include "led.h"
 
 union bl_msg_data;
-enum bl_error;
 
 /**
  * Acquisition sources.
