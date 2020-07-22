@@ -31,8 +31,6 @@
  */
 #define MSG_SAMPLE_DATA32_MAX 15
 
-enum bl_error;
-
 /** Message type. */
 enum bl_msg_type {
 	BL_MSG_RESPONSE,
