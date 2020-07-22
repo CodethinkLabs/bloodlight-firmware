@@ -1,5 +1,5 @@
 #ifndef BL_TOOLS_MSG_H
-#define Bl_TOOLS_MSG_H
+#define BL_TOOLS_MSG_H
 
 /**
  * Parse from `stdin` into given message data structure.
