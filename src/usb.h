@@ -17,6 +17,8 @@
 #ifndef BL_USB_H
 #define BL_USB_H
 
+#include "msg.h"
+
 #define BL_STR_MANUFACTURER "Codethink"
 #define BL_STR_PRODUCT      "Medical Plethysmograph Device"
 #define BL_STR_SERIAL_NUM   "ct-mpd:000000"
@@ -30,13 +32,5 @@ void bl_usb_init(void);
  * Poll the USB.
  */
 void bl_usb_poll(void);
-
-/**
- * Send a message to the host.
- *
- * \param[in]  msg  Message to send to host.
- * \return True on success.
- */
-bool usb_send_message(union bl_msg_data *msg);
 
 #endif

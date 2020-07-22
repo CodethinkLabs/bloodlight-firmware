@@ -56,7 +56,6 @@ int main(void)
 	bl_init();
 
 	while (true) {
-		bl_acq_poll();
 		bl_usb_poll();
 	}
 }

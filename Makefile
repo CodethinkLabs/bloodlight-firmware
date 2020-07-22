@@ -9,7 +9,7 @@ CFILES = \
 	src/bl.c \
 	src/msg.c \
 	src/usb.c \
-	src/fifo.c
+	src/mq.c
 
 # TODO: Change for the actual board
 DEVICE=stm32f303CCT6

@@ -25,6 +25,7 @@
 #include "error.h"
 #include "util.h"
 #include "msg.h"
+#include "mq.h"
 #include "usb.h"
 
 struct {
@@ -215,27 +216,17 @@ static enum usbd_request_return_codes bl_usb__cdcacm_control_request(
 	return USBD_REQ_NOTSUPP;
 }
 
-/* Exported function, documented in usb.h */
-bool usb_send_message(union bl_msg_data *msg)
-{
-	uint16_t len = bl_msg_len(msg);
-
-	return (len == usbd_ep_write_packet(usb_g.handle, 0x82, msg, len));
-}
+static bool usb_response_used;
+static bl_msg_response_t usb_response;
 
 static void bl_usb__send_response(
 		enum bl_msg_type response_to,
 		enum bl_error error)
 {
-	union bl_msg_data msg = {
-		.response = {
-			.type = BL_MSG_RESPONSE,
-			.response_to = response_to,
-			.error_code = error,
-		},
-	};
-
-	(void) usb_send_message(&msg);
+	usb_response.type = BL_MSG_RESPONSE;
+	usb_response.response_to = response_to;
+	usb_response.error_code = error;
+	usb_response_used = true;
 }
 
 static void bl_usb__cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
@@ -309,8 +300,33 @@ void bl_usb_init(void)
 			bl_usb__cdcacm_set_config);
 }
 
+/**
+ * Send a message to the host.
+ *
+ * \param[in]  msg  Message to send to host.
+ * \return True on success.
+ */
+static bool bl_usb__send_message(union bl_msg_data *msg)
+{
+	uint16_t len = bl_msg_len(msg);
+	return (len == usbd_ep_write_packet(usb_g.handle, 0x82, msg, len));
+}
+
 /* Exported function, documented in usb.h */
 void bl_usb_poll(void)
 {
+	if (mq_pending != 0x00) {
+		unsigned channel = bl_mq_pending_channel();
+
+		union bl_msg_data *msg = bl_mq_peek(channel);
+		if (msg && bl_usb__send_message(msg)) {
+			bl_mq_release(channel);
+		}
+	} else if (usb_response_used) {
+		if (bl_usb__send_message((union bl_msg_data *)&usb_response)) {
+			usb_response_used = false;
+		}
+	}
+
 	usbd_poll(usb_g.handle);
 }

@@ -205,16 +205,24 @@ set all the bits to zero:
 sudo ./tools/bl led /dev/ttyACM2 0x0
 ```
 
-To run an acquisition, it is simplest to turn on the LED(s) you want,
-and use the [run.sh](run.sh) script either directly or as an example:
+To run an acquisition, it is simplest to use the [run.sh](run.sh) script
+either directly or as an example:
 
 ```
-sudo ./run.sh /dev/ttyACM2
+sudo ./run.sh cal
+sudo ./run.sh acq
+sudo ./run.sh off
 ```
 
 This will show the messages being sent and received to run an acquisition,
 and also the sample data. See the comments in the [run.sh](run.sh) script
 for further details on how to configure an acquisition.
+
+Overridding the default acquistion parameters is possible too, for example:
+
+```
+sudo FREQUENCY=1000 OVERSAMPLE=128 SRC_MASK=0x5 ./run.sh acq
+```
 
 Device info
 -----------

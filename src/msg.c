@@ -46,7 +46,7 @@ static enum bl_error bl_msg_channel_conf(const union bl_msg_data *msg)
 			msg->channel_conf.gain,
 			msg->channel_conf.shift,
 			msg->channel_conf.offset,
-			msg->channel_conf.saturate);
+			(msg->channel_conf.sample32 != 0));
 }
 
 /**

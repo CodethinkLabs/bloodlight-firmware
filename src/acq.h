@@ -38,7 +38,8 @@ enum bl_acq_source {
 	BL_ACQ_3V3,
 	BL_ACQ_5V0,
 	BL_ACQ_TMP,
-	BL_ACQ__SRC_COUNT, /**< Not a source, but a count of sources. */
+
+	BL_ACQ__SRC_COUNT /**< Not a source, but a count of sources. */
 };
 
 /**
@@ -74,7 +75,7 @@ enum bl_error bl_acq_channel_conf(
 		uint8_t  gain,
 		uint8_t  shift,
 		uint32_t offset,
-		bool     saturate);
+		bool     sample32);
 
 /**
  * Abort an acquisition.
@@ -82,10 +83,5 @@ enum bl_error bl_acq_channel_conf(
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_abort(void);
-
-/**
- * Poll the acquisition module.
- */
-void bl_acq_poll(void);
 
 #endif

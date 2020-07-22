@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +34,7 @@
 #include "msg.h"
 
 /* Whether we've had a `ctrl-c`. */
-volatile bool killed;
+static volatile bool killed = false;
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -49,9 +51,9 @@ uint16_t bl_count_channels(uint16_t src_mask)
 	return bit_count;
 }
 
-static inline int32_t bl_sample_to_signed(uint16_t in)
+static inline int32_t bl_sample_to_signed(uint32_t in)
 {
-	return in - INT16_MIN;
+	return in - INT32_MIN;
 }
 
 enum bl_format {
@@ -61,10 +63,7 @@ enum bl_format {
 };
 
 /* Note: We'll break if there are more than MAX_SAMPLES in a message. */
-union {
-	union bl_msg_data msg;
-	uint8_t samples[sizeof(union bl_msg_data) + sizeof(uint16_t) * MSG_SAMPLES_MAX];
-} input;
+union bl_msg_data msg_g;
 
 int bl_cmd_wav_write_riff_header(FILE *file)
 {
@@ -74,9 +73,9 @@ int bl_cmd_wav_write_riff_header(FILE *file)
 		uint32_t chunk_size;
 		char format[4];
 	} riff_header = {
-		.chunk_id = { 'R', 'I', 'F', 'F' },
-		.format   = { 'W', 'A', 'V', 'E' },
-		.chunk_size= 0xffffffff, /* Trick value for "streaming" samples */
+		.chunk_id   = { 'R', 'I', 'F', 'F' },
+		.format     = { 'W', 'A', 'V', 'E' },
+		.chunk_size = 0xffffffff, /* Trick value for "streaming" samples */
 	};
 
 	written = fwrite(&riff_header, sizeof(riff_header), 1, file);
@@ -107,7 +106,7 @@ int bl_cmd_wav_write_format_header(
 		.subchunk_id = { 'f', 'm', 't', ' ' },
 		.subchunk_size = 16, /* For PCM format. */
 		.audio_format = 1, /* PCM format. */
-		.bits_per_sample = 16,
+		.bits_per_sample = 32,
 		.sample_rate = frequency,
 		.num_channels = bl_count_channels(src_mask),
 	};
@@ -147,44 +146,135 @@ int bl_cmd_wav_write_data_header(FILE *file)
 	return EXIT_SUCCESS;
 }
 
+static uint8_t chan[BL_ACQ__SRC_COUNT] = { 0 };
+
+static void init_chan_lookup(unsigned src_mask)
+{
+	unsigned used = 0;
+
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		if ((1U << i) & src_mask) {
+			chan[i] = used;
+			used++;
+		}
+	}
+}
+
+#define FIFO_MAX 1024
+
+struct fifo {
+	uint32_t values[FIFO_MAX];
+	uint16_t write;
+	uint16_t read;
+	uint16_t used;
+};
+
+static struct fifo fifos[BL_ACQ__SRC_COUNT];
+
+static inline uint16_t fifo_advance(uint16_t pos)
+{
+	pos++;
+	return (pos >= FIFO_MAX) ? 0 : pos;
+}
+
+bool fifo_write(unsigned idx, uint32_t value)
+{
+	struct fifo *fifo = &fifos[idx];
+
+	if (fifo->used == FIFO_MAX) {
+		return false;
+	}
+
+	fifo->values[fifo->read] = value;
+	fifo->read = fifo_advance(fifo->read);
+	fifo->used++;
+
+	return true;
+}
+
+bool fifo_read(unsigned idx, uint32_t *value)
+{
+	struct fifo *fifo = &fifos[idx];
+
+	if (fifo->used == 0) {
+		return false;
+	}
+
+	*value = fifo->values[fifo->write];
+	fifo->write = fifo_advance(fifo->write);
+	fifo->used--;
+
+	return true;
+}
+
 int bl_sample_msg_to_file(
 		FILE *file,
 		unsigned frequency,
 		union bl_msg_data *msg,
+		unsigned src_mask,
 		unsigned num_channels,
 		enum bl_format format)
 {
 	static unsigned curr_channel = 0;
 
+	unsigned count = msg->sample_data.count;
+
 	if (format == BL_FORMAT_CSV) {
 		static unsigned counter;
 
 		float period = 1000.0 / frequency;
+		for (unsigned s = 0; s < count; s++) {
+			uint32_t sample = msg->type == BL_MSG_SAMPLE_DATA16 ?
+					msg->sample_data.data16[s] :
+					msg->sample_data.data32[s];
 
-		for (unsigned s = 0; s < msg->sample_data.count; s++) {
 			float x_ms = period * counter;
 			unsigned c = curr_channel++;
-			fprintf(file, "%d,%f,%d\n", c, x_ms, msg->sample_data.data[s]);
-			if (curr_channel == num_channels) {
+			fprintf(file, "%d,%f,%"PRIu32"\n", c, x_ms, sample);
+			if (curr_channel >= num_channels) {
 				curr_channel = 0;
 			}
 			counter++;
 		}
 	} else {
 		size_t written;
-		unsigned count = msg->sample_data.count;
 
-		if (format == BL_FORMAT_WAV) {
-			for (unsigned i = 0; i < count; i++) {
-				unsigned sample = msg->sample_data.data[i];
-				msg->sample_data.data[i] = (int16_t)bl_sample_to_signed(sample);
+		uint32_t value;
+		for (unsigned i = 0; i < count; i++) {
+			if (msg->type == BL_MSG_SAMPLE_DATA16) {
+				/* Upscale 16-bit samples to 32-bit. */
+				value = msg->sample_data.data16[i];
+				value = (value << 16) | value;
+			} else {
+				value = msg->sample_data.data32[i];
+			}
+
+			if (format == BL_FORMAT_WAV) {
+				value = (uint32_t)bl_sample_to_signed(value);
+			}
+
+			if (!fifo_write(chan[msg->sample_data.channel], value)) {
+				fprintf(stderr, "FIFO overflow\n");
+				return EXIT_FAILURE;
 			}
 		}
 
-		written = fwrite(msg->sample_data.data, sizeof(int16_t), count, file);
-		if (written != count) {
-			fprintf(stderr, "Failed to write wave_data\n");
-			return EXIT_FAILURE;
+		unsigned ready = UINT_MAX;
+		for (unsigned i = 0; i < num_channels; i++) {
+			if (fifos[i].used < ready) {
+				ready = fifos[i].used;
+			}
+		}
+
+		for (unsigned i = 0; i < ready; i++) {
+			for (unsigned j = 0; j < num_channels; j++) {
+				fifo_read(j, &value);
+				written = fwrite(&value, sizeof(value), 1, file);
+				if (written != 1) {
+					fprintf(stderr, "Failed to write wave_data\n");
+					return EXIT_FAILURE;
+				}
+			}
 		}
 	}
 
@@ -195,7 +285,9 @@ int bl_sample_msg_to_file(
 
 int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 {
-	union bl_msg_data *msg = &input.msg;
+	union bl_msg_data *msg = &msg_g;
+	unsigned num_channels = 0;
+	unsigned src_mask = 0;
 	bool had_setup = false;
 	unsigned frequency;
 	FILE *file;
@@ -235,12 +327,12 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 	}
 
 	while (!killed && bl_msg_parse(msg)) {
-		unsigned num_channels = 0;
-
 		if (!had_setup && msg->type == BL_MSG_START) {
-			num_channels = bl_count_channels(msg->start.src_mask);
+			src_mask = msg->start.src_mask;
+			num_channels = bl_count_channels(src_mask);
+			init_chan_lookup(src_mask);
 			had_setup = true;
-			
+
 			frequency = msg->start.frequency;
 
 			if (format == BL_FORMAT_WAV) {
@@ -256,7 +348,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 				}
 			} else {
 				fprintf(stderr, "- RAW output format:\n");
-				fprintf(stderr, "    Samples: 16-bit signed\n");
+				fprintf(stderr, "    Samples: 32-bit signed\n");
 				fprintf(stderr, "    Channels: %u\n", num_channels);
 				fprintf(stderr, "    Frequency: %u Hz\n", frequency);
 			}
@@ -264,7 +356,8 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 
 		/* If the message isn't sample data, print to stderr, so
 		 * the user can see what's going on. */
-		if (msg->type != BL_MSG_SAMPLE_DATA) {
+		if (msg->type != BL_MSG_SAMPLE_DATA16 &&
+		    msg->type != BL_MSG_SAMPLE_DATA32) {
 			bl_msg_print(msg, stderr);
 			continue;
 		}
@@ -274,7 +367,8 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			goto cleanup;
 		}
 
-		bl_sample_msg_to_file(file, frequency, msg, num_channels, format);
+		bl_sample_msg_to_file(file, frequency, msg, src_mask,
+				num_channels, format);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
 		}
@@ -305,7 +399,7 @@ int bl_cmd_csv(int argc, char *argv[])
 
 int bl_cmd_relay(int argc, char *argv[])
 {
-	union bl_msg_data *msg = &input.msg;
+	union bl_msg_data *msg = &msg_g;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
