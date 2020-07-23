@@ -25,7 +25,6 @@
 #include <time.h>
 
 #include <termios.h>
-#include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -34,12 +33,9 @@
 #include "../src/util.h"
 #include "../src/msg.h"
 
-/* Common helper functionality. */
 #include "msg.h"
+#include "sig.h"
 #include "find_device.h"
-
-/* Whether we've had a `ctrl-c`. */
-static volatile bool killed = false;
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -105,7 +101,7 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 		return -errno;
 	}
 
-	while (total_read != size && !killed) {
+	while (total_read != size && !bl_sig_killed) {
 		ssize_t chunk_read;
 		struct pollfd pfd = {
 			.fd = fd,
@@ -468,13 +464,13 @@ int bl_cmd_receive_and_print_loop(int dev_fd)
 	do {
 		ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 		if (ret == EINTR) {
-			killed = true;
+			bl_sig_killed = true;
 		} else if (ret == ECONNABORTED) {
 			return EXIT_SUCCESS;
 		} else if (ret != 0) {
 			ret = EXIT_FAILURE;
 		}
-	} while (!killed);
+	} while (!bl_sig_killed);
 	return ret;
 }
 
@@ -548,12 +544,12 @@ static int bl_cmd_start_stream(
 	ret = bl_cmd_receive_and_print_loop(dev_fd);
 
 	/* Send abort after ctrl+c */
-	if (killed) {
+	if (bl_sig_killed) {
 		union bl_msg_data abort_msg = {
 			.type = BL_MSG_ABORT,
 		};
 		bl_cmd_send(&abort_msg, argv[ARG_DEV_PATH],dev_fd);
-		killed = false;
+		bl_sig_killed = false;
 		bl_cmd_receive_and_print_loop(dev_fd);
 	}
 
@@ -634,44 +630,6 @@ static bl_cmd_fn bl_cmd_lookup(const char *cmd_name)
 	return NULL;
 }
 
-static void bl_ctrl_c_handler(int sig)
-{
-	if (sig == SIGINT) {
-		killed = true;
-	}
-}
-
-static int bl_setup_signal_handler(void)
-{
-	struct sigaction act = {
-		.sa_handler = bl_ctrl_c_handler,
-	};
-	int ret;
-
-	ret = sigemptyset(&act.sa_mask);
-	if (ret == -1) {
-		fprintf(stderr, "sigemptyset call failed: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	ret = sigaddset(&act.sa_mask, SIGINT);
-	if (ret == -1) {
-		fprintf(stderr, "sigaddset call failed: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	ret = sigaction(SIGINT, &act, NULL);
-	if (ret == -1) {
-		fprintf(stderr, "Failed to set SIGINT handler: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	return EXIT_SUCCESS;
-}
-
 int main(int argc, char *argv[])
 {
 	bl_cmd_fn cmd_fn;
@@ -697,7 +655,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (bl_setup_signal_handler() != EXIT_SUCCESS) {
+	if (!bl_sig_init()) {
 		return EXIT_FAILURE;
 	}
 
