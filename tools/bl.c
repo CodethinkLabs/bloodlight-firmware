@@ -297,8 +297,7 @@ static int bl_cmd_led(int argc, char *argv[])
 	}
 
 	if (read_sized_uint(argv[ARG_LED_MASK],
-	                    &led_mask,
-						sizeof(msg.led.led_mask)) == false) {
+			&led_mask, sizeof(msg.led.led_mask)) == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
@@ -329,11 +328,12 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		}
 	};
 	unsigned arg_optional_count;
-	uint32_t sample32;
-	uint32_t channel;
-	uint32_t offset;
-	uint32_t shift;
-	uint32_t gain;
+	uint32_t sample32 = 0;
+	uint32_t channel = 0;
+	uint32_t offset = 0;
+	uint32_t shift = 0;
+	uint32_t gain = 0;
+	bool success;
 	int ret;
 	int dev_fd;
 	enum {
@@ -378,44 +378,33 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!read_sized_uint(argv[ARG_CHANNEL], &channel, sizeof(msg.channel_conf.channel))) {
-		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
-	}
-	msg.channel_conf.channel = channel;
-
-	if (!read_sized_uint(argv[ARG_GAIN], &gain, sizeof(msg.channel_conf.gain))) {
-		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
-	}
-	msg.channel_conf.gain = gain;
+	success = true;
+	success &= read_sized_uint(argv[ARG_CHANNEL], &channel, sizeof(msg.channel_conf.channel));
+	success &= read_sized_uint(argv[ARG_GAIN], &gain, sizeof(msg.channel_conf.gain));
 
 	switch (arg_optional_count)
 	{
 	case 3:
-		if (!read_sized_uint(argv[ARG_SAMPLE32], &sample32, sizeof(msg.channel_conf.sample32))) {
-			fprintf(stderr, "Failed to parse sample32 value.\n");
-			return EXIT_FAILURE;
-		}
-		msg.channel_conf.sample32 = sample32;
+		success &= read_sized_uint(argv[ARG_SAMPLE32], &sample32, sizeof(msg.channel_conf.sample32));
 		/* Fall through */
-
 	case 2:
-		if (!read_sized_uint(argv[ARG_SHIFT], &shift, sizeof(msg.channel_conf.shift))) {
-			fprintf(stderr, "Failed to parse shift value.\n");
-			return EXIT_FAILURE;
-		}
-		msg.channel_conf.shift = shift;
+		success &= read_sized_uint(argv[ARG_SHIFT], &shift, sizeof(msg.channel_conf.shift));
 		/* Fall through */
-
 	case 1:
-		if (!read_sized_uint(argv[ARG_OFFSET], &offset, sizeof(msg.channel_conf.offset))) {
-			fprintf(stderr, "Failed to parse offset value.\n");
-			return EXIT_FAILURE;
-		}
-		msg.channel_conf.offset = offset;
+		success &= read_sized_uint(argv[ARG_OFFSET], &offset, sizeof(msg.channel_conf.offset));
 		break;
 	}
+
+	if (!success) {
+		fprintf(stderr, "Failed to parse arguments.\n");
+		return EXIT_FAILURE;
+	}
+
+	msg.channel_conf.sample32 = sample32;
+	msg.channel_conf.channel = channel;
+	msg.channel_conf.offset = offset;
+	msg.channel_conf.shift = shift;
+	msg.channel_conf.gain = gain;
 
 	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
