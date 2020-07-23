@@ -2,19 +2,20 @@
 #define BL_TOOLS_MSG_H
 
 /**
- * Parse from `stdin` into given message data structure.
+ * Parse from given file stream into given message data structure.
  *
- * \param[in,out] msg  Message structure to populate.
+ * \param[in]     file  Stream to read message from.
+ * \param[in,out] msg   Message structure to populate.
  * \return true on success, false otherwise.
  */
-bool bl_msg_parse(union bl_msg_data *msg);
+bool bl_msg_parse(FILE *file, union bl_msg_data *msg);
 
 /**
  * Print message to given file stream.
  *
- * \param[in] msg   Message to print.
  * \param[in] file  Stream to print message to.
+ * \param[in] msg   Message to print.
  */
-void bl_msg_print(const union bl_msg_data *msg, FILE *file);
+void bl_msg_print(FILE *file, const union bl_msg_data *msg);
 
 #endif /* BL_TOOLS_MSG_H */
