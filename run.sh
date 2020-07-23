@@ -94,12 +94,12 @@ run_cal_acq()
 
 	# Run calibration to get the config
 	run_cal | ./tools/calibrate | grep chancfg > "$TMP_CFG" &
-	echo "Wait 10s for default configuration"
+	#echo "Wait 10s for default configuration"
 	sleep 10
 
 	# Save pid of acquisition to later use
 	BID=$(pgrep -f "bl start")
-	echo "Run acquisition for 30 seconds to get calibration data."
+	#echo "Run acquisition for 30 seconds to get calibration data."
 	sleep 30
 
 	# Terminate acquisition
