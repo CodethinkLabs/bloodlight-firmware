@@ -145,15 +145,11 @@ ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
 	return total_read;
 }
 
-static uint8_t bl_response_data[64];
-
 static int bl_cmd_read_message(
 		int dev_fd,
 		int timeout_ms,
-		union bl_msg_data ** response)
+		union bl_msg_data *msg)
 {
-	union bl_msg_data * const msg = (void *) &bl_response_data[0];
-	(*response) = msg;
 	ssize_t expected_len;
 	ssize_t read_len;
 
@@ -203,17 +199,17 @@ static int bl_cmd_read_message(
 
 int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 {
-	union bl_msg_data * msg = NULL;
+	union bl_msg_data msg = { 0 };
 	int ret = bl_cmd_read_message(dev_fd, timeout_ms, &msg);
 	if (ret == 0) {
-		bl_msg_print(stdout, msg);
-		if ((msg->type == BL_MSG_RESPONSE) &&
-				(msg->response.error_code != BL_ERROR_NONE)) {
-			return msg->response.error_code;
-		}
-		if ((msg->type == BL_MSG_RESPONSE) &&
-				(msg->response.response_to == BL_MSG_ABORT)) {
-			return ECONNABORTED;
+		bl_msg_print(stdout, &msg);
+		if (msg.type == BL_MSG_RESPONSE) {
+			if (msg.response.error_code != BL_ERROR_NONE) {
+				return msg.response.error_code;
+
+			} else if (msg.response.response_to == BL_MSG_ABORT) {
+				return ECONNABORTED;
+			}
 		}
 	}
 
