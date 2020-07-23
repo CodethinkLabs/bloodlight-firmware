@@ -326,7 +326,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 	}
 
-	while (!killed && bl_msg_parse(msg)) {
+	while (!killed && bl_msg_parse(stdin, msg)) {
 		if (!had_setup && msg->type == BL_MSG_START) {
 			src_mask = msg->start.src_mask;
 			num_channels = bl_count_channels(src_mask);
@@ -358,7 +358,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		 * the user can see what's going on. */
 		if (msg->type != BL_MSG_SAMPLE_DATA16 &&
 		    msg->type != BL_MSG_SAMPLE_DATA32) {
-			bl_msg_print(msg, stderr);
+			bl_msg_print(stderr, msg);
 			continue;
 		}
 
@@ -413,8 +413,8 @@ int bl_cmd_relay(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	while (!killed && bl_msg_parse(msg)) {
-		bl_msg_print(msg, stdout);
+	while (!killed && bl_msg_parse(stdin, msg)) {
+		bl_msg_print(stdout, msg);
 	}
 
 	return EXIT_SUCCESS;

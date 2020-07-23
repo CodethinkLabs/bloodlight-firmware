@@ -82,11 +82,11 @@ static inline enum bl_error bl_msg_str_to_error(const char *str)
 	return bl_msg_str_to_index(str, msg_errors, BL_ARRAY_LEN(msg_errors));
 }
 
-static const char * bl_msg__read_str_type(bool *success)
+static const char * bl_msg__read_str_type(FILE *file, bool *success)
 {
 	int ret;
 
-	ret = scanf("- %"BUFFER_LEN_STR"[A-Za-z0-9 -]:\n", buffer);
+	ret = fscanf(file, "- %"BUFFER_LEN_STR"[A-Za-z0-9 -]:\n", buffer);
 	if (ret != 1) {
 		*success = false;
 		return NULL;
@@ -95,11 +95,11 @@ static const char * bl_msg__read_str_type(bool *success)
 	return buffer;
 }
 
-static const char * bl_msg__read_str_error(bool *success)
+static const char * bl_msg__read_str_error(FILE *file, bool *success)
 {
 	int ret;
 
-	ret = scanf("  Error: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n", buffer);
+	ret = fscanf(file, "  Error: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n", buffer);
 	if (ret != 1) {
 		*success = false;
 		return NULL;
@@ -108,32 +108,32 @@ static const char * bl_msg__read_str_error(bool *success)
 	return buffer;
 }
 
-static enum bl_msg_type bl_msg__read_type(bool *success)
+static enum bl_msg_type bl_msg__read_type(FILE *file, bool *success)
 {
-	const char *str_type = bl_msg__read_str_type(success);
+	const char *str_type = bl_msg__read_str_type(file, success);
 
 	return bl_msg_str_to_type(str_type);
 }
 
-static enum bl_error bl_msg__read_error(bool *success)
+static enum bl_error bl_msg__read_error(FILE *file, bool *success)
 {
-	const char *str_type = bl_msg__read_str_error(success);
+	const char *str_type = bl_msg__read_str_error(file, success);
 
 	return bl_msg_str_to_error(str_type);
 }
 
-static uint8_t bl_msg__read_response_to(bool *success)
+static uint8_t bl_msg__read_response_to(FILE *file, bool *success)
 {
 	unsigned value;
 	int ret;
 
-	ret = scanf("    Response to: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n",
+	ret = fscanf(file, "    Response to: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n",
 			buffer);
 	if (ret == 1) {
 		return bl_msg_str_to_type(buffer);
 	}
 
-	ret = scanf("    Response to: Unknown (0x%x)\n", &value);
+	ret = fscanf(file, "    Response to: Unknown (0x%x)\n", &value);
 	if (ret == 1) {
 		return value;
 	}
@@ -142,12 +142,12 @@ static uint8_t bl_msg__read_response_to(bool *success)
 	return bl_msg_str_to_type("Unknown");
 }
 
-static uint16_t bl_msg__read_unsigned(bool *success, const char *field)
+static uint16_t bl_msg__read_unsigned(FILE *file, const char *field, bool *success)
 {
 	unsigned value;
 	int ret;
 
-	ret = scanf("%"BUFFER_LEN_STR"[A-Za-z0-9 ]: %u\n",
+	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 ]: %u\n",
 			buffer, &value);
 	if (ret == 2) {
 		if (strcmp(buffer, field) == 0) {
@@ -159,12 +159,12 @@ static uint16_t bl_msg__read_unsigned(bool *success, const char *field)
 	return 0;
 }
 
-static uint16_t bl_msg__read_hex(bool *success, const char *field)
+static uint16_t bl_msg__read_hex(FILE *file, const char *field, bool *success)
 {
 	unsigned value;
 	int ret;
 
-	ret = scanf("%"BUFFER_LEN_STR"[A-Za-z0-9 ]: 0x%x\n",
+	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 ]: 0x%x\n",
 			buffer, &value);
 	if (ret == 2) {
 		if (strcmp(buffer, field) == 0) {
@@ -176,12 +176,12 @@ static uint16_t bl_msg__read_hex(bool *success, const char *field)
 	return 0;
 }
 
-static uint32_t bl_msg__read_unsigned_no_field(bool *success)
+static uint32_t bl_msg__read_unsigned_no_field(FILE *file, bool *success)
 {
 	uint32_t value;
 	int ret;
 
-	ret = scanf("%*[ -]%"SCNu32"\n", &value);
+	ret = fscanf(file, "%*[ -]%"SCNu32"\n", &value);
 	if (ret == 1) {
 		return value;
 	}
@@ -190,53 +190,53 @@ static uint32_t bl_msg__read_unsigned_no_field(bool *success)
 	return 0;
 }
 
-bool bl_msg_parse(union bl_msg_data *msg)
+bool bl_msg_parse(FILE *file, union bl_msg_data *msg)
 {
 	bool ok = true;
 
 	assert(msg != NULL);
 
-	msg->type = bl_msg__read_type(&ok);
+	msg->type = bl_msg__read_type(file, &ok);
 
 	switch (msg->type) {
 	case BL_MSG_RESPONSE:
-		msg->response.response_to = bl_msg__read_response_to(&ok);
-		msg->response.error_code = bl_msg__read_error(&ok);
+		msg->response.response_to = bl_msg__read_response_to(file, &ok);
+		msg->response.error_code = bl_msg__read_error(file, &ok);
 		break;
 
 	case BL_MSG_LED:
-		msg->led.led_mask = bl_msg__read_hex(&ok, "LED Mask");
+		msg->led.led_mask = bl_msg__read_hex(file, "LED Mask", &ok);
 		break;
 
 	case BL_MSG_CHANNEL_CONF:
-		msg->channel_conf.channel  = bl_msg__read_unsigned(&ok, "Channel");
-		msg->channel_conf.gain     = bl_msg__read_unsigned(&ok, "Gain");
-		msg->channel_conf.shift    = bl_msg__read_unsigned(&ok, "Shift");
-		msg->channel_conf.offset   = bl_msg__read_unsigned(&ok, "Offset");
-		msg->channel_conf.sample32 = bl_msg__read_unsigned(&ok, "Sample32");
+		msg->channel_conf.channel  = bl_msg__read_unsigned(file, "Channel",  &ok);
+		msg->channel_conf.gain     = bl_msg__read_unsigned(file, "Gain",     &ok);
+		msg->channel_conf.shift    = bl_msg__read_unsigned(file, "Shift",    &ok);
+		msg->channel_conf.offset   = bl_msg__read_unsigned(file, "Offset",   &ok);
+		msg->channel_conf.sample32 = bl_msg__read_unsigned(file, "Sample32", &ok);
 		break;
 
 	case BL_MSG_START:
-		msg->start.frequency  = bl_msg__read_unsigned(&ok, "Frequency");
-		msg->start.oversample = bl_msg__read_unsigned(&ok, "Oversample");
-		msg->start.src_mask   = bl_msg__read_hex(&ok, "Source Mask");
+		msg->start.frequency  = bl_msg__read_unsigned(file, "Frequency",  &ok);
+		msg->start.oversample = bl_msg__read_unsigned(file, "Oversample", &ok);
+		msg->start.src_mask   = bl_msg__read_hex(file, "Source Mask",     &ok);
 		break;
 
 	case BL_MSG_SAMPLE_DATA16:
-		msg->sample_data.channel = bl_msg__read_unsigned(&ok, "Channel");
-		msg->sample_data.count   = bl_msg__read_unsigned(&ok, "Count");
-		ok |= (scanf("    Data:\n") == 0);
+		msg->sample_data.channel = bl_msg__read_unsigned(file, "Channel", &ok);
+		msg->sample_data.count   = bl_msg__read_unsigned(file, "Count",   &ok);
+		ok |= (fscanf(file, "    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			msg->sample_data.data16[i] = bl_msg__read_unsigned_no_field(&ok);
+			msg->sample_data.data16[i] = bl_msg__read_unsigned_no_field(file, &ok);
 		}
 		break;
 
 	case BL_MSG_SAMPLE_DATA32:
-		msg->sample_data.channel = bl_msg__read_unsigned(&ok, "Channel");
-		msg->sample_data.count   = bl_msg__read_unsigned(&ok, "Count");
-		ok |= (scanf("    Data:\n") == 0);
+		msg->sample_data.channel = bl_msg__read_unsigned(file, "Channel", &ok);
+		msg->sample_data.count   = bl_msg__read_unsigned(file, "Count",   &ok);
+		ok |= (fscanf(file, "    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			msg->sample_data.data32[i] = bl_msg__read_unsigned_no_field(&ok);
+			msg->sample_data.data32[i] = bl_msg__read_unsigned_no_field(file, &ok);
 		}
 		break;
 
@@ -265,7 +265,7 @@ static const char *bl_msg_type_to_error(enum bl_error error)
 	return msg_errors[error];
 }
 
-void bl_msg_print(const union bl_msg_data *msg, FILE *file)
+void bl_msg_print(FILE *file, const union bl_msg_data *msg)
 {
 	if (bl_msg_type_to_str(msg->type) == NULL) {
 		fprintf(file, "- Unknown (0x%"PRIx8")\n", msg->type);
