@@ -82,7 +82,7 @@ static inline enum bl_error bl_msg_str_to_error(const char *str)
 	return bl_msg_str_to_index(str, msg_errors, BL_ARRAY_LEN(msg_errors));
 }
 
-static const char * bl_msg__read_str_type(FILE *file, bool *success)
+static const char * bl_msg__yaml_read_str_type(FILE *file, bool *success)
 {
 	int ret;
 
@@ -95,7 +95,7 @@ static const char * bl_msg__read_str_type(FILE *file, bool *success)
 	return buffer;
 }
 
-static const char * bl_msg__read_str_error(FILE *file, bool *success)
+static const char * bl_msg__yaml_read_str_error(FILE *file, bool *success)
 {
 	int ret;
 
@@ -108,21 +108,21 @@ static const char * bl_msg__read_str_error(FILE *file, bool *success)
 	return buffer;
 }
 
-static enum bl_msg_type bl_msg__read_type(FILE *file, bool *success)
+static enum bl_msg_type bl_msg__yaml_read_type(FILE *file, bool *success)
 {
-	const char *str_type = bl_msg__read_str_type(file, success);
+	const char *str_type = bl_msg__yaml_read_str_type(file, success);
 
 	return bl_msg_str_to_type(str_type);
 }
 
-static enum bl_error bl_msg__read_error(FILE *file, bool *success)
+static enum bl_error bl_msg__yaml_read_error(FILE *file, bool *success)
 {
-	const char *str_type = bl_msg__read_str_error(file, success);
+	const char *str_type = bl_msg__yaml_read_str_error(file, success);
 
 	return bl_msg_str_to_error(str_type);
 }
 
-static uint8_t bl_msg__read_response_to(FILE *file, bool *success)
+static uint8_t bl_msg__yaml_read_response_to(FILE *file, bool *success)
 {
 	unsigned value;
 	int ret;
@@ -142,7 +142,7 @@ static uint8_t bl_msg__read_response_to(FILE *file, bool *success)
 	return bl_msg_str_to_type("Unknown");
 }
 
-static uint16_t bl_msg__read_unsigned(FILE *file, const char *field, bool *success)
+static uint16_t bl_msg__yaml_read_unsigned(FILE *file, const char *field, bool *success)
 {
 	unsigned value;
 	int ret;
@@ -159,7 +159,7 @@ static uint16_t bl_msg__read_unsigned(FILE *file, const char *field, bool *succe
 	return 0;
 }
 
-static uint16_t bl_msg__read_hex(FILE *file, const char *field, bool *success)
+static uint16_t bl_msg__yaml_read_hex(FILE *file, const char *field, bool *success)
 {
 	unsigned value;
 	int ret;
@@ -176,7 +176,7 @@ static uint16_t bl_msg__read_hex(FILE *file, const char *field, bool *success)
 	return 0;
 }
 
-static uint32_t bl_msg__read_unsigned_no_field(FILE *file, bool *success)
+static uint32_t bl_msg__yaml_read_unsigned_no_field(FILE *file, bool *success)
 {
 	uint32_t value;
 	int ret;
@@ -190,53 +190,53 @@ static uint32_t bl_msg__read_unsigned_no_field(FILE *file, bool *success)
 	return 0;
 }
 
-bool bl_msg_parse(FILE *file, union bl_msg_data *msg)
+bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 {
 	bool ok = true;
 
 	assert(msg != NULL);
 
-	msg->type = bl_msg__read_type(file, &ok);
+	msg->type = bl_msg__yaml_read_type(file, &ok);
 
 	switch (msg->type) {
 	case BL_MSG_RESPONSE:
-		msg->response.response_to = bl_msg__read_response_to(file, &ok);
-		msg->response.error_code = bl_msg__read_error(file, &ok);
+		msg->response.response_to = bl_msg__yaml_read_response_to(file, &ok);
+		msg->response.error_code = bl_msg__yaml_read_error(file, &ok);
 		break;
 
 	case BL_MSG_LED:
-		msg->led.led_mask = bl_msg__read_hex(file, "LED Mask", &ok);
+		msg->led.led_mask = bl_msg__yaml_read_hex(file, "LED Mask", &ok);
 		break;
 
 	case BL_MSG_CHANNEL_CONF:
-		msg->channel_conf.channel  = bl_msg__read_unsigned(file, "Channel",  &ok);
-		msg->channel_conf.gain     = bl_msg__read_unsigned(file, "Gain",     &ok);
-		msg->channel_conf.shift    = bl_msg__read_unsigned(file, "Shift",    &ok);
-		msg->channel_conf.offset   = bl_msg__read_unsigned(file, "Offset",   &ok);
-		msg->channel_conf.sample32 = bl_msg__read_unsigned(file, "Sample32", &ok);
+		msg->channel_conf.channel  = bl_msg__yaml_read_unsigned(file, "Channel",  &ok);
+		msg->channel_conf.gain     = bl_msg__yaml_read_unsigned(file, "Gain",     &ok);
+		msg->channel_conf.shift    = bl_msg__yaml_read_unsigned(file, "Shift",    &ok);
+		msg->channel_conf.offset   = bl_msg__yaml_read_unsigned(file, "Offset",   &ok);
+		msg->channel_conf.sample32 = bl_msg__yaml_read_unsigned(file, "Sample32", &ok);
 		break;
 
 	case BL_MSG_START:
-		msg->start.frequency  = bl_msg__read_unsigned(file, "Frequency",  &ok);
-		msg->start.oversample = bl_msg__read_unsigned(file, "Oversample", &ok);
-		msg->start.src_mask   = bl_msg__read_hex(file, "Source Mask",     &ok);
+		msg->start.frequency  = bl_msg__yaml_read_unsigned(file, "Frequency",  &ok);
+		msg->start.oversample = bl_msg__yaml_read_unsigned(file, "Oversample", &ok);
+		msg->start.src_mask   = bl_msg__yaml_read_hex(file, "Source Mask",     &ok);
 		break;
 
 	case BL_MSG_SAMPLE_DATA16:
-		msg->sample_data.channel = bl_msg__read_unsigned(file, "Channel", &ok);
-		msg->sample_data.count   = bl_msg__read_unsigned(file, "Count",   &ok);
+		msg->sample_data.channel = bl_msg__yaml_read_unsigned(file, "Channel", &ok);
+		msg->sample_data.count   = bl_msg__yaml_read_unsigned(file, "Count",   &ok);
 		ok |= (fscanf(file, "    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			msg->sample_data.data16[i] = bl_msg__read_unsigned_no_field(file, &ok);
+			msg->sample_data.data16[i] = bl_msg__yaml_read_unsigned_no_field(file, &ok);
 		}
 		break;
 
 	case BL_MSG_SAMPLE_DATA32:
-		msg->sample_data.channel = bl_msg__read_unsigned(file, "Channel", &ok);
-		msg->sample_data.count   = bl_msg__read_unsigned(file, "Count",   &ok);
+		msg->sample_data.channel = bl_msg__yaml_read_unsigned(file, "Channel", &ok);
+		msg->sample_data.count   = bl_msg__yaml_read_unsigned(file, "Count",   &ok);
 		ok |= (fscanf(file, "    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			msg->sample_data.data32[i] = bl_msg__read_unsigned_no_field(file, &ok);
+			msg->sample_data.data32[i] = bl_msg__yaml_read_unsigned_no_field(file, &ok);
 		}
 		break;
 
@@ -265,7 +265,7 @@ static const char *bl_msg_type_to_error(enum bl_error error)
 	return msg_errors[error];
 }
 
-void bl_msg_print(FILE *file, const union bl_msg_data *msg)
+void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 {
 	if (bl_msg_type_to_str(msg->type) == NULL) {
 		fprintf(file, "- Unknown (0x%"PRIx8")\n", msg->type);

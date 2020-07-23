@@ -139,7 +139,7 @@ static int bl__calibrate(void)
 	struct channel_conf conf[BL_ACQ__SRC_COUNT] = { 0 };
 	union bl_msg_data msg;
 
-	while (!killed && bl_msg_parse(stdin, &msg)) {
+	while (!killed && bl_msg_yaml_parse(stdin, &msg)) {
 		switch (msg.type) {
 		case BL_MSG_START:
 			bl__handle_start(&msg, conf);
@@ -155,7 +155,7 @@ static int bl__calibrate(void)
 			break;
 		default:
 			/* Print so we can see what's going on. */
-			bl_msg_print(stdout, &msg);
+			bl_msg_yaml_print(stdout, &msg);
 			break;
 		}
 	}

@@ -8,7 +8,9 @@
  * \param[in,out] msg   Message structure to populate.
  * \return true on success, false otherwise.
  */
-bool bl_msg_parse(FILE *file, union bl_msg_data *msg);
+bool bl_msg_yaml_parse(
+		FILE *file,
+		union bl_msg_data *msg);
 
 /**
  * Print message to given file stream.
@@ -16,6 +18,8 @@ bool bl_msg_parse(FILE *file, union bl_msg_data *msg);
  * \param[in] file  Stream to print message to.
  * \param[in] msg   Message to print.
  */
-void bl_msg_print(FILE *file, const union bl_msg_data *msg);
+void bl_msg_yaml_print(
+		FILE *file,
+		const union bl_msg_data *msg);
 
 #endif /* BL_TOOLS_MSG_H */

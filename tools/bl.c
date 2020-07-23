@@ -202,7 +202,7 @@ int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 	union bl_msg_data msg = { 0 };
 	int ret = bl_cmd_read_message(dev_fd, timeout_ms, &msg);
 	if (ret == 0) {
-		bl_msg_print(stdout, &msg);
+		bl_msg_yaml_print(stdout, &msg);
 		if (msg.type == BL_MSG_RESPONSE) {
 			if (msg.response.error_code != BL_ERROR_NONE) {
 				return msg.response.error_code;
@@ -308,7 +308,7 @@ static int bl_cmd_led(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	bl_msg_print(stdout, &msg);
+	bl_msg_yaml_print(stdout, &msg);
 	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
 	if (ret != EXIT_SUCCESS) {
 		bl_close_device(dev_fd);
@@ -411,7 +411,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	bl_msg_print(stdout, &msg);
+	bl_msg_yaml_print(stdout, &msg);
 	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
 	if (ret != EXIT_SUCCESS) {
 		bl_close_device(dev_fd);
@@ -451,7 +451,7 @@ static int bl_cmd__no_params_helper(
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
-	bl_msg_print(stdout, &msg);
+	bl_msg_yaml_print(stdout, &msg);
 	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
 	if (ret != EXIT_SUCCESS) {
 		bl_close_device(dev_fd);
@@ -536,7 +536,7 @@ static int bl_cmd_start_stream(
 		return EXIT_FAILURE;
 	}
 
-	bl_msg_print(stdout, &msg);
+	bl_msg_yaml_print(stdout, &msg);
 
 	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
 
