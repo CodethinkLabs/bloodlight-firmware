@@ -5,11 +5,11 @@ all: bl convert calibrate
 clean:
 	rm -f bl convert *.o
 
-bl: bl.c msg.o find_device.o
+bl: bl.c msg.o find_device.o sig.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-convert: convert.c msg.o
+convert: convert.c msg.o sig.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-calibrate: calibrate.c msg.o find_device.o
+calibrate: calibrate.c msg.o sig.o
 	$(CC) -o $@ $^ $(LDFLAGS)
