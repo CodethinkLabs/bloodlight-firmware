@@ -81,6 +81,42 @@ run_off()
 	./tools/bl led     "$device" 0x0000
 }
 
+# Sequential exexute calibration and acquisition
+run_cal_acq()
+{
+	TMP_CFG=tmp_cfg
+
+	declare device="${DEVICE:-$DEFAULT_DEVICE}"
+	declare led_mask="${LED_MASK:-$DEFAULT_LED_MASK}"
+	declare src_mask="${SRC_MASK:-$DEFAULT_SRC_MASK}"
+	declare frequency="${FREQUENCY:-$DEFAULT_FREQUENCY}"
+	declare oversample="${OVERSAMPLE:-$DEFAULT_OVERSAMPLE}"
+
+	# Run calibration to get the config
+	run_cal | ./tools/calibrate | grep chancfg > "$TMP_CFG" &
+	echo "Wait 10s for default configuration"
+	sleep 10
+
+	# Save pid of acquisition to later use
+	BID=$(pgrep -f "bl start")
+	echo "Run acquisition for 30 seconds to get calibration data."
+	sleep 30
+
+	# Terminate acquisition
+	kill -s SIGINT "$BID"
+	sleep 1
+
+	# Run saved configurate command from calibration
+	while read -r LINE
+	do
+		eval "$LINE"
+	done < "$TMP_CFG"
+	rm "$TMP_CFG"
+
+	# Start the calibration acquisition.
+	./tools/bl start   "$device" "$frequency" "$oversample" "$src_mask"
+}
+
 if [ $# -lt 1 ]; then
 	usage
 	exit 1
