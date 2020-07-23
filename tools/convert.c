@@ -24,17 +24,12 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include <signal.h>
-
 #include "../src/error.h"
 #include "../src/util.h"
 #include "../src/msg.h"
 
-/* Common helper functionality. */
 #include "msg.h"
-
-/* Whether we've had a `ctrl-c`. */
-static volatile bool killed = false;
+#include "sig.h"
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -326,7 +321,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 	}
 
-	while (!killed && bl_msg_yaml_parse(stdin, msg)) {
+	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, msg)) {
 		if (!had_setup && msg->type == BL_MSG_START) {
 			src_mask = msg->start.src_mask;
 			num_channels = bl_count_channels(src_mask);
@@ -413,7 +408,7 @@ int bl_cmd_relay(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	while (!killed && bl_msg_yaml_parse(stdin, msg)) {
+	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, msg)) {
 		bl_msg_yaml_print(stdout, msg);
 	}
 
@@ -482,44 +477,6 @@ static bl_cmd_fn bl_cmd_lookup(const char *cmd_name)
 	return NULL;
 }
 
-static void bl_ctrl_c_handler(int sig)
-{
-	if (sig == SIGINT) {
-		killed = true;
-	}
-}
-
-static int bl_setup_signal_handler(void)
-{
-	struct sigaction act = {
-		.sa_handler = bl_ctrl_c_handler,
-	};
-	int ret;
-
-	ret = sigemptyset(&act.sa_mask);
-	if (ret == -1) {
-		fprintf(stderr, "sigemptyset call failed: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	ret = sigaddset(&act.sa_mask, SIGINT);
-	if (ret == -1) {
-		fprintf(stderr, "sigaddset call failed: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	ret = sigaction(SIGINT, &act, NULL);
-	if (ret == -1) {
-		fprintf(stderr, "Failed to set SIGINT handler: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	return EXIT_SUCCESS;
-}
-
 int main(int argc, char *argv[])
 {
 	bl_cmd_fn cmd_fn;
@@ -540,7 +497,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (bl_setup_signal_handler() != EXIT_SUCCESS) {
+	if (!bl_sig_init()) {
 		return EXIT_FAILURE;
 	}
 
