@@ -35,4 +35,16 @@ bool bl_msg_read(
 		int timeout,
 		union bl_msg_data *msg);
 
+/**
+ * Write message to given file descriptor as raw data.
+ *
+ * \param[in] fd    File descriptor to write message to.
+ * \param[in] path  Path to fd, (only used for error logging).
+ * \param[in] msg   Message to write.
+ */
+bool bl_msg_write(
+		int fd,
+		const char *path,
+		const union bl_msg_data *msg);
+
 #endif /* BL_TOOLS_MSG_H */

@@ -130,22 +130,6 @@ static void bl_close_device(int dev_fd)
 	}
 }
 
-static int bl_cmd_send(
-		const union bl_msg_data *msg,
-		const char *dev_path, int dev_fd)
-{
-	ssize_t written;
-	int ret = EXIT_SUCCESS;
-
-	written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
-	if (written != bl_msg_type_to_len(msg->type)) {
-		fprintf(stderr, "Failed write message to '%s'\n", dev_path);
-		ret = EXIT_FAILURE;
-	}
-
-	return ret;
-}
-
 static int bl_cmd_led(int argc, char *argv[])
 {
 	uint32_t led_mask;
@@ -187,8 +171,7 @@ static int bl_cmd_led(int argc, char *argv[])
 	}
 
 	bl_msg_yaml_print(stdout, &msg);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_close_device(dev_fd);
 		return ret;
 	}
@@ -290,8 +273,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	}
 
 	bl_msg_yaml_print(stdout, &msg);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_close_device(dev_fd);
 		return ret;
 	}
@@ -330,8 +312,7 @@ static int bl_cmd__no_params_helper(
 		return EXIT_FAILURE;
 	}
 	bl_msg_yaml_print(stdout, &msg);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_close_device(dev_fd);
 		return ret;
 	}
@@ -414,9 +395,7 @@ static int bl_cmd_start_stream(
 
 	bl_msg_yaml_print(stdout, &msg);
 
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-
-	if (ret != BL_ERROR_NONE) {
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_close_device(dev_fd);
 		return EXIT_FAILURE;
 	}
@@ -428,7 +407,7 @@ static int bl_cmd_start_stream(
 		union bl_msg_data abort_msg = {
 			.type = BL_MSG_ABORT,
 		};
-		bl_cmd_send(&abort_msg, argv[ARG_DEV_PATH],dev_fd);
+		bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &abort_msg);
 		bl_sig_killed = false;
 		bl_cmd_receive_and_print_loop(dev_fd);
 	}
