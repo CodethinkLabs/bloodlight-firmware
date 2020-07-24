@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libudev.h>
-#include <locale.h>
-#include <unistd.h>
 #include <stdbool.h>
 
+#include <dirent.h>
+#include <unistd.h>
+
+#include <libudev.h>
+
 #include "../src/usb.h"
-#include "find_device.h"
+
+#include "device.h"
 
 /* Valid Codethink Medical Plethysmograph Device path */
 char dev_node[32];

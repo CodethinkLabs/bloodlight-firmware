@@ -31,9 +31,9 @@
 #include "../src/util.h"
 #include "../src/msg.h"
 
+#include "device.h"
 #include "msg.h"
 #include "sig.h"
-#include "find_device.h"
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
