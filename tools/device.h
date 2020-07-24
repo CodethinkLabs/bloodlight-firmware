@@ -1,5 +1,5 @@
-#ifndef BL_TOOLS_FIND_DEVICE_H
-#define BL_TOOLS_FIND_DEVICE_H
+#ifndef BL_TOOLS_DEVICE_H
+#define BL_TOOLS_DEVICE_H
 
 /* The path name of the matched /dev node */
 extern char dev_node[32];
@@ -12,6 +12,6 @@ extern char dev_node[32];
  * and manufacturer fields of USB device to guess the best
  * device node to use.
  */
-extern void get_dev(int dev, char *argv[]);
+void get_dev(int dev, char *argv[]);
 
-#endif /* BL_TOOLS_FIND_DEVICE_H */
+#endif /* BL_TOOLS_DEVICE_H */
