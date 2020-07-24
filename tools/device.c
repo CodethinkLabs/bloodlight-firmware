@@ -166,24 +166,22 @@ static int scan(void)
 
 void get_dev(int dev, char *argv[])
 {
-    if ((strncmp(argv[dev], "auto", 4) ||
-         strncmp(argv[dev], "--auto", 6) ||
-         strncmp(argv[dev], "-a", 2)))
-    {
-        int found = scan();
-        switch (found)
-        {
-        case 0:
-            fprintf(stderr, "No MPD device found.\n");
-            exit(EXIT_FAILURE);
-        case 1:
-            argv[dev] = dev_node;
-            break;
-        default:
-            fprintf(stderr, "More than one device found, please specify which device to use.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
+	if ((strncmp(argv[dev], "auto", 4) ||
+	     strncmp(argv[dev], "--auto", 6) ||
+	     strncmp(argv[dev], "-a", 2))) {
+		int found = scan();
+		switch (found) {
+		case 0:
+			fprintf(stderr, "No MPD device found.\n");
+			exit(EXIT_FAILURE);
+		case 1:
+			argv[dev] = dev_node;
+			break;
+		default:
+			fprintf(stderr, "More than one device found, please specify which device to use.\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 }
 
 /*
