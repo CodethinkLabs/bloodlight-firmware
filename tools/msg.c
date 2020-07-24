@@ -474,3 +474,19 @@ out:
 
 	return (res == 0);
 }
+
+bool bl_msg_write(
+		int fd,
+		const char *path,
+		const union bl_msg_data *msg)
+{
+	ssize_t written;
+
+	written = write(fd, msg, bl_msg_type_to_len(msg->type));
+	if (written != bl_msg_type_to_len(msg->type)) {
+		fprintf(stderr, "Failed write message to '%s'\n", path);
+		return false;
+	}
+
+	return true;
+}
