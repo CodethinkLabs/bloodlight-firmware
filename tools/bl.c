@@ -23,10 +23,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include <termios.h>
-#include <unistd.h>
-#include <fcntl.h>
-
 #include "../src/error.h"
 #include "../src/util.h"
 #include "../src/msg.h"
@@ -94,42 +90,6 @@ int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 	return 0;
 }
 
-static int bl_open_device(const char *dev_path)
-{
-	int dev_fd = open(dev_path, O_RDWR);
-	if (dev_fd == -1) {
-		fprintf(stderr, "Failed to open '%s': %s\n",
-				dev_path, strerror(errno));
-		return -1;
-	}
-
-	struct termios t;
-	if (tcgetattr(dev_fd, &t) == 0) {
-		t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-		t.c_oflag &= ~(OPOST);
-		t.c_cflag |=  (CS8);
-		t.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-
-		if (tcsetattr(dev_fd, TCSANOW, &t) != 0) {
-			fprintf(stderr, "Failed set terminal attributes"
-				" of '%s': %s\n", dev_path, strerror(errno));
-			return -1;
-		}
-	} else {
-		fprintf(stderr, "Failed get terminal attributes"
-				" of '%s': %s\n", dev_path, strerror(errno));
-		return -1;
-	}
-	return dev_fd;
-}
-
-static void bl_close_device(int dev_fd)
-{
-	if(dev_fd >= 0) {/* Maybe we should ignore 0, 1 and 2 */
-		close(dev_fd);
-	}
-}
-
 static int bl_cmd_led(int argc, char *argv[])
 {
 	uint32_t led_mask;
@@ -165,18 +125,18 @@ static int bl_cmd_led(int argc, char *argv[])
 	}
 
 	msg.led.led_mask = led_mask;
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
 
 	bl_msg_yaml_print(stdout, &msg);
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
-		bl_close_device(dev_fd);
+		bl_device_close(dev_fd);
 		return ret;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 
 }
@@ -267,18 +227,18 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	msg.channel_conf.shift = shift;
 	msg.channel_conf.gain = gain;
 
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
 
 	bl_msg_yaml_print(stdout, &msg);
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
-		bl_close_device(dev_fd);
+		bl_device_close(dev_fd);
 		return ret;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 
 }
@@ -307,17 +267,17 @@ static int bl_cmd__no_params_helper(
 		return EXIT_FAILURE;
 	}
 
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
 	bl_msg_yaml_print(stdout, &msg);
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
-		bl_close_device(dev_fd);
+		bl_device_close(dev_fd);
 		return ret;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 }
 
@@ -388,7 +348,7 @@ static int bl_cmd_start_stream(
 	msg.start.oversample = oversample;
 	msg.start.src_mask   = src_mask;
 
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
@@ -396,7 +356,7 @@ static int bl_cmd_start_stream(
 	bl_msg_yaml_print(stdout, &msg);
 
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
-		bl_close_device(dev_fd);
+		bl_device_close(dev_fd);
 		return EXIT_FAILURE;
 	}
 
@@ -412,7 +372,7 @@ static int bl_cmd_start_stream(
 		bl_cmd_receive_and_print_loop(dev_fd);
 	}
 
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 
 }

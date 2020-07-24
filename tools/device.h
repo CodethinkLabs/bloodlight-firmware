@@ -14,4 +14,19 @@ extern char dev_node[32];
  */
 void get_dev(int dev, char *argv[]);
 
+/**
+ * Open a bloodlight device.
+ *
+ * \param[in] dev_path  Path to device to open.
+ * \return File descriptor for open device, or -1 on error.
+ */
+int bl_device_open(const char *dev_path);
+
+/**
+ * Close a bloodlight device.
+ *
+ * \param[in] dev_fd  File descriptor for device to close.
+ */
+void bl_device_close(int dev_fd);
+
 #endif /* BL_TOOLS_DEVICE_H */
