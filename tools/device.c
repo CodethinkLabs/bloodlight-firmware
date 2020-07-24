@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
+#include <termios.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <libudev.h>
 
@@ -181,6 +184,45 @@ void get_dev(int dev, char *argv[])
 			fprintf(stderr, "More than one device found, please specify which device to use.\n");
 			exit(EXIT_FAILURE);
 		}
+	}
+}
+
+int bl_device_open(const char *dev_path)
+{
+	int dev_fd;
+	struct termios t;
+
+	dev_fd = open(dev_path, O_RDWR);
+	if (dev_fd == -1) {
+		fprintf(stderr, "Failed to open '%s': %s\n",
+				dev_path, strerror(errno));
+		return -1;
+	}
+
+	if (tcgetattr(dev_fd, &t) == 0) {
+		t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+		t.c_oflag &= ~(OPOST);
+		t.c_cflag |=  (CS8);
+		t.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+
+		if (tcsetattr(dev_fd, TCSANOW, &t) != 0) {
+			fprintf(stderr, "Failed set terminal attributes"
+				" of '%s': %s\n", dev_path, strerror(errno));
+			return -1;
+		}
+	} else {
+		fprintf(stderr, "Failed get terminal attributes"
+				" of '%s': %s\n", dev_path, strerror(errno));
+		return -1;
+	}
+	return dev_fd;
+}
+
+void bl_device_close(int dev_fd)
+{
+	/* Maybe we should ignore 0, 1 and 2. */
+	if (dev_fd >= 0) {
+		close(dev_fd);
 	}
 }
 
