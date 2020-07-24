@@ -19,13 +19,19 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
+#include <time.h>
+
+#include <unistd.h>
+#include <poll.h>
 
 #include "../src/error.h"
 #include "../src/util.h"
 #include "../src/msg.h"
 
 #include "msg.h"
+#include "sig.h"
 
 #define BUFFER_LEN 64
 #define BUFFER_LEN_STR "64"
@@ -344,4 +350,127 @@ void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 	}
 
 	fflush(file);
+}
+
+static inline int64_t time_diff_ms(
+		struct timespec *time_start,
+		struct timespec *time_end)
+{
+	return ((time_end->tv_sec - time_start->tv_sec) * 1000 +
+		(time_end->tv_nsec - time_start->tv_nsec) / 1000000);
+}
+
+static ssize_t bl_msg__read(int fd, void *data, size_t size, int timeout_ms)
+{
+	struct timespec time_start;
+	struct timespec time_end;
+	size_t total_read = 0;
+	int ret;
+
+	ret = clock_gettime(CLOCK_MONOTONIC, &time_start);
+	if (ret == -1) {
+		fprintf(stderr, "Failed to read time: %s\n",
+				strerror(errno));
+		return -errno;
+	}
+
+	while (total_read != size && !bl_sig_killed) {
+		ssize_t chunk_read;
+		struct pollfd pfd = {
+			.fd = fd,
+			.events = POLLIN,
+		};
+
+		ret = poll(&pfd, 1, timeout_ms);
+		if (ret == -1) {
+			return -errno;
+
+		} else if (ret == 0) {
+			int elapsed_ms;
+
+			ret = clock_gettime(CLOCK_MONOTONIC, &time_end);
+			if (ret == -1) {
+				fprintf(stderr, "Failed to read time: %s\n",
+						strerror(errno));
+				return -errno;
+			}
+
+			elapsed_ms = time_diff_ms(&time_start, &time_end);
+			if (elapsed_ms >= timeout_ms) {
+				fprintf(stderr, "Timed out waiting for read\n");
+				return -ETIMEDOUT;
+			}
+			timeout_ms -= elapsed_ms;
+		}
+
+		chunk_read = read(fd, (uint8_t *)data + total_read, size);
+		if (chunk_read == -1) {
+			return -errno;
+		}
+
+		total_read += chunk_read;
+	}
+
+	return total_read;
+}
+
+bool bl_msg_read(
+		int fd,
+		int timeout,
+		union bl_msg_data *msg)
+{
+	ssize_t expected_len;
+	ssize_t read_len;
+	int res = 0;
+
+	expected_len = sizeof(msg->type);
+	read_len = bl_msg__read(fd, &msg->type, expected_len, timeout);
+	if (read_len != expected_len) {
+		fprintf(stderr, "Failed to read message type from device");
+		if (read_len < 0)
+			fprintf(stderr, ": %s", strerror(-read_len));
+		fprintf(stderr, "\n");
+		res = -read_len;
+		goto out;
+	}
+
+	expected_len = bl_msg_type_to_len(msg->type) - sizeof(msg->type);
+	read_len = bl_msg__read(fd, &msg->type + sizeof(msg->type),
+			expected_len, timeout);
+	if (read_len != expected_len) {
+		fprintf(stderr, "Failed to read message body from device");
+		if (read_len < 0)
+			fprintf(stderr, ": %s", strerror(-read_len));
+		fprintf(stderr, "\n");
+		res = -read_len;
+		goto out;
+	}
+
+	if ((msg->type == BL_MSG_SAMPLE_DATA16) ||
+			(msg->type == BL_MSG_SAMPLE_DATA32)) {
+
+		size_t sample_size = msg->type == BL_MSG_SAMPLE_DATA32 ?
+				sizeof(uint32_t) : sizeof(uint16_t);
+
+		expected_len = sample_size * msg->sample_data.count;
+		read_len = bl_msg__read(fd, msg->sample_data.data16,
+				expected_len, timeout);
+
+		if (read_len != expected_len) {
+			fprintf(stderr, "Failed to read %"PRIu8" samples from device",
+					msg->sample_data.count);
+			if (read_len < 0)
+				fprintf(stderr, ": %s", strerror(-read_len));
+			fprintf(stderr, "\n");
+			res = -read_len;
+			goto out;
+		}
+	}
+
+out:
+	if (res == EINTR) {
+		bl_sig_killed = true;
+	}
+
+	return (res == 0);
 }
