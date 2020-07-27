@@ -22,6 +22,9 @@ void get_dev(int dev, char *argv[]);
 /**
  * Open a bloodlight device.
  *
+ * If passed a `NULL` dev_path, this function will attempt to find a bloodlight
+ * device to open.
+ *
  * \param[in] dev_path  Path to device to open.
  * \return File descriptor for open device, or -1 on error.
  */

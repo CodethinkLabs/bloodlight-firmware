@@ -270,13 +270,29 @@ int bl_device_open(const char *dev_path)
 {
 	int dev_fd;
 	struct termios t;
+	unsigned count = 0;
+	struct bl_device *devices = NULL;
+
+	if (dev_path == NULL) {
+		if (!bl_device_list_get(&devices, &count) || count == 0) {
+			fprintf(stderr, "Failed to get device list.\n");
+			return -ENODEV;
+		}
+
+		fprintf(stderr, "Using device: %s (%s).\n",
+				devices[0].device_path,
+				devices[0].device_serial);
+		dev_path = devices[0].device_path;
+	}
 
 	dev_fd = open(dev_path, O_RDWR);
 	if (dev_fd == -1) {
 		fprintf(stderr, "Failed to open '%s': %s\n",
 				dev_path, strerror(errno));
+		bl_device_list_free(devices, count);
 		return -1;
 	}
+	bl_device_list_free(devices, count);
 
 	if (tcgetattr(dev_fd, &t) == 0) {
 		t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
