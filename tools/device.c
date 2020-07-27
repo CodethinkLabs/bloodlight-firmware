@@ -34,7 +34,7 @@
 /* Valid Codethink Medical Plethysmograph Device path */
 char dev_node[32];
 
-static bool match(char *sysname)
+static bool bl_device__match(const char *sysname)
 {
 	struct udev *udev;
 	struct udev_enumerate *enumerate;
@@ -44,44 +44,37 @@ static bool match(char *sysname)
 
 	/* Create the udev object */
 	udev = udev_new();
-	if (!udev)
-	{
+	if (!udev) {
 		fprintf(stderr, "Can't create udev\n");
 		goto out;
 	}
 
 	/* Create a list of the devices with the name "ttyACM*". */
 	enumerate = udev_enumerate_new(udev);
-	if (!enumerate)
-	{
+	if (!enumerate) {
 		fprintf(stderr, "Can't create udev enumerate context.\n");
 		goto udev_out;
 	}
 
-	if (udev_enumerate_add_match_sysname(enumerate, sysname) < 0)
-	{
+	if (udev_enumerate_add_match_sysname(enumerate, sysname) < 0) {
 		fprintf(stderr, "Failed on adding udev enumerate filter.\n");
 		goto enum_out;
 	}
 
-	if (udev_enumerate_scan_devices(enumerate) < 0)
-	{
+	if (udev_enumerate_scan_devices(enumerate) < 0) {
 		fprintf(stderr, "Failed on scanning device.\n");
 		goto enum_out;
 	}
-
 
 	/* udev_enumerate_get_list_entry returns a list of entry,
 	but we only need the first entry, because we only cares
 	about their parent which are the same for all. */
 	device = udev_enumerate_get_list_entry(enumerate);
 
-
 	/* Get the filename of the /sys entry for the device
 	 and create a udev_device object (dev) representing it */
 	path = udev_list_entry_get_name(device);
-	if (!path)
-	{
+	if (!path) {
 		printf("No matched device found.\n");
 		goto enum_out;
 	}
@@ -93,11 +86,8 @@ static bool match(char *sysname)
 	 be several levels up the tree, but the function will find
 	 it.*/
 	dev = udev_device_get_parent_with_subsystem_devtype(
-		dev,
-		"usb",
-		"usb_device");
-	if (!dev)
-	{
+			dev, "usb", "usb_device");
+	if (!dev) {
 		fprintf(stderr, "Unable to find parent usb device.");
 		goto dev_out;
 	}
@@ -109,11 +99,12 @@ static bool match(char *sysname)
 	 the USB device. Note that USB strings are Unicode, UCS2
 	 encoded, but the strings returned from
 	 udev_device_get_sysattr_value() are UTF-8 encoded. */
-	if (!strncmp(udev_device_get_sysattr_value(dev, "manufacturer"),
-				 BL_STR_MANUFACTURER, 9) &&
-		!strncmp(udev_device_get_sysattr_value(dev, "product"),
-				 BL_STR_PRODUCT, 29))
+	if (!strncmp(udev_device_get_sysattr_value(dev,
+			"manufacturer"), BL_STR_MANUFACTURER, 9) &&
+	    !strncmp(udev_device_get_sysattr_value(dev,
+			"product"), BL_STR_PRODUCT, 29)) {
 		return true;
+	}
 
 dev_out:
 	udev_device_unref(dev);
@@ -127,34 +118,29 @@ out:
 }
 
 /* filter function for /dev nodes match */
-static int dev_match(const struct dirent *entry)
+static int bl_device__is_ttyACM(const struct dirent *entry)
 {
-	return !strncmp(entry->d_name, "ttyACM", 6);
+	return strncmp(entry->d_name, "ttyACM", 6) == 0;
 }
 
-static int scan(void)
+static int bl_device__scan(void)
 {
 	struct dirent **namelist;
 	int n, found = 0;
 
-	n = scandir("/dev/", &namelist, dev_match, NULL);
-	if (n == -1)
-	{
-		fprintf(stderr, "scandir fails\n");
+	n = scandir("/dev/", &namelist, bl_device__is_ttyACM, NULL);
+	if (n == -1) {
+		fprintf(stderr, "scandir failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	while (n--)
-	{
-		if (match(namelist[n]->d_name))
-		{
+	while (n--) {
+		if (bl_device__match(namelist[n]->d_name)) {
 			int ret = snprintf(dev_node, sizeof(dev_node) - 1,
-							   "/dev/%s", namelist[n]->d_name);
-			if (ret < 0 || ret >= (int)(sizeof(dev_node) - 1))
-			{
-				fprintf(stderr, "Error on saving device path: %s\n",
+					"/dev/%s", namelist[n]->d_name);
+			if (ret < 0 || ret >= (int)(sizeof(dev_node) - 1)) {
+				fprintf(stderr, "Error saving device path: %s\n",
 						namelist[n]->d_name);
-
 				free(namelist[n]);
 				break;
 			}
@@ -172,7 +158,7 @@ void get_dev(int dev, char *argv[])
 	if ((strncmp(argv[dev], "auto", 4) ||
 	     strncmp(argv[dev], "--auto", 6) ||
 	     strncmp(argv[dev], "-a", 2))) {
-		int found = scan();
+		int found = bl_device__scan();
 		switch (found) {
 		case 0:
 			fprintf(stderr, "No MPD device found.\n");
@@ -225,22 +211,3 @@ void bl_device_close(int dev_fd)
 		close(dev_fd);
 	}
 }
-
-/*
-int main(void)
-{
-	int found = scan();
-	switch (found)
-	{
-	case 0:
-		printf("no device found");
-		break;
-	case 1:
-		printf("valid device at: %s\n", dev_node);
-		break;
-	default:
-		printf("more than one device found, please specify which device to use.\n");
-	}
-	exit(EXIT_SUCCESS);
-}
-*/
