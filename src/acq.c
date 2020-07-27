@@ -834,7 +834,7 @@ static void bl_frequency_to_acq_params(
 	/* Find prime factors and increase prescale. */
 	uint32_t prescale = ((ticks_per_sample & 1) ? 1 : 2);
 	uint32_t ticks   = ticks_per_sample / prescale;
-	for (unsigned i = 3; (i * i) < prescale; i += 2) {
+	for (unsigned i = 3; (i * i) < ticks; i += 2) {
 		if ((ticks % i) == 0) {
 			if ((prescale * i) > 65536) {
 				break;
