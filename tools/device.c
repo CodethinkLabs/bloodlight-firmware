@@ -34,7 +34,9 @@
 /* Valid Codethink Medical Plethysmograph Device path */
 char dev_node[32];
 
-static bool bl_device__match(const char *sysname)
+static bool bl_device__match(
+		const char *sysname,
+		char **device_serial_out)
 {
 	struct udev *udev;
 	struct udev_enumerate *enumerate;
@@ -114,7 +116,11 @@ static bool bl_device__match(const char *sysname)
 	    (udev_prod != NULL)) {
 		if (!strcmp(udev_manu, BL_STR_MANUFACTURER) &&
 		    !strcmp(udev_prod, BL_STR_PRODUCT)) {
+			const char *serial = udev_device_get_sysattr_value(
+					parent_dev, "serial");
+
 			match = true;
+			*device_serial_out = strdup(serial);
 		}
 	}
 
@@ -137,34 +143,98 @@ static int bl_device__is_ttyACM(const struct dirent *entry)
 	return strncmp(entry->d_name, "ttyACM", 6) == 0;
 }
 
-static int bl_device__scan(void)
+static bool bl_device__list_append(
+		struct bl_device **devices,
+		unsigned *count,
+		const char *device_path,
+		const char *device_serial)
 {
-	struct dirent **namelist;
-	int n, found = 0;
+	struct bl_device *temp;
 
-	n = scandir("/dev/", &namelist, bl_device__is_ttyACM, NULL);
-	if (n == -1) {
-		fprintf(stderr, "scandir failed: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
+	temp = realloc(*devices, sizeof(**devices) * (*count + 1));
+	if (temp == NULL) {
+		return false;
+	}
+	*devices = temp;
+
+	temp[*count].device_path = strdup(device_path);
+	temp[*count].device_serial = strdup(device_serial);
+
+	if (temp[*count].device_path   == NULL ||
+	    temp[*count].device_serial == NULL) {
+		free(temp[*count].device_path);
+		free(temp[*count].device_serial);
+		return false;
 	}
 
-	while (n--) {
-		if (bl_device__match(namelist[n]->d_name)) {
+	*count += 1;
+	return true;
+}
+
+void bl_device_list_free(
+		struct bl_device *devices,
+		unsigned count)
+{
+	for (unsigned i = 0; i < count; i++) {
+		free(devices[i].device_path);
+		free(devices[i].device_serial);
+	}
+
+	free(devices);
+}
+
+bool bl_device_list_get(
+		struct bl_device **devices_out,
+		unsigned *count_out)
+{
+	struct bl_device *list = NULL;
+	struct dirent **namelist;
+	unsigned found = 0;
+	bool res = false;
+	int count;
+
+	count = scandir("/dev/", &namelist, bl_device__is_ttyACM, NULL);
+	if (count == -1) {
+		fprintf(stderr, "scandir failed: %s\n", strerror(errno));
+		return false;
+	}
+
+	for (int i = 0; i < count; i++) {
+		char *serial;
+		if (bl_device__match(namelist[i]->d_name, &serial)) {
 			int ret = snprintf(dev_node, sizeof(dev_node) - 1,
-					"/dev/%s", namelist[n]->d_name);
+					"/dev/%s", namelist[i]->d_name);
 			if (ret < 0 || ret >= (int)(sizeof(dev_node) - 1)) {
 				fprintf(stderr, "Error saving device path: %s\n",
-						namelist[n]->d_name);
-				free(namelist[n]);
-				break;
+						namelist[i]->d_name);
+				free(serial);
+				goto out;
 			}
-			found++;
+
+			if (!bl_device__list_append(&list, &found,
+					dev_node, serial)) {
+				free(serial);
+				goto out;
+			}
+			free(serial);
 		}
-		free(namelist[n]);
+	}
+
+	if (found) {
+		*devices_out = list;
+		*count_out = found;
+		res = true;
+	}
+
+out:
+	if (res == false) {
+		bl_device_list_free(list, found);
+	}
+	for (int i = 0; i < count; i++) {
+		free(namelist[i]);
 	}
 	free(namelist);
-
-	return found;
+	return res;
 }
 
 void get_dev(int dev, char *argv[])
@@ -172,8 +242,15 @@ void get_dev(int dev, char *argv[])
 	if ((strncmp(argv[dev], "auto", 4) ||
 	     strncmp(argv[dev], "--auto", 6) ||
 	     strncmp(argv[dev], "-a", 2))) {
-		int found = bl_device__scan();
-		switch (found) {
+		unsigned count;
+		struct bl_device *devices;
+
+		if (!bl_device_list_get(&devices, &count)) {
+			fprintf(stderr, "Failed to get device list.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		switch (count) {
 		case 0:
 			fprintf(stderr, "No MPD device found.\n");
 			exit(EXIT_FAILURE);
@@ -184,6 +261,8 @@ void get_dev(int dev, char *argv[])
 			fprintf(stderr, "More than one device found, please specify which device to use.\n");
 			exit(EXIT_FAILURE);
 		}
+
+		bl_device_list_free(devices, count);
 	}
 }
 
