@@ -449,6 +449,16 @@ static bl_cmd_fn bl_cmd_lookup(const char *cmd_name)
 	return NULL;
 }
 
+void get_dev(int dev, char *argv[])
+{
+	/* Auto device lookup is handled with a NULL path to bl_device_open() */
+	if (strcmp(argv[dev], "auto") ||
+	    strcmp(argv[dev], "--auto") ||
+	    strcmp(argv[dev], "-a")) {
+		argv[dev] = NULL;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	bl_cmd_fn cmd_fn;
