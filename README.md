@@ -47,14 +47,15 @@ Installation
 
 There are various ways to install the firmware onto the device.
 Here we will cover using [OpenOCD](http://openocd.org/) with
-`gdb-multiarch`, using a Nucleo-F303ZE board to provide the ST-LINK
-interface.
+`gdb-multiarch`, using a Nucleo-F303ZE board or the STLINK-V3SET
+to provide the ST-LINK interface.
 
 ### Hardware setup
 
 1. Consult the
    [UM1974](https://www.st.com/en/evaluation-tools/nucleo-f303ze.html#resource) datasheet.
-2. Locate the ST-LINK jumper pins on the Nucleo board and make sure they are
+   The pin connections for STLINK-V3 are similar, but with slightly different name.
+2. Locate the ST-LINK jumper pins on the programmer boards and make sure they are
    open.  See Figure 10: Using ST-LINK/V2-1 to program the STM32 on an
    external application in UM1974.
 3. Connect the SWD pins on the Nucleo board to the pins on the MPD
@@ -62,17 +63,18 @@ interface.
    board.  For the Nucleo board, check see Table 5. Debug connector CN6 (SWD).
    There is a small dot at one end of the SWD connector which marks pin 1.
 
-   | Nucleo board | MPD board |
-   | ------------- | --------- |
-   | VDD_TARGET    | 3.3V      |
-   | SWCLK         | SWCLK     |
-   | GND           | GND       |
-   | SWDIO         | SWDIO     |
-   | NRST          | NRST      |
-   | SWO           | SWO       |
+   | Nucleo board  | STLINK-V3 | MPD board |
+   | ------------- | --------- | --------- |
+   | VDD_TARGET    | T_VCC     | 3.3V      |
+   | SWCLK         | CLK       | SWCLK     |
+   | GND           | GND       | GND       |
+   | SWDIO         | DIO       | SWDIO     |
+   | NRST          | NRST      | NRST      |
+   | SWO           | SWO       | SWO       |
 
-4. Connect the Micro-USB port at the ST-LINK end of the Nucleo board
-   to the host system.
+4. Connect both the programmer and the MPD bloodlight boards to your computer using
+   micro-USB cables as both require power to function. The order in which they're
+   connected doesn't matter.
 
 ### Flashing
 
@@ -131,7 +133,8 @@ USB:
 [877656.004648] cdc_acm 1-1:1.0: ttyACM2: USB ACM device
 ```
 
-Take note of the `ttyACM2`.  The `2` might not be a `2` in your case,
+Take note of the `ttyACM2` if you want to manually provide the device name
+later in the command.  The `2` might not be a `2` in your case,
 and we need to know this in order to communicate with the device.
 
 The device comes up as a Communications Device Class (CDC) device.
@@ -211,6 +214,7 @@ either directly or as an example:
 ```
 sudo ./run.sh cal
 sudo ./run.sh acq
+sudo ./run.sh cal_acq
 sudo ./run.sh off
 ```
 
