@@ -40,7 +40,10 @@ static bool bl_device__match(const char *sysname)
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *device;
 	struct udev_device *dev;
+	const char *udev_manu;
+	const char *udev_prod;
 	const char *path;
+	bool match = false;
 
 	/* Create the udev object */
 	udev = udev_new();
@@ -99,11 +102,14 @@ static bool bl_device__match(const char *sysname)
 	 the USB device. Note that USB strings are Unicode, UCS2
 	 encoded, but the strings returned from
 	 udev_device_get_sysattr_value() are UTF-8 encoded. */
-	if (!strncmp(udev_device_get_sysattr_value(dev,
-			"manufacturer"), BL_STR_MANUFACTURER, 9) &&
-	    !strncmp(udev_device_get_sysattr_value(dev,
-			"product"), BL_STR_PRODUCT, 29)) {
-		return true;
+	udev_manu = udev_device_get_sysattr_value(dev, "manufacturer");
+	udev_prod = udev_device_get_sysattr_value(dev, "product");
+	if ((udev_manu != NULL) &&
+	    (udev_prod != NULL)) {
+		if (!strcmp(udev_manu, BL_STR_MANUFACTURER) &&
+		    !strcmp(udev_prod, BL_STR_PRODUCT)) {
+			match = true;
+		}
 	}
 
 dev_out:
@@ -114,7 +120,7 @@ enum_out:
 udev_out:
 	udev_unref(udev);
 out:
-	return false;
+	return match;
 }
 
 /* filter function for /dev nodes match */
