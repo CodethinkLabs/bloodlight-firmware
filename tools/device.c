@@ -39,6 +39,7 @@ static bool bl_device__match(const char *sysname)
 	struct udev *udev;
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *device;
+	struct udev_device *parent_dev;
 	struct udev_device *dev;
 	const char *udev_manu;
 	const char *udev_prod;
@@ -81,16 +82,21 @@ static bool bl_device__match(const char *sysname)
 		printf("No matched device found.\n");
 		goto enum_out;
 	}
+
 	dev = udev_device_new_from_syspath(udev, path);
+	if (!dev) {
+		fprintf(stderr, "Unable to find usb device.");
+		goto enum_out;
+	}
 
 	/* In order to get information about the
 	 USB device, get the parent device with the
 	 subsystem/devtype pair of "usb"/"usb_device". This will
 	 be several levels up the tree, but the function will find
 	 it.*/
-	dev = udev_device_get_parent_with_subsystem_devtype(
+	parent_dev = udev_device_get_parent_with_subsystem_devtype(
 			dev, "usb", "usb_device");
-	if (!dev) {
+	if (!parent_dev) {
 		fprintf(stderr, "Unable to find parent usb device.");
 		goto dev_out;
 	}
@@ -102,8 +108,8 @@ static bool bl_device__match(const char *sysname)
 	 the USB device. Note that USB strings are Unicode, UCS2
 	 encoded, but the strings returned from
 	 udev_device_get_sysattr_value() are UTF-8 encoded. */
-	udev_manu = udev_device_get_sysattr_value(dev, "manufacturer");
-	udev_prod = udev_device_get_sysattr_value(dev, "product");
+	udev_manu = udev_device_get_sysattr_value(parent_dev, "manufacturer");
+	udev_prod = udev_device_get_sysattr_value(parent_dev, "product");
 	if ((udev_manu != NULL) &&
 	    (udev_prod != NULL)) {
 		if (!strcmp(udev_manu, BL_STR_MANUFACTURER) &&
@@ -113,6 +119,8 @@ static bool bl_device__match(const char *sysname)
 	}
 
 dev_out:
+	/* Note: we don't get an additional ref for `parent_dev`,
+	 * it is the original `dev` that must be unreffed. */
 	udev_device_unref(dev);
 enum_out:
 	/* Free the enumerator object */
