@@ -31,9 +31,6 @@
 
 #include "device.h"
 
-/* Valid Codethink Medical Plethysmograph Device path */
-char dev_node[32];
-
 static bool bl_device__match(
 		const char *sysname,
 		char **device_serial_out)
@@ -202,6 +199,7 @@ bool bl_device_list_get(
 	for (int i = 0; i < count; i++) {
 		char *serial;
 		if (bl_device__match(namelist[i]->d_name, &serial)) {
+			char dev_node[32];
 			int ret = snprintf(dev_node, sizeof(dev_node) - 1,
 					"/dev/%s", namelist[i]->d_name);
 			if (ret < 0 || ret >= (int)(sizeof(dev_node) - 1)) {
@@ -235,35 +233,6 @@ out:
 	}
 	free(namelist);
 	return res;
-}
-
-void get_dev(int dev, char *argv[])
-{
-	if ((strncmp(argv[dev], "auto", 4) ||
-	     strncmp(argv[dev], "--auto", 6) ||
-	     strncmp(argv[dev], "-a", 2))) {
-		unsigned count;
-		struct bl_device *devices;
-
-		if (!bl_device_list_get(&devices, &count)) {
-			fprintf(stderr, "Failed to get device list.\n");
-			exit(EXIT_FAILURE);
-		}
-
-		switch (count) {
-		case 0:
-			fprintf(stderr, "No MPD device found.\n");
-			exit(EXIT_FAILURE);
-		case 1:
-			argv[dev] = dev_node;
-			break;
-		default:
-			fprintf(stderr, "More than one device found, please specify which device to use.\n");
-			exit(EXIT_FAILURE);
-		}
-
-		bl_device_list_free(devices, count);
-	}
 }
 
 int bl_device_open(const char *dev_path)
