@@ -18,7 +18,7 @@
 #define BL_H
 
 /**
- * Initialise the MPD module.
+ * Initialise the Bloodlight module.
  */
 void bl_init(void);
 

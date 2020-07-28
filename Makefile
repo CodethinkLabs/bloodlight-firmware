@@ -1,4 +1,4 @@
-PROJECT = mpd-firmware
+PROJECT = bloodlight-firmware
 BUILD_DIR = bin
 
 CFILES = \
