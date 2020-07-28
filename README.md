@@ -167,12 +167,12 @@ command:
 
 Usage:
   ./tools/bl led \
-  	<DEVICE_PATH|auto|--auto|-a> \
+  	<DEVICE_PATH|--auto|-a> \
   	<LED_MASK>
 ```
 
 The DEVICE_PATH is the tty device reported in `dmesg` when the device was
-connected. When `auto` and friends are provided, it will try to guess the
+connected. When `--auto` or `-a` are provided, it will try to guess the
 tty deivce name based on the `manufactuer` and `product` fields of USB
 devices.
 
