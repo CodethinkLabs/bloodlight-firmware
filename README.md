@@ -50,6 +50,10 @@ Here we will cover using [OpenOCD](http://openocd.org/) with
 `gdb-multiarch`, using a Nucleo-F303ZE board or the STLINK-V3SET
 to provide the ST-LINK interface.
 
+Note: If you are using the STLINK-V3SET, you may need to build OpenOCD from
+[source](https://sourceforge.net/p/openocd/code/ci/master),
+configured with `--enable-stlink`.
+
 ### Hardware setup
 
 1. Consult the
@@ -77,6 +81,16 @@ to provide the ST-LINK interface.
    connected doesn't matter.
 
 ### Flashing
+
+To simply flash the board, run:
+```bash
+sudo make OOCD_FILE=board/st_nucleo_f3.cfg flash
+```
+
+Note: If you can't find this file, it's available in the
+[openOCD source repo](https://sourceforge.net/p/openocd/code/ci/master/tree/tcl/board/st_nucleo_f3.cfg)
+
+For debugging or development, you can instead do the following:
 
 First run OpenOCD with an appropriate config:
 
@@ -110,6 +124,26 @@ Run the firmware with:
 ```
 (gdb) c
 ```
+
+You are now ready to use the device.
+
+### Troubleshooting
+
+* Problem: running `openocd` results in `Error: open failed` with no explanation.
+  
+  Solution: Check that your debugger is connected to your computer *and* that the cable supports USB data, not just power.
+
+* Problem: running `openocd` results in `Error: libusb_open() failed with LIBUSB_ERROR_ACCESS`.
+  
+  Solution: run openocd as root.
+
+* Problem: Running `openocd` results in `Error: init mode failed (unable to connect to the target)`
+  
+  Solution: ensure the bloodlight board is powered.
+
+* Problem: Running `make flash` results in `make: *** [rules.mk:156: bloodlight-firmware.flash] Error 1`
+
+  Solution: run with `make V=1` for more useful error messages. 
 
 Using the device
 ----------------
