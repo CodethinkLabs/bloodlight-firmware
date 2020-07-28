@@ -19,13 +19,19 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
+#include <time.h>
+
+#include <unistd.h>
+#include <poll.h>
 
 #include "../src/error.h"
 #include "../src/util.h"
 #include "../src/msg.h"
 
 #include "msg.h"
+#include "sig.h"
 
 #define BUFFER_LEN 64
 #define BUFFER_LEN_STR "64"
@@ -82,11 +88,11 @@ static inline enum bl_error bl_msg_str_to_error(const char *str)
 	return bl_msg_str_to_index(str, msg_errors, BL_ARRAY_LEN(msg_errors));
 }
 
-static const char * bl_msg__read_str_type(bool *success)
+static const char * bl_msg__yaml_read_str_type(FILE *file, bool *success)
 {
 	int ret;
 
-	ret = scanf("- %"BUFFER_LEN_STR"[A-Za-z0-9 -]:\n", buffer);
+	ret = fscanf(file, "- %"BUFFER_LEN_STR"[A-Za-z0-9 -]:\n", buffer);
 	if (ret != 1) {
 		*success = false;
 		return NULL;
@@ -95,11 +101,11 @@ static const char * bl_msg__read_str_type(bool *success)
 	return buffer;
 }
 
-static const char * bl_msg__read_str_error(bool *success)
+static const char * bl_msg__yaml_read_str_error(FILE *file, bool *success)
 {
 	int ret;
 
-	ret = scanf("  Error: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n", buffer);
+	ret = fscanf(file, "  Error: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n", buffer);
 	if (ret != 1) {
 		*success = false;
 		return NULL;
@@ -108,32 +114,32 @@ static const char * bl_msg__read_str_error(bool *success)
 	return buffer;
 }
 
-static enum bl_msg_type bl_msg__read_type(bool *success)
+static enum bl_msg_type bl_msg__yaml_read_type(FILE *file, bool *success)
 {
-	const char *str_type = bl_msg__read_str_type(success);
+	const char *str_type = bl_msg__yaml_read_str_type(file, success);
 
 	return bl_msg_str_to_type(str_type);
 }
 
-static enum bl_error bl_msg__read_error(bool *success)
+static enum bl_error bl_msg__yaml_read_error(FILE *file, bool *success)
 {
-	const char *str_type = bl_msg__read_str_error(success);
+	const char *str_type = bl_msg__yaml_read_str_error(file, success);
 
 	return bl_msg_str_to_error(str_type);
 }
 
-static uint8_t bl_msg__read_response_to(bool *success)
+static uint8_t bl_msg__yaml_read_response_to(FILE *file, bool *success)
 {
 	unsigned value;
 	int ret;
 
-	ret = scanf("    Response to: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n",
+	ret = fscanf(file, "    Response to: %"BUFFER_LEN_STR"[A-Za-z0-9 ]\n",
 			buffer);
 	if (ret == 1) {
 		return bl_msg_str_to_type(buffer);
 	}
 
-	ret = scanf("    Response to: Unknown (0x%x)\n", &value);
+	ret = fscanf(file, "    Response to: Unknown (0x%x)\n", &value);
 	if (ret == 1) {
 		return value;
 	}
@@ -142,12 +148,12 @@ static uint8_t bl_msg__read_response_to(bool *success)
 	return bl_msg_str_to_type("Unknown");
 }
 
-static uint16_t bl_msg__read_unsigned(bool *success, const char *field)
+static uint16_t bl_msg__yaml_read_unsigned(FILE *file, const char *field, bool *success)
 {
 	unsigned value;
 	int ret;
 
-	ret = scanf("%"BUFFER_LEN_STR"[A-Za-z0-9 ]: %u\n",
+	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 ]: %u\n",
 			buffer, &value);
 	if (ret == 2) {
 		if (strcmp(buffer, field) == 0) {
@@ -159,12 +165,12 @@ static uint16_t bl_msg__read_unsigned(bool *success, const char *field)
 	return 0;
 }
 
-static uint16_t bl_msg__read_hex(bool *success, const char *field)
+static uint16_t bl_msg__yaml_read_hex(FILE *file, const char *field, bool *success)
 {
 	unsigned value;
 	int ret;
 
-	ret = scanf("%"BUFFER_LEN_STR"[A-Za-z0-9 ]: 0x%x\n",
+	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 ]: 0x%x\n",
 			buffer, &value);
 	if (ret == 2) {
 		if (strcmp(buffer, field) == 0) {
@@ -176,12 +182,12 @@ static uint16_t bl_msg__read_hex(bool *success, const char *field)
 	return 0;
 }
 
-static uint32_t bl_msg__read_unsigned_no_field(bool *success)
+static uint32_t bl_msg__yaml_read_unsigned_no_field(FILE *file, bool *success)
 {
 	uint32_t value;
 	int ret;
 
-	ret = scanf("%*[ -]%"SCNu32"\n", &value);
+	ret = fscanf(file, "%*[ -]%"SCNu32"\n", &value);
 	if (ret == 1) {
 		return value;
 	}
@@ -190,53 +196,53 @@ static uint32_t bl_msg__read_unsigned_no_field(bool *success)
 	return 0;
 }
 
-bool bl_msg_parse(union bl_msg_data *msg)
+bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 {
 	bool ok = true;
 
 	assert(msg != NULL);
 
-	msg->type = bl_msg__read_type(&ok);
+	msg->type = bl_msg__yaml_read_type(file, &ok);
 
 	switch (msg->type) {
 	case BL_MSG_RESPONSE:
-		msg->response.response_to = bl_msg__read_response_to(&ok);
-		msg->response.error_code = bl_msg__read_error(&ok);
+		msg->response.response_to = bl_msg__yaml_read_response_to(file, &ok);
+		msg->response.error_code = bl_msg__yaml_read_error(file, &ok);
 		break;
 
 	case BL_MSG_LED:
-		msg->led.led_mask = bl_msg__read_hex(&ok, "LED Mask");
+		msg->led.led_mask = bl_msg__yaml_read_hex(file, "LED Mask", &ok);
 		break;
 
 	case BL_MSG_CHANNEL_CONF:
-		msg->channel_conf.channel  = bl_msg__read_unsigned(&ok, "Channel");
-		msg->channel_conf.gain     = bl_msg__read_unsigned(&ok, "Gain");
-		msg->channel_conf.shift    = bl_msg__read_unsigned(&ok, "Shift");
-		msg->channel_conf.offset   = bl_msg__read_unsigned(&ok, "Offset");
-		msg->channel_conf.sample32 = bl_msg__read_unsigned(&ok, "Sample32");
+		msg->channel_conf.channel  = bl_msg__yaml_read_unsigned(file, "Channel",  &ok);
+		msg->channel_conf.gain     = bl_msg__yaml_read_unsigned(file, "Gain",     &ok);
+		msg->channel_conf.shift    = bl_msg__yaml_read_unsigned(file, "Shift",    &ok);
+		msg->channel_conf.offset   = bl_msg__yaml_read_unsigned(file, "Offset",   &ok);
+		msg->channel_conf.sample32 = bl_msg__yaml_read_unsigned(file, "Sample32", &ok);
 		break;
 
 	case BL_MSG_START:
-		msg->start.frequency  = bl_msg__read_unsigned(&ok, "Frequency");
-		msg->start.oversample = bl_msg__read_unsigned(&ok, "Oversample");
-		msg->start.src_mask   = bl_msg__read_hex(&ok, "Source Mask");
+		msg->start.frequency  = bl_msg__yaml_read_unsigned(file, "Frequency",  &ok);
+		msg->start.oversample = bl_msg__yaml_read_unsigned(file, "Oversample", &ok);
+		msg->start.src_mask   = bl_msg__yaml_read_hex(file, "Source Mask",     &ok);
 		break;
 
 	case BL_MSG_SAMPLE_DATA16:
-		msg->sample_data.channel = bl_msg__read_unsigned(&ok, "Channel");
-		msg->sample_data.count   = bl_msg__read_unsigned(&ok, "Count");
-		ok |= (scanf("    Data:\n") == 0);
+		msg->sample_data.channel = bl_msg__yaml_read_unsigned(file, "Channel", &ok);
+		msg->sample_data.count   = bl_msg__yaml_read_unsigned(file, "Count",   &ok);
+		ok |= (fscanf(file, "    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			msg->sample_data.data16[i] = bl_msg__read_unsigned_no_field(&ok);
+			msg->sample_data.data16[i] = bl_msg__yaml_read_unsigned_no_field(file, &ok);
 		}
 		break;
 
 	case BL_MSG_SAMPLE_DATA32:
-		msg->sample_data.channel = bl_msg__read_unsigned(&ok, "Channel");
-		msg->sample_data.count   = bl_msg__read_unsigned(&ok, "Count");
-		ok |= (scanf("    Data:\n") == 0);
+		msg->sample_data.channel = bl_msg__yaml_read_unsigned(file, "Channel", &ok);
+		msg->sample_data.count   = bl_msg__yaml_read_unsigned(file, "Count",   &ok);
+		ok |= (fscanf(file, "    Data:\n") == 0);
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
-			msg->sample_data.data32[i] = bl_msg__read_unsigned_no_field(&ok);
+			msg->sample_data.data32[i] = bl_msg__yaml_read_unsigned_no_field(file, &ok);
 		}
 		break;
 
@@ -265,7 +271,7 @@ static const char *bl_msg_type_to_error(enum bl_error error)
 	return msg_errors[error];
 }
 
-void bl_msg_print(const union bl_msg_data *msg, FILE *file)
+void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 {
 	if (bl_msg_type_to_str(msg->type) == NULL) {
 		fprintf(file, "- Unknown (0x%"PRIx8")\n", msg->type);
@@ -344,4 +350,143 @@ void bl_msg_print(const union bl_msg_data *msg, FILE *file)
 	}
 
 	fflush(file);
+}
+
+static inline int64_t time_diff_ms(
+		struct timespec *time_start,
+		struct timespec *time_end)
+{
+	return ((time_end->tv_sec - time_start->tv_sec) * 1000 +
+		(time_end->tv_nsec - time_start->tv_nsec) / 1000000);
+}
+
+static ssize_t bl_msg__read(int fd, void *data, size_t size, int timeout_ms)
+{
+	struct timespec time_start;
+	struct timespec time_end;
+	size_t total_read = 0;
+	int ret;
+
+	ret = clock_gettime(CLOCK_MONOTONIC, &time_start);
+	if (ret == -1) {
+		fprintf(stderr, "Failed to read time: %s\n",
+				strerror(errno));
+		return -errno;
+	}
+
+	while (total_read != size && !bl_sig_killed) {
+		ssize_t chunk_read;
+		struct pollfd pfd = {
+			.fd = fd,
+			.events = POLLIN,
+		};
+
+		ret = poll(&pfd, 1, timeout_ms);
+		if (ret == -1) {
+			return -errno;
+
+		} else if (ret == 0) {
+			int elapsed_ms;
+
+			ret = clock_gettime(CLOCK_MONOTONIC, &time_end);
+			if (ret == -1) {
+				fprintf(stderr, "Failed to read time: %s\n",
+						strerror(errno));
+				return -errno;
+			}
+
+			elapsed_ms = time_diff_ms(&time_start, &time_end);
+			if (elapsed_ms >= timeout_ms) {
+				fprintf(stderr, "Timed out waiting for read\n");
+				return -ETIMEDOUT;
+			}
+			timeout_ms -= elapsed_ms;
+		}
+
+		chunk_read = read(fd, (uint8_t *)data + total_read, size);
+		if (chunk_read == -1) {
+			return -errno;
+		}
+
+		total_read += chunk_read;
+	}
+
+	return total_read;
+}
+
+bool bl_msg_read(
+		int fd,
+		int timeout,
+		union bl_msg_data *msg)
+{
+	ssize_t expected_len;
+	ssize_t read_len;
+	int res = 0;
+
+	expected_len = sizeof(msg->type);
+	read_len = bl_msg__read(fd, &msg->type, expected_len, timeout);
+	if (read_len != expected_len) {
+		fprintf(stderr, "Failed to read message type from device");
+		if (read_len < 0)
+			fprintf(stderr, ": %s", strerror(-read_len));
+		fprintf(stderr, "\n");
+		res = -read_len;
+		goto out;
+	}
+
+	expected_len = bl_msg_type_to_len(msg->type) - sizeof(msg->type);
+	read_len = bl_msg__read(fd, &msg->type + sizeof(msg->type),
+			expected_len, timeout);
+	if (read_len != expected_len) {
+		fprintf(stderr, "Failed to read message body from device");
+		if (read_len < 0)
+			fprintf(stderr, ": %s", strerror(-read_len));
+		fprintf(stderr, "\n");
+		res = -read_len;
+		goto out;
+	}
+
+	if ((msg->type == BL_MSG_SAMPLE_DATA16) ||
+			(msg->type == BL_MSG_SAMPLE_DATA32)) {
+
+		size_t sample_size = msg->type == BL_MSG_SAMPLE_DATA32 ?
+				sizeof(uint32_t) : sizeof(uint16_t);
+
+		expected_len = sample_size * msg->sample_data.count;
+		read_len = bl_msg__read(fd, msg->sample_data.data16,
+				expected_len, timeout);
+
+		if (read_len != expected_len) {
+			fprintf(stderr, "Failed to read %"PRIu8" samples from device",
+					msg->sample_data.count);
+			if (read_len < 0)
+				fprintf(stderr, ": %s", strerror(-read_len));
+			fprintf(stderr, "\n");
+			res = -read_len;
+			goto out;
+		}
+	}
+
+out:
+	if (res == EINTR) {
+		bl_sig_killed = true;
+	}
+
+	return (res == 0);
+}
+
+bool bl_msg_write(
+		int fd,
+		const char *path,
+		const union bl_msg_data *msg)
+{
+	ssize_t written;
+
+	written = write(fd, msg, bl_msg_type_to_len(msg->type));
+	if (written != bl_msg_type_to_len(msg->type)) {
+		fprintf(stderr, "Failed write message to '%s'\n", path);
+		return false;
+	}
+
+	return true;
 }

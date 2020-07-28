@@ -22,24 +22,14 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
-#include <time.h>
-
-#include <termios.h>
-#include <signal.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <poll.h>
 
 #include "../src/error.h"
 #include "../src/util.h"
 #include "../src/msg.h"
 
-/* Common helper functionality. */
+#include "device.h"
 #include "msg.h"
-#include "find_device.h"
-
-/* Whether we've had a `ctrl-c`. */
-static volatile bool killed = false;
+#include "sig.h"
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -81,195 +71,23 @@ static inline bool read_sized_uint(
 	return true;
 }
 
-
-
-static inline int64_t time_diff_ms(
-		struct timespec *time_start,
-		struct timespec *time_end)
+int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
 {
-	return ((time_end->tv_sec - time_start->tv_sec) * 1000 +
-		(time_end->tv_nsec - time_start->tv_nsec) / 1000000);
-}
+	union bl_msg_data msg;
 
-ssize_t bl_read(int fd, void *data, size_t size, int timeout_ms)
-{
-	struct timespec time_start;
-	struct timespec time_end;
-	size_t total_read = 0;
-	int ret;
+	if (bl_msg_read(dev_fd, timeout_ms, &msg)) {
+		bl_msg_yaml_print(stdout, &msg);
+		if (msg.type == BL_MSG_RESPONSE) {
+			if (msg.response.error_code != BL_ERROR_NONE) {
+				return msg.response.error_code;
 
-	ret = clock_gettime(CLOCK_MONOTONIC, &time_start);
-	if (ret == -1) {
-		fprintf(stderr, "Failed to read time: %s\n",
-				strerror(errno));
-		return -errno;
-	}
-
-	while (total_read != size && !killed) {
-		ssize_t chunk_read;
-		struct pollfd pfd = {
-			.fd = fd,
-			.events = POLLIN,
-		};
-
-		ret = poll(&pfd, 1, timeout_ms);
-		if (ret == -1) {
-			return -errno;
-
-		} else if (ret == 0) {
-			int elapsed_ms;
-
-			ret = clock_gettime(CLOCK_MONOTONIC, &time_end);
-			if (ret == -1) {
-				fprintf(stderr, "Failed to read time: %s\n",
-						strerror(errno));
-				return -errno;
+			} else if (msg.response.response_to == BL_MSG_ABORT) {
+				return ECONNABORTED;
 			}
-
-			elapsed_ms = time_diff_ms(&time_start, &time_end);
-			if (elapsed_ms >= timeout_ms) {
-				fprintf(stderr, "Timed out waiting for read\n");
-				return -ETIMEDOUT;
-			}
-			timeout_ms -= elapsed_ms;
-		}
-
-		chunk_read = read(fd, (uint8_t *)data + total_read, size);
-		if (chunk_read == -1) {
-			return -errno;
-		}
-
-		total_read += chunk_read;
-	}
-
-	return total_read;
-}
-
-static uint8_t bl_response_data[64];
-
-static int bl_cmd_read_message(
-		int dev_fd,
-		int timeout_ms,
-		union bl_msg_data ** response)
-{
-	union bl_msg_data * const msg = (void *) &bl_response_data[0];
-	(*response) = msg;
-	ssize_t expected_len;
-	ssize_t read_len;
-
-	expected_len = sizeof(msg->type);
-	read_len = bl_read(dev_fd, &msg->type, expected_len, timeout_ms);
-	if (read_len != expected_len) {
-		fprintf(stderr, "Failed to read message type from device");
-		if (read_len < 0)
-			fprintf(stderr, ": %s", strerror(-read_len));
-		fprintf(stderr, "\n");
-		return -read_len;
-	}
-
-	expected_len = bl_msg_type_to_len(msg->type) - sizeof(msg->type);
-	read_len = bl_read(dev_fd, &msg->type + sizeof(msg->type),
-			expected_len, timeout_ms);
-	if (read_len != expected_len) {
-		fprintf(stderr, "Failed to read message body from device");
-		if (read_len < 0)
-			fprintf(stderr, ": %s", strerror(-read_len));
-		fprintf(stderr, "\n");
-		return -read_len;
-	}
-
-	if ((msg->type == BL_MSG_SAMPLE_DATA16) ||
-			(msg->type == BL_MSG_SAMPLE_DATA32)) {
-
-		size_t sample_size = msg->type == BL_MSG_SAMPLE_DATA32 ?
-				sizeof(uint32_t) : sizeof(uint16_t);
-
-		expected_len = sample_size * msg->sample_data.count;
-		read_len = bl_read(dev_fd, msg->sample_data.data16,
-				expected_len, timeout_ms);
-
-		if (read_len != expected_len) {
-			fprintf(stderr, "Failed to read %"PRIu8" samples from device",
-					msg->sample_data.count);
-			if (read_len < 0)
-				fprintf(stderr, ": %s", strerror(-read_len));
-			fprintf(stderr, "\n");
-			return -read_len;
 		}
 	}
 
 	return 0;
-}
-
-int bl_cmd_read_and_print_message(int dev_fd, int timeout_ms)
-{
-	union bl_msg_data * msg = NULL;
-	int ret = bl_cmd_read_message(dev_fd, timeout_ms, &msg);
-	if (ret == 0) {
-		bl_msg_print(msg, stdout);
-		if ((msg->type == BL_MSG_RESPONSE) &&
-				(msg->response.error_code != BL_ERROR_NONE)) {
-			return msg->response.error_code;
-		}
-		if ((msg->type == BL_MSG_RESPONSE) &&
-				(msg->response.response_to == BL_MSG_ABORT)) {
-			return ECONNABORTED;
-		}
-	}
-
-	return ret;
-}
-
-static int bl_open_device(const char *dev_path)
-{
-	int dev_fd = open(dev_path, O_RDWR);
-	if (dev_fd == -1) {
-		fprintf(stderr, "Failed to open '%s': %s\n",
-				dev_path, strerror(errno));
-		return -1;
-	}
-
-	struct termios t;
-	if (tcgetattr(dev_fd, &t) == 0) {
-		t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-		t.c_oflag &= ~(OPOST);
-		t.c_cflag |=  (CS8);
-		t.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-
-		if (tcsetattr(dev_fd, TCSANOW, &t) != 0) {
-			fprintf(stderr, "Failed set terminal attributes"
-				" of '%s': %s\n", dev_path, strerror(errno));
-			return -1;
-		}
-	} else {
-		fprintf(stderr, "Failed get terminal attributes"
-				" of '%s': %s\n", dev_path, strerror(errno));
-		return -1;
-	}
-	return dev_fd;
-}
-
-static void bl_close_device(int dev_fd)
-{
-	if(dev_fd >= 0) {/* Maybe we should ignore 0, 1 and 2 */
-		close(dev_fd);
-	}
-}
-
-static int bl_cmd_send(
-		const union bl_msg_data *msg,
-		const char *dev_path, int dev_fd)
-{
-	ssize_t written;
-	int ret = EXIT_SUCCESS;
-
-	written = write(dev_fd, msg, bl_msg_type_to_len(msg->type));
-	if (written != bl_msg_type_to_len(msg->type)) {
-		fprintf(stderr, "Failed write message to '%s'\n", dev_path);
-		ret = EXIT_FAILURE;
-	}
-
-	return ret;
 }
 
 static int bl_cmd_led(int argc, char *argv[])
@@ -293,7 +111,7 @@ static int bl_cmd_led(int argc, char *argv[])
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
+				"  \t<DEVICE_PATH|--auto|-a> \\\n"
 				"  \t<LED_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
@@ -301,26 +119,24 @@ static int bl_cmd_led(int argc, char *argv[])
 	}
 
 	if (read_sized_uint(argv[ARG_LED_MASK],
-	                    &led_mask,
-						sizeof(msg.led.led_mask)) == false) {
+			&led_mask, sizeof(msg.led.led_mask)) == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
 
 	msg.led.led_mask = led_mask;
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
 
-	bl_msg_print(&msg, stdout);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
-		bl_close_device(dev_fd);
+	bl_msg_yaml_print(stdout, &msg);
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
+		bl_device_close(dev_fd);
 		return ret;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 
 }
@@ -333,11 +149,12 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		}
 	};
 	unsigned arg_optional_count;
-	uint32_t sample32;
-	uint32_t channel;
-	uint32_t offset;
-	uint32_t shift;
-	uint32_t gain;
+	uint32_t sample32 = 0;
+	uint32_t channel = 0;
+	uint32_t offset = 0;
+	uint32_t shift = 0;
+	uint32_t gain = 0;
+	bool success;
 	int ret;
 	int dev_fd;
 	enum {
@@ -356,7 +173,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	if (argc < (ARG_OFFSET) || argc > ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
+				"  \t<DEVICE_PATH|--auto|-a> \\\n"
 				"  \t<CHANNEL> \\\n"
 				"  \t<GAIN> \\\n"
 				"  \t[OFFSET] \\\n"
@@ -382,58 +199,46 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!read_sized_uint(argv[ARG_CHANNEL], &channel, sizeof(msg.channel_conf.channel))) {
-		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
-	}
-	msg.channel_conf.channel = channel;
-
-	if (!read_sized_uint(argv[ARG_GAIN], &gain, sizeof(msg.channel_conf.gain))) {
-		fprintf(stderr, "Failed to parse value.\n");
-		return EXIT_FAILURE;
-	}
-	msg.channel_conf.gain = gain;
+	success = true;
+	success &= read_sized_uint(argv[ARG_CHANNEL], &channel, sizeof(msg.channel_conf.channel));
+	success &= read_sized_uint(argv[ARG_GAIN], &gain, sizeof(msg.channel_conf.gain));
 
 	switch (arg_optional_count)
 	{
 	case 3:
-		if (!read_sized_uint(argv[ARG_SAMPLE32], &sample32, sizeof(msg.channel_conf.sample32))) {
-			fprintf(stderr, "Failed to parse sample32 value.\n");
-			return EXIT_FAILURE;
-		}
-		msg.channel_conf.sample32 = sample32;
+		success &= read_sized_uint(argv[ARG_SAMPLE32], &sample32, sizeof(msg.channel_conf.sample32));
 		/* Fall through */
-
 	case 2:
-		if (!read_sized_uint(argv[ARG_SHIFT], &shift, sizeof(msg.channel_conf.shift))) {
-			fprintf(stderr, "Failed to parse shift value.\n");
-			return EXIT_FAILURE;
-		}
-		msg.channel_conf.shift = shift;
+		success &= read_sized_uint(argv[ARG_SHIFT], &shift, sizeof(msg.channel_conf.shift));
 		/* Fall through */
-
 	case 1:
-		if (!read_sized_uint(argv[ARG_OFFSET], &offset, sizeof(msg.channel_conf.offset))) {
-			fprintf(stderr, "Failed to parse offset value.\n");
-			return EXIT_FAILURE;
-		}
-		msg.channel_conf.offset = offset;
+		success &= read_sized_uint(argv[ARG_OFFSET], &offset, sizeof(msg.channel_conf.offset));
 		break;
 	}
 
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	if (!success) {
+		fprintf(stderr, "Failed to parse arguments.\n");
+		return EXIT_FAILURE;
+	}
+
+	msg.channel_conf.sample32 = sample32;
+	msg.channel_conf.channel = channel;
+	msg.channel_conf.offset = offset;
+	msg.channel_conf.shift = shift;
+	msg.channel_conf.gain = gain;
+
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
 
-	bl_msg_print(&msg, stdout);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
-		bl_close_device(dev_fd);
+	bl_msg_yaml_print(stdout, &msg);
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
+		bl_device_close(dev_fd);
 		return ret;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 
 }
@@ -457,23 +262,22 @@ static int bl_cmd__no_params_helper(
 
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
-		fprintf(stderr, "  %s %s <DEVICE_PATH|auto|--auto|-a>\n",
+		fprintf(stderr, "  %s %s <DEVICE_PATH|--auto|-a>\n",
 				argv[ARG_PROG], argv[ARG_CMD]);
 		return EXIT_FAILURE;
 	}
 
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
-	bl_msg_print(&msg, stdout);
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-	if (ret != EXIT_SUCCESS) {
-		bl_close_device(dev_fd);
+	bl_msg_yaml_print(stdout, &msg);
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
+		bl_device_close(dev_fd);
 		return ret;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 }
 
@@ -482,14 +286,12 @@ int bl_cmd_receive_and_print_loop(int dev_fd)
 	int ret = EXIT_SUCCESS;
 	do {
 		ret = bl_cmd_read_and_print_message(dev_fd, 10000);
-		if (ret == EINTR) {
-			killed = true;
-		} else if (ret == ECONNABORTED) {
+		if (ret == ECONNABORTED) {
 			return EXIT_SUCCESS;
 		} else if (ret != 0) {
 			ret = EXIT_FAILURE;
 		}
-	} while (!killed);
+	} while (!bl_sig_killed);
 	return ret;
 }
 
@@ -519,7 +321,7 @@ static int bl_cmd_start_stream(
 	if (argc != ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
-				"  \t<DEVICE_PATH|auto|--auto|-a> \\\n"
+				"  \t<DEVICE_PATH|--auto|-a> \\\n"
 				"  \t<FREQUENCY> \\\n"
 				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n",
@@ -546,33 +348,31 @@ static int bl_cmd_start_stream(
 	msg.start.oversample = oversample;
 	msg.start.src_mask   = src_mask;
 
-	dev_fd = bl_open_device(argv[ARG_DEV_PATH]);
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
 		return EXIT_FAILURE;
 	}
 
-	bl_msg_print(&msg, stdout);
+	bl_msg_yaml_print(stdout, &msg);
 
-	ret = bl_cmd_send(&msg, argv[ARG_DEV_PATH], dev_fd);
-
-	if (ret != BL_ERROR_NONE) {
-		bl_close_device(dev_fd);
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
+		bl_device_close(dev_fd);
 		return EXIT_FAILURE;
 	}
 
 	ret = bl_cmd_receive_and_print_loop(dev_fd);
 
 	/* Send abort after ctrl+c */
-	if (killed) {
+	if (bl_sig_killed) {
 		union bl_msg_data abort_msg = {
 			.type = BL_MSG_ABORT,
 		};
-		bl_cmd_send(&abort_msg, argv[ARG_DEV_PATH],dev_fd);
-		killed = false;
+		bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &abort_msg);
+		bl_sig_killed = false;
 		bl_cmd_receive_and_print_loop(dev_fd);
 	}
 
-	bl_close_device(dev_fd);
+	bl_device_close(dev_fd);
 	return ret;
 
 }
@@ -649,42 +449,13 @@ static bl_cmd_fn bl_cmd_lookup(const char *cmd_name)
 	return NULL;
 }
 
-static void bl_ctrl_c_handler(int sig)
+void get_dev(int dev, char *argv[])
 {
-	if (sig == SIGINT) {
-		killed = true;
+	/* Auto device lookup is handled with a NULL path to bl_device_open() */
+	if (strcmp(argv[dev], "--auto") ||
+	    strcmp(argv[dev], "-a")) {
+		argv[dev] = NULL;
 	}
-}
-
-static int bl_setup_signal_handler(void)
-{
-	struct sigaction act = {
-		.sa_handler = bl_ctrl_c_handler,
-	};
-	int ret;
-
-	ret = sigemptyset(&act.sa_mask);
-	if (ret == -1) {
-		fprintf(stderr, "sigemptyset call failed: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	ret = sigaddset(&act.sa_mask, SIGINT);
-	if (ret == -1) {
-		fprintf(stderr, "sigaddset call failed: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	ret = sigaction(SIGINT, &act, NULL);
-	if (ret == -1) {
-		fprintf(stderr, "Failed to set SIGINT handler: %s\n",
-				strerror(errno));
-		return EXIT_FAILURE;
-	}
-
-	return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
@@ -712,7 +483,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (bl_setup_signal_handler() != EXIT_SUCCESS) {
+	if (!bl_sig_init()) {
 		return EXIT_FAILURE;
 	}
 

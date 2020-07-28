@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Try to find the device automatically.  Override with `DEVICE=`.
-declare DEFAULT_DEVICE="auto"
+declare DEFAULT_DEVICE="--auto"
 
 # By default, turn on:
 # - the green LED    (1 << 14)
