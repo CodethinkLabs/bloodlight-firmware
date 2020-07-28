@@ -45,6 +45,7 @@ static const struct led_table {
 	uint8_t port_idx;
 	uint8_t pin;
 } led_table[BL_LED_COUNT] = {
+#if (BL_REVISION == 1)
 	[ 0] = { .port_idx = LED_PORT_B, .pin =  1 },
 	[ 1] = { .port_idx = LED_PORT_B, .pin =  2 },
 	[ 2] = { .port_idx = LED_PORT_B, .pin = 10 },
@@ -61,6 +62,24 @@ static const struct led_table {
 	[13] = { .port_idx = LED_PORT_B, .pin =  7 },
 	[14] = { .port_idx = LED_PORT_B, .pin =  6 },
 	[15] = { .port_idx = LED_PORT_B, .pin =  5 },
+#else
+	[ 0] = { .port_idx = LED_PORT_C, .pin = 14 },
+	[ 1] = { .port_idx = LED_PORT_A, .pin = 10 },
+	[ 2] = { .port_idx = LED_PORT_B, .pin = 11 },
+	[ 3] = { .port_idx = LED_PORT_C, .pin = 13 },
+	[ 4] = { .port_idx = LED_PORT_A, .pin =  6 },
+	[ 5] = { .port_idx = LED_PORT_A, .pin =  8 },
+	[ 6] = { .port_idx = LED_PORT_A, .pin =  9 },
+	[ 7] = { .port_idx = LED_PORT_A, .pin =  5 },
+	[ 8] = { .port_idx = LED_PORT_C, .pin = 15 },
+	[ 9] = { .port_idx = LED_PORT_B, .pin =  6 },
+	[10] = { .port_idx = LED_PORT_B, .pin =  5 },
+	[11] = { .port_idx = LED_PORT_A, .pin =  0 },
+	[12] = { .port_idx = LED_PORT_B, .pin =  4 },
+	[13] = { .port_idx = LED_PORT_A, .pin = 15 },
+	[14] = { .port_idx = LED_PORT_A, .pin =  1 },
+	[15] = { .port_idx = LED_PORT_A, .pin =  2 },
+#endif
 };
 
 static inline uint16_t bl_led__get_pin_mask(

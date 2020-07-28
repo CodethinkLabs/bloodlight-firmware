@@ -36,6 +36,12 @@ Now you can build the `bloodlight-firmware.elf`:
 make
 ```
 
+To build for REVISION 2 or later, simply prepend REVISION=x:
+
+```bash
+REVISION=2 make
+```
+
 And the Bloodlight host tools:
 
 ```bash
