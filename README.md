@@ -30,13 +30,13 @@ And build it:
 make -C libopencm3/
 ```
 
-Now you can build the `mpd-firmware.elf`:
+Now you can build the `bloodlight-firmware.elf`:
 
 ```bash
 make
 ```
 
-And the MPD host tools:
+And the Bloodlight host tools:
 
 ```bash
 make -C tools/
@@ -58,21 +58,21 @@ to provide the ST-LINK interface.
 2. Locate the ST-LINK jumper pins on the programmer boards and make sure they are
    open.  See Figure 10: Using ST-LINK/V2-1 to program the STM32 on an
    external application in UM1974.
-3. Connect the SWD pins on the Nucleo board to the pins on the MPD
-   bloodlight board.  The pins on the MPD bloodlight board are named on the
+3. Connect the SWD pins on the Nucleo board to the pins on the
+   bloodlight board.  The pins on the bloodlight board are named on the
    board.  For the Nucleo board, check see Table 5. Debug connector CN6 (SWD).
    There is a small dot at one end of the SWD connector which marks pin 1.
 
-   | Nucleo board  | STLINK-V3 | MPD board |
-   | ------------- | --------- | --------- |
-   | VDD_TARGET    | T_VCC     | 3.3V      |
-   | SWCLK         | CLK       | SWCLK     |
-   | GND           | GND       | GND       |
-   | SWDIO         | DIO       | SWDIO     |
-   | NRST          | NRST      | NRST      |
-   | SWO           | SWO       | SWO       |
+   | Nucleo board  | STLINK-V3 | Bloodlight |
+   | ------------- | --------- | ---------- |
+   | VDD_TARGET    | T_VCC     | 3.3V       |
+   | SWCLK         | CLK       | SWCLK      |
+   | GND           | GND       | GND        |
+   | SWDIO         | DIO       | SWDIO      |
+   | NRST          | NRST      | NRST       |
+   | SWO           | SWO       | SWO        |
 
-4. Connect both the programmer and the MPD bloodlight boards to your computer using
+4. Connect both the programmer and the bloodlight boards to your computer using
    micro-USB cables as both require power to function. The order in which they're
    connected doesn't matter.
 
@@ -87,7 +87,7 @@ openocd -f board/st_nucleo_f3.cfg
 With that running, in another terminal, run:
 
 ```bash
-gdb-multiarch mpd-firmware.elf
+gdb-multiarch bloodlight-firmware.elf
 ```
 
 At the GDB command prompt connect to the OpenOCD interface to the device:
@@ -103,7 +103,7 @@ Reset the device and load on the firmware:
 (gdb) load
 ```
 
-Now the device is flashed with the `mpd-firmware.elf` firmware.
+Now the device is flashed with the `bloodlight-firmware.elf` firmware.
 
 Run the firmware with:
 
@@ -115,7 +115,7 @@ Using the device
 ----------------
 
 With the device flashed, we can plug it into the host and see what happens.
-Connect the MPD device's Micro-USB port to the host system.
+Connect the Bloodlight device's Micro-USB port to the host system.
 
 If you follow `dmesg` on the host with:
 
@@ -123,13 +123,13 @@ If you follow `dmesg` on the host with:
 dmesg -w
 ```
 
-You should see the MPD device enumerate when it gets plugged into the host
-USB:
+You should see the Bloodlight device enumerate when it gets plugged into the
+host USB:
 
 ```
-[877656.001199] usb 1-1: Product: Medical Plethysmograph Device
+[877656.001199] usb 1-1: Product: Bloodlight
 [877656.001202] usb 1-1: Manufacturer: Codethink
-[877656.001204] usb 1-1: SerialNumber: ct-mpd:000000
+[877656.001204] usb 1-1: SerialNumber: ct-bloodlight:000000
 [877656.004648] cdc_acm 1-1:1.0: ttyACM2: USB ACM device
 ```
 

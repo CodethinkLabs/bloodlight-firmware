@@ -24,7 +24,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/opamp.h>
 #include <libopencm3/stm32/timer.h>
-#include <libopencm3/stm32/f3/nvic.h>
+#include <libopencm3/cm3/nvic.h>
 
 #include "delay.h"
 #include "error.h"

@@ -1,4 +1,4 @@
-PROJECT = mpd-firmware
+PROJECT = bloodlight-firmware
 BUILD_DIR = bin
 
 CFILES = \
@@ -11,7 +11,6 @@ CFILES = \
 	src/usb.c \
 	src/mq.c
 
-# TODO: Change for the actual board
 DEVICE=stm32f303CCT6
 OOCD_INTERFACE = stlink-v2-1
 OOCD_TARGET = stm32f3x

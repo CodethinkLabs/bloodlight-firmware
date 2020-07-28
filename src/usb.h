@@ -20,8 +20,8 @@
 #include "msg.h"
 
 #define BL_STR_MANUFACTURER "Codethink"
-#define BL_STR_PRODUCT      "Medical Plethysmograph Device"
-#define BL_STR_SERIAL_NUM   "ct-mpd:000000"
+#define BL_STR_PRODUCT      "Bloodlight"
+#define BL_STR_SERIAL_NUM   "ct-bloodlight:000000"
 
 /**
  * Initialise the USB module.
