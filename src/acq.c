@@ -284,20 +284,6 @@ static void bl_acq__adc_calibrate(uint32_t adc)
 	adc_disable_regulator(adc);
 }
 
-/** TODO: Move into libopencm3 */
-static bool opamp_read_outcal(uint32_t base)
-{
-	return (OPAMP_CSR(base) >> OPAMP_CSR_OUTCAL_SHIFT) &
-			OPAMP_CSR_OUTCAL_MASK;
-}
-
-/** TODO: Move into libopencm3 */
-static void opamp_set_calsel(uint32_t base, uint32_t calsel)
-{
-	OPAMP_CSR(base) &= ~(OPAMP_CSR_CALSEL_MASK << OPAMP_CSR_CALSEL_SHIFT);
-	OPAMP_CSR(base) |= calsel << OPAMP_CSR_CALSEL_SHIFT;
-}
-
 /**
  * Make an OpAmp auto-calibrate.
  *
