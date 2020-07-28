@@ -58,6 +58,7 @@ static const char *msg_errors[] = {
 	[BL_ERROR_BAD_SOURCE_MASK]    = "Bad source mask",
 	[BL_ERROR_ACTIVE_ACQUISITION] = "In acquisition state",
 	[BL_ERROR_BAD_FREQUENCY]      = "Unsupported frequency combination",
+	[BL_ERROR_NOT_IMPLEMENTED]    = "Feature not implemented",
 };
 
 static inline unsigned bl_msg_str_to_index(

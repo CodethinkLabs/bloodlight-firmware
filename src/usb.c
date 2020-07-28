@@ -272,18 +272,32 @@ static void bl_usb__cdcacm_set_config(usbd_device *usbd_dev, uint16_t wValue)
 
 static void bl_usb__setup(void)
 {
+#if (BL_REVISION >= 2)
+	/* Use PLL Q for the USB clock. */
+	rcc_set_clock48_source(RCC_CCIPR_CLK48_PLLQ);
+#endif
+
 	/* Enable clocks for GPIO port A and USB peripheral. */
 	rcc_periph_clock_enable(RCC_USB);
 	rcc_periph_clock_enable(RCC_GPIOA);
+
+#if (BL_REVISION == 1)
 	rcc_periph_clock_enable(RCC_GPIOB);
 
 	/* Enable pull-up control. */
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO4);
 	gpio_set(GPIOB, GPIO4);
+#endif
 
 	/* Setup GPIO pins for USB D+/D-. */
+#if (BL_REVISION == 1)
 	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
 	gpio_set_af(GPIOA, GPIO_AF14, GPIO11 | GPIO12);
+#else
+	gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG,
+			GPIO_PUPD_NONE, GPIO11 | GPIO12);
+#endif
+
 }
 
 /* Exported function, documented in usb.h */
@@ -291,7 +305,12 @@ void bl_usb_init(void)
 {
 	bl_usb__setup();
 
-	usb_g.handle = usbd_init(&st_usbfs_v1_usb_driver,
+	usb_g.handle = usbd_init(
+#if (BL_REVISION == 1)
+			&st_usbfs_v1_usb_driver,
+#else
+			&st_usbfs_v2_usb_driver,
+#endif
 			&device_descriptor, &config_descriptor,
 			bl_usb_strings, BL_ARRAY_LEN(bl_usb_strings),
 			usbd_control_buffer, sizeof(usbd_control_buffer));
