@@ -5,6 +5,7 @@
 
 #include "../util.h"
 #include "../delay.h"
+#include "../led.h"
 
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/dma.h>
@@ -652,6 +653,7 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 		unsigned channel = bl_acq_source_get_channel(
 				adc->config.channel_source[c]);
 		bl_acq_channel_commit_sample(channel, sample[c]);
+		bl_led_loop();
 	}
 }
 

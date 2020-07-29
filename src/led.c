@@ -26,6 +26,9 @@
 #include "led.h"
 #include "msg.h"
 
+volatile uint16_t bl_led_active;
+uint16_t bl_led_mask;
+
 /** GPIO ports used for LEDs */
 enum led_port {
 	LED_PORT_A,
@@ -117,6 +120,8 @@ void bl_led_init(void)
 	bl_led__gpio_mode_setup(LED_PORT_C);
 
 	bl_led_set(0x0000);
+
+	bl_led_active = 1;
 }
 
 static inline void bl_led__set(
@@ -136,6 +141,8 @@ static inline void bl_led__set(
 /* Exported function, documented in led.h */
 enum bl_error bl_led_set(uint16_t led_mask)
 {
+	bl_led_mask = led_mask;
+
 	bl_led__set(LED_PORT_A, led_mask);
 	bl_led__set(LED_PORT_B, led_mask);
 	bl_led__set(LED_PORT_C, led_mask);
@@ -155,4 +162,30 @@ void bl_led_status_set(bool enable)
 #else
 	BL_UNUSED(enable);
 #endif
+}
+
+/* Exported function, documented in led.h */
+enum bl_error bl_led_loop(void)
+{
+	while (1) {
+		uint16_t led_on = bl_led_active << 1;
+		if (!led_on)
+			led_on = 1;
+
+		if (!(bl_led_mask & led_on))
+		{
+			bl_led_active = led_on;
+			continue;
+		}
+
+		bl_led__set(LED_PORT_A, led_on);
+		bl_led__set(LED_PORT_B, led_on);
+		bl_led__set(LED_PORT_C, led_on);
+
+		bl_led_active = led_on;
+
+		break;
+	}
+
+	return BL_ERROR_NONE;
 }

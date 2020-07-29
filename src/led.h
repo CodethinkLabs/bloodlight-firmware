@@ -40,4 +40,11 @@ enum bl_error bl_led_set(uint16_t led_mask);
 
 void bl_led_status_set(bool enable);
 
+/**
+ * Flash enabled LEDs in a fixed sequence.
+ *
+ * \param[in]  led_mask  Mask of LEDs to enable.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_led_loop(void);
 #endif
