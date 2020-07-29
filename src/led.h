@@ -23,27 +23,7 @@
 
 union bl_msg_data;
 
-/** LED identifiers. */
-enum bl_led_id {
-	BL_LED_ID_0, /* LED 1, 850nm, IR */
-	BL_LED_ID_1, /* LED 2, 880nm, IR */
-	BL_LED_ID_2, /* LED 3, 940nm, IR */
-	BL_LED_ID_3, /* LED 4, 1040nm, IR */
-	BL_LED_ID_4, /* LED 5, 1200nm, IR */
-	BL_LED_ID_5, /* LED 6, 1450nm, IR */
-	BL_LED_ID_6, /* LED 7, 1550nm, IR */
-	BL_LED_ID_7, /* LED 8, 1650nm, IR */
-	BL_LED_ID_8, /* LED 9, 740nm, DULL_RED */
-	BL_LED_ID_9, /* LED 10, 660nm,  DEEP_RED*/
-	BL_LED_ID_10, /* LED 11, 638nm, LIGHT_RED */
-	BL_LED_ID_11, /* LED 12, 612nm, DEEP_ORANGE */
-	BL_LED_ID_12, /* LED 13, 590nm, LIGHT_ORANGE */
-	BL_LED_ID_13, /* LED 14, 570nm, YELLOW */
-	BL_LED_ID_14, /* LED 15, 528nm, GREEN */
-	BL_LED_ID_15, /* LED 16, 470nm, BLUE */
-
-	BL_LED__COUNT
-};
+#define BL_LED_COUNT 16
 
 /**
  * Initialise the LED module.

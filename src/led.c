@@ -44,23 +44,23 @@ static const uint32_t led_port[] = {
 static const struct led_table {
 	uint8_t port_idx;
 	uint8_t pin;
-} led_table[BL_LED__COUNT] = {
-	[BL_LED_ID_0]  = { .port_idx = LED_PORT_B, .pin =  1 },
-	[BL_LED_ID_1]  = { .port_idx = LED_PORT_B, .pin =  2 },
-	[BL_LED_ID_2]  = { .port_idx = LED_PORT_B, .pin = 10 },
-	[BL_LED_ID_3]  = { .port_idx = LED_PORT_B, .pin = 11 },
-	[BL_LED_ID_4]  = { .port_idx = LED_PORT_A, .pin =  8 },
-	[BL_LED_ID_5]  = { .port_idx = LED_PORT_A, .pin =  9 },
-	[BL_LED_ID_6]  = { .port_idx = LED_PORT_A, .pin = 10 },
-	[BL_LED_ID_7]  = { .port_idx = LED_PORT_A, .pin = 15 },
-	[BL_LED_ID_8]  = { .port_idx = LED_PORT_C, .pin = 13 },
-	[BL_LED_ID_9]  = { .port_idx = LED_PORT_C, .pin = 14 },
-	[BL_LED_ID_10] = { .port_idx = LED_PORT_C, .pin = 15 },
-	[BL_LED_ID_11] = { .port_idx = LED_PORT_B, .pin =  9 },
-	[BL_LED_ID_12] = { .port_idx = LED_PORT_B, .pin =  8 },
-	[BL_LED_ID_13] = { .port_idx = LED_PORT_B, .pin =  7 },
-	[BL_LED_ID_14] = { .port_idx = LED_PORT_B, .pin =  6 },
-	[BL_LED_ID_15] = { .port_idx = LED_PORT_B, .pin =  5 },
+} led_table[BL_LED_COUNT] = {
+	[ 0] = { .port_idx = LED_PORT_B, .pin =  1 },
+	[ 1] = { .port_idx = LED_PORT_B, .pin =  2 },
+	[ 2] = { .port_idx = LED_PORT_B, .pin = 10 },
+	[ 3] = { .port_idx = LED_PORT_B, .pin = 11 },
+	[ 4] = { .port_idx = LED_PORT_A, .pin =  8 },
+	[ 5] = { .port_idx = LED_PORT_A, .pin =  9 },
+	[ 6] = { .port_idx = LED_PORT_A, .pin = 10 },
+	[ 7] = { .port_idx = LED_PORT_A, .pin = 15 },
+	[ 8] = { .port_idx = LED_PORT_C, .pin = 13 },
+	[ 9] = { .port_idx = LED_PORT_C, .pin = 14 },
+	[10] = { .port_idx = LED_PORT_C, .pin = 15 },
+	[11] = { .port_idx = LED_PORT_B, .pin =  9 },
+	[12] = { .port_idx = LED_PORT_B, .pin =  8 },
+	[13] = { .port_idx = LED_PORT_B, .pin =  7 },
+	[14] = { .port_idx = LED_PORT_B, .pin =  6 },
+	[15] = { .port_idx = LED_PORT_B, .pin =  5 },
 };
 
 static inline uint16_t bl_led__get_pin_mask(
@@ -69,7 +69,7 @@ static inline uint16_t bl_led__get_pin_mask(
 {
 	uint16_t pin_mask = 0;
 
-	for (enum bl_led_id i = BL_LED_ID_0; i < BL_LED__COUNT; i++) {
+	for (unsigned i = 0; i < BL_LED_COUNT; i++) {
 		if ((1U << i) & led_mask) {
 			if (led_table[i].port_idx == port) {
 				pin_mask |= (1 << led_table[i].pin);
