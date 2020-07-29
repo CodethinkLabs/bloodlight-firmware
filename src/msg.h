@@ -59,7 +59,7 @@ typedef struct {
 	* While the interface allows multiple LEDs to be on simultaniously,
 	* it may not be possible to achieve on the hardware, due to power
 	* limitations.  Setting a value of 0x00 turns all LEDs off.  The
-	* least significant bit is \ref BL_LED_ID_0.
+	* least significant bit is LD1.
 	*/
 typedef struct {
 	uint8_t  type;     /**< Must be \ref BL_MSG_LED */
