@@ -45,16 +45,6 @@ enum bl_led_id {
 	BL_LED__COUNT
 };
 
-/* Friendly names for visible light LEDs */
-#define LED_VISIBLE_BLUE            BL_LED_ID_15
-#define LED_VISIBLE_GREEN           BL_LED_ID_14
-#define LED_VISIBLE_YELLOW          BL_LED_ID_13
-#define LED_VISIBLE_LIGHT_ORANGE    BL_LED_ID_12
-#define LED_VISIBLE_DEEP_ORANGE     BL_LED_ID_11
-#define LED_VISIBLE_LIGHT_RED       BL_LED_ID_10
-#define LED_VISIBLE_DEEP_RED        BL_LED_ID_9
-#define LED_VISIBLE_DULL_RED        BL_LED_ID_8
-
 /**
  * Initialise the LED module.
  */
