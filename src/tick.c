@@ -20,15 +20,18 @@
 #include "tick.h"
 
 /* Nanosecond counter */
-uint32_t us;
-/* Millisecond counter */
-uint32_t ms;
-uint32_t last_ms_us = 0;
+static uint32_t us;
 
-#define MAX_TIMER_RES_US    1000
-#define MIN_TIMER_RES_US    10
-uint32_t res = MAX_TIMER_RES_US;
-uint32_t new_res = MAX_TIMER_RES_US;
+/* Millisecond counter */
+static uint32_t ms;
+static uint32_t last_ms_us = 0;
+
+#define MAX_TIMER_RES_US 1000
+#define MIN_TIMER_RES_US   10
+static uint32_t res     = MAX_TIMER_RES_US;
+static uint32_t new_res = MAX_TIMER_RES_US;
+
+static uint32_t sys_tick_frequency;
 
 
 /**
@@ -46,22 +49,25 @@ void sys_tick_handler(void)
 	}
 }
 
-void bl_tick_init(void)
+void bl_tick_init(uint32_t frequency)
 {
+	sys_tick_frequency = frequency;
+
 	/* Set up the systick to trigger every microsecond*/
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
 
-	/* System clock is 72MHz, so 1/72 usec per "tick" there and we want to tick
-	 * res * usec, so that means a counter of (res * 72) -1
+	uint32_t mhz = sys_tick_frequency / 1000000;
+	/* System clock is xMHz, so 1/x usec per "tick" there and we want to tick
+	 * res * usec, so that means a counter of (res * x) -1
 	 */
-	systick_set_reload((res * 72) - 1);
+	systick_set_reload((res * mhz) - 1);
 	systick_clear();
 	systick_interrupt_enable();
 	systick_counter_enable();
 }
 
 
-void bl_set_us_timer(uint32_t * timer)
+void bl_set_us_timer(uint32_t *timer)
 {
 	*timer = us;
 }
@@ -71,7 +77,7 @@ uint32_t bl_get_us_timer_elapsed(uint32_t timer)
 	return (us - timer);
 }
 
-void bl_set_ms_timer(uint32_t * timer)
+void bl_set_ms_timer(uint32_t *timer)
 {
 	*timer = ms;
 }
@@ -90,10 +96,11 @@ int bl_set_resolution(uint32_t usec)
 	}
 	/* Set the new resolution */
 	res = usec;
-	systick_set_reload((res * 72) - 1);
+	uint32_t mhz = sys_tick_frequency / 1000000;
+	systick_set_reload((res * mhz) - 1);
 	/* Add the remaining time to us and clear the counter */
 	uint32_t ticks_left = systick_get_value();
-	us += ticks_left * 72;
+	us += ticks_left * mhz;
 	/* Not sure if we need to disable interrupt here */
 	systick_interrupt_disable();
 	systick_clear();
