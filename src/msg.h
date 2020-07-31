@@ -19,6 +19,7 @@
 
 #include "acq.h"
 #include "led.h"
+#include <inttypes.h>
 #include <stddef.h>
 
 /**
