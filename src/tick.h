@@ -20,7 +20,7 @@
 /**
  * Initialise ticking
  */
-void bl_tick_init(void);
+void bl_tick_init(uint32_t frequency);
 
 /**
  * Set up a usec timer.
@@ -29,7 +29,7 @@ void bl_tick_init(void);
  *
  * \param[in]  timer  Timer to be used
  */
-void bl_set_us_timer(uint32_t * timer);
+void bl_set_us_timer(uint32_t *timer);
 
 /**
  * Get the elapsed time for a usec timer
@@ -48,7 +48,7 @@ uint32_t bl_get_us_timer_elapsed(uint32_t timer);
  *
  * \param[in]  timer  Timer to be used
  */
-void bl_set_ms_timer(uint32_t * timer);
+void bl_set_ms_timer(uint32_t *timer);
 
 /**
  * Get the elapsed time for a msec timer

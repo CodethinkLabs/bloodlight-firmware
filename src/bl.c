@@ -26,7 +26,8 @@
 #include "delay.h"
 #include "error.h"
 
-const struct rcc_clock_scale rcc_hse16mhz_config = {
+#if (BL_REVISION == 1)
+const struct rcc_clock_scale rcc_hse_16mhz_3v3 = {
 	.pllsrc = RCC_CFGR_PLLSRC_HSE_PREDIV,
 	.pllmul = RCC_CFGR_PLLMUL_MUL9,
 	.plldiv = RCC_CFGR2_PREDIV_DIV2,
@@ -39,21 +40,36 @@ const struct rcc_clock_scale rcc_hse16mhz_config = {
 	.apb1_frequency = 36e6,
 	.apb2_frequency = 72e6,
 };
+#endif
 
 /* Exported function, documented in bl.h */
 void bl_init(void)
 {
-	rcc_clock_setup_pll(&rcc_hse16mhz_config);
+	const struct rcc_clock_scale *rcc_config;
 
-	bl_tick_init();
+#if (BL_REVISION == 1)
+	rcc_config = &rcc_hse_16mhz_3v3;
+#else
+	rcc_config = &rcc_hse_16mhz_3v3[RCC_CLOCK_3V3_96MHZ];
+
+	rcc_periph_clock_enable(RCC_PWR);
+	rcc_periph_clock_enable(RCC_FLASH);
+	rcc_periph_clock_enable(RCC_SYSCFG);
+#endif
+
+	rcc_clock_setup_pll(rcc_config);
+
+	bl_tick_init(rcc_config->ahb_frequency / 8);
 	bl_usb_init();
 	bl_led_init();
-	bl_acq_init(rcc_hse16mhz_config.ahb_frequency);
+	bl_acq_init(rcc_config->ahb_frequency);
 }
 
 int main(void)
 {
 	bl_init();
+
+	bl_led_status_set(true);
 
 	while (true) {
 		bl_usb_poll();
