@@ -38,4 +38,6 @@ void bl_led_init(void);
  */
 enum bl_error bl_led_set(uint16_t led_mask);
 
+void bl_led_status_set(bool enable);
+
 #endif

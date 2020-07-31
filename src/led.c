@@ -142,3 +142,15 @@ enum bl_error bl_led_set(uint16_t led_mask)
 
 	return BL_ERROR_NONE;
 }
+
+void bl_led_status_set(bool enable)
+{
+#if (BL_REVISION >= 2)
+	if (enable) {
+		gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO7);
+		gpio_clear(GPIOB, GPIO7);
+	} else {
+		gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO7);
+	}
+#endif
+}

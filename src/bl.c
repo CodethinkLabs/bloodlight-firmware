@@ -69,6 +69,8 @@ int main(void)
 {
 	bl_init();
 
+	bl_led_status_set(true);
+
 	while (true) {
 		bl_usb_poll();
 	}
