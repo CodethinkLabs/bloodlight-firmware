@@ -33,7 +33,7 @@
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
-uint16_t bl_count_channels(uint16_t src_mask)
+static uint16_t bl_count_channels(uint16_t src_mask)
 {
 	uint16_t bit_count = 0;
 
@@ -57,7 +57,7 @@ enum bl_format {
 	BL_FORMAT_CSV,
 };
 
-int bl_cmd_wav_write_riff_header(FILE *file)
+static int bl_cmd_wav_write_riff_header(FILE *file)
 {
 	size_t written;
 	struct {
@@ -79,7 +79,7 @@ int bl_cmd_wav_write_riff_header(FILE *file)
 	return EXIT_SUCCESS;
 }
 
-int bl_cmd_wav_write_format_header(
+static int bl_cmd_wav_write_format_header(
 		FILE *file,
 		uint16_t frequency,
 		uint16_t src_mask)
@@ -118,7 +118,7 @@ int bl_cmd_wav_write_format_header(
 	return EXIT_SUCCESS;
 }
 
-int bl_cmd_wav_write_data_header(FILE *file)
+static int bl_cmd_wav_write_data_header(FILE *file)
 {
 	size_t written;
 	struct {
@@ -169,7 +169,7 @@ static inline uint16_t fifo_advance(uint16_t pos)
 	return (pos >= FIFO_MAX) ? 0 : pos;
 }
 
-bool fifo_write(unsigned idx, uint32_t value)
+static bool fifo_write(unsigned idx, uint32_t value)
 {
 	struct fifo *fifo = &fifos[idx];
 
@@ -184,7 +184,7 @@ bool fifo_write(unsigned idx, uint32_t value)
 	return true;
 }
 
-bool fifo_read(unsigned idx, uint32_t *value)
+static bool fifo_read(unsigned idx, uint32_t *value)
 {
 	struct fifo *fifo = &fifos[idx];
 
@@ -199,7 +199,7 @@ bool fifo_read(unsigned idx, uint32_t *value)
 	return true;
 }
 
-int bl_sample_msg_to_file(
+static int bl_sample_msg_to_file(
 		FILE *file,
 		unsigned frequency,
 		union bl_msg_data *msg,
@@ -275,7 +275,7 @@ int bl_sample_msg_to_file(
 	return EXIT_SUCCESS;
 }
 
-int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
+static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 {
 	union bl_msg_data msg;
 	unsigned num_channels = 0;
@@ -374,22 +374,22 @@ cleanup:
 	return EXIT_SUCCESS;
 }
 
-int bl_cmd_wav(int argc, char *argv[])
+static int bl_cmd_wav(int argc, char *argv[])
 {
 	return bl_samples_to_file(argc, argv, BL_FORMAT_WAV);
 }
 
-int bl_cmd_raw(int argc, char *argv[])
+static int bl_cmd_raw(int argc, char *argv[])
 {
 	return bl_samples_to_file(argc, argv, BL_FORMAT_RAW);
 }
 
-int bl_cmd_csv(int argc, char *argv[])
+static int bl_cmd_csv(int argc, char *argv[])
 {
 	return bl_samples_to_file(argc, argv, BL_FORMAT_CSV);
 }
 
-int bl_cmd_relay(int argc, char *argv[])
+static int bl_cmd_relay(int argc, char *argv[])
 {
 	union bl_msg_data msg;
 	enum {
