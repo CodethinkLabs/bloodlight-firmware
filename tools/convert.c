@@ -57,9 +57,6 @@ enum bl_format {
 	BL_FORMAT_CSV,
 };
 
-/* Note: We'll break if there are more than MAX_SAMPLES in a message. */
-union bl_msg_data msg_g;
-
 int bl_cmd_wav_write_riff_header(FILE *file)
 {
 	size_t written;
@@ -280,7 +277,7 @@ int bl_sample_msg_to_file(
 
 int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 {
-	union bl_msg_data *msg = &msg_g;
+	union bl_msg_data msg;
 	unsigned num_channels = 0;
 	unsigned src_mask = 0;
 	bool had_setup = false;
@@ -321,19 +318,19 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 	}
 
-	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, msg)) {
-		if (!had_setup && msg->type == BL_MSG_START) {
-			src_mask = msg->start.src_mask;
+	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, &msg)) {
+		if (!had_setup && msg.type == BL_MSG_START) {
+			src_mask = msg.start.src_mask;
 			num_channels = bl_count_channels(src_mask);
 			init_chan_lookup(src_mask);
 			had_setup = true;
 
-			frequency = msg->start.frequency;
+			frequency = msg.start.frequency;
 
 			if (format == BL_FORMAT_WAV) {
 				ret = bl_cmd_wav_write_format_header(file,
-						msg->start.frequency,
-						msg->start.src_mask);
+						msg.start.frequency,
+						msg.start.src_mask);
 				if (ret != EXIT_SUCCESS) {
 					goto cleanup;
 				}
@@ -351,9 +348,9 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 
 		/* If the message isn't sample data, print to stderr, so
 		 * the user can see what's going on. */
-		if (msg->type != BL_MSG_SAMPLE_DATA16 &&
-		    msg->type != BL_MSG_SAMPLE_DATA32) {
-			bl_msg_yaml_print(stderr, msg);
+		if (msg.type != BL_MSG_SAMPLE_DATA16 &&
+		    msg.type != BL_MSG_SAMPLE_DATA32) {
+			bl_msg_yaml_print(stderr, &msg);
 			continue;
 		}
 
@@ -362,7 +359,7 @@ int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 			goto cleanup;
 		}
 
-		ret = bl_sample_msg_to_file(file, frequency, msg, src_mask,
+		ret = bl_sample_msg_to_file(file, frequency, &msg, src_mask,
 				num_channels, format);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
@@ -394,7 +391,7 @@ int bl_cmd_csv(int argc, char *argv[])
 
 int bl_cmd_relay(int argc, char *argv[])
 {
-	union bl_msg_data *msg = &msg_g;
+	union bl_msg_data msg;
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -408,8 +405,8 @@ int bl_cmd_relay(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, msg)) {
-		bl_msg_yaml_print(stdout, msg);
+	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, &msg)) {
+		bl_msg_yaml_print(stdout, &msg);
 	}
 
 	return EXIT_SUCCESS;
