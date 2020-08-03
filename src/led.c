@@ -152,5 +152,7 @@ void bl_led_status_set(bool enable)
 	} else {
 		gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO7);
 	}
+#else
+	BL_UNUSED(enable);
 #endif
 }
