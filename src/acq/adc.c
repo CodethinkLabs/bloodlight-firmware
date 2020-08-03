@@ -633,6 +633,11 @@ bl_acq_dma_t *bl_acq_adc_get_dma(const bl_acq_adc_t *adc)
 	return *(adc->dma);
 }
 
+static inline bool active_channel(void)
+{
+	return true;
+}
+
 
 static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 {
@@ -650,10 +655,12 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 	}
 
 	for (unsigned c = 0; c < adc->config.channel_count; c++) {
-		unsigned channel = bl_acq_source_get_channel(
-				adc->config.channel_source[c]);
-		bl_acq_channel_commit_sample(channel, sample[c]);
-		bl_led_loop();
+		if (active_channel()) {
+			unsigned channel = bl_acq_source_get_channel(
+					adc->config.channel_source[c]);
+			bl_acq_channel_commit_sample(channel, sample[c]);
+			bl_led_loop();
+		}
 	}
 }
 
