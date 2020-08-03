@@ -22,6 +22,10 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 
+#if (BL_REVISION >= 2)
+#include <libopencm3/stm32/crs.h>
+#endif
+
 #include "error.h"
 #include "util.h"
 #include "msg.h"
@@ -273,13 +277,19 @@ static void bl_usb__cdcacm_set_config(usbd_device *usbd_dev, uint16_t wValue)
 static void bl_usb__setup(void)
 {
 #if (BL_REVISION >= 2)
-	/* Use PLL Q for the USB clock. */
-	rcc_set_clock48_source(RCC_CCIPR_CLK48_PLLQ);
+	rcc_osc_on(RCC_HSI48);
+	rcc_wait_for_osc_ready(RCC_HSI48);
+	rcc_set_clock48_source(RCC_CCIPR_CLK48_HSI48);
 #endif
 
 	/* Enable clocks for GPIO port A and USB peripheral. */
 	rcc_periph_clock_enable(RCC_USB);
 	rcc_periph_clock_enable(RCC_GPIOA);
+
+#if (BL_REVISION >= 2)
+	/* Enable clock recovery system for USB clock. */
+	crs_autotrim_usb_enable();
+#endif
 
 #if (BL_REVISION == 1)
 	rcc_periph_clock_enable(RCC_GPIOB);

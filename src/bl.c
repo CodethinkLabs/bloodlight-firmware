@@ -50,7 +50,7 @@ void bl_init(void)
 #if (BL_REVISION == 1)
 	rcc_config = &rcc_hse_16mhz_3v3;
 #else
-	rcc_config = &rcc_hse_16mhz_3v3[RCC_CLOCK_3V3_96MHZ];
+	rcc_config = &rcc_hse_16mhz_3v3[RCC_CLOCK_3V3_170MHZ];
 
 	rcc_periph_clock_enable(RCC_PWR);
 	rcc_periph_clock_enable(RCC_FLASH);
