@@ -25,9 +25,27 @@
 #include "util.h"
 #include "led.h"
 #include "msg.h"
+#include "acq/channel.h"
 
-volatile uint16_t bl_led_active;
-uint16_t bl_led_mask;
+#if (BL_REVISION == 1)
+#define NON_LED_MASKS (1 << BL_ACQ_3V3 | \
+                       1 << BL_ACQ_5V0 | \
+                       1 << BL_ACQ_TMP)
+#else
+#define NON_LED_MASKS (1 << BL_ACQ_3V3 | \
+                       1 << BL_ACQ_5V0 | \
+                       1 << BL_ACQ_TMP | \
+                       1 << BL_ACQ_EXT)
+#endif
+
+#define LED_SRC(pd)    (1U << (pd) | NON_LED_MASKS)
+#define LED_BS(pin)    (1U << (pin))
+#define LED_BR(pin)    (LED_BS(pin) << 16)
+#define LED_BSRR(port) ((port) + 0x18)
+
+unsigned led_count;
+volatile unsigned bl_led_active;
+bl_led_channel_t bl_led_channel[BL_LED_COUNT];
 
 /** GPIO ports used for LEDs */
 enum led_port {
@@ -120,8 +138,6 @@ void bl_led_init(void)
 	bl_led__gpio_mode_setup(LED_PORT_C);
 
 	bl_led_set(0x0000);
-
-	bl_led_active = 1;
 }
 
 static inline void bl_led__set(
@@ -141,8 +157,6 @@ static inline void bl_led__set(
 /* Exported function, documented in led.h */
 enum bl_error bl_led_set(uint16_t led_mask)
 {
-	bl_led_mask = led_mask;
-
 	bl_led__set(LED_PORT_A, led_mask);
 	bl_led__set(LED_PORT_B, led_mask);
 	bl_led__set(LED_PORT_C, led_mask);
@@ -165,27 +179,63 @@ void bl_led_status_set(bool enable)
 }
 
 /* Exported function, documented in led.h */
+enum bl_error bl_led_setup(uint16_t led_mask)
+{
+	if (!led_mask) {
+		return BL_ERROR_BAD_SOURCE_MASK;
+	}
+
+	bl_led_active = 0;
+	led_count = 0;
+
+	while (led_mask)
+	{
+		unsigned i = __builtin_ffs(led_mask) - 1;
+		bl_led_channel_t *active = &bl_led_channel[bl_led_active];
+
+		active->led = i;
+		active->src_mask = LED_SRC(bl_acq_channel_get_source(i));
+		active->gpios = LED_BS(led_table[i].pin);
+		active->gpior = LED_BR(led_table[i].pin);
+		active->gpio_bsrr = LED_BSRR(led_port[led_table[i].port_idx]);
+
+		led_mask &= ~(1U << i);
+
+		bl_led_active++;
+		led_count++;
+	}
+
+	bl_led_active = 0;
+
+	return BL_ERROR_NONE;
+}
+
+/* These 2 inline functions replaces the libopencm3 gpio_clear/set
+   APIs to avoid function call overhead in IRQ handler */
+static inline void bl_led__gpio_clear(unsigned led)
+{
+	*(volatile uint32_t *)bl_led_channel[led].gpio_bsrr = bl_led_channel[led].gpior;
+}
+
+static inline void bl_led__gpio_set(unsigned led)
+{
+	*(volatile uint32_t *)bl_led_channel[led].gpio_bsrr = bl_led_channel[led].gpios;
+}
+
+/* Exported function, documented in led.h
+ *
+ * set/clear bsrr register can be further optimised by change the active
+ * LED order to be grouped by GPIO ports, but we will try this first.
+ */
 enum bl_error bl_led_loop(void)
 {
-	while (1) {
-		uint16_t led_on = bl_led_active << 1;
-		if (!led_on)
-			led_on = 1;
+	bl_led__gpio_clear(bl_led_active);
 
-		if (!(bl_led_mask & led_on))
-		{
-			bl_led_active = led_on;
-			continue;
-		}
+	bl_led_active++;
+	if (bl_led_active >= led_count)
+		bl_led_active = 0;
 
-		bl_led__set(LED_PORT_A, led_on);
-		bl_led__set(LED_PORT_B, led_on);
-		bl_led__set(LED_PORT_C, led_on);
-
-		bl_led_active = led_on;
-
-		break;
-	}
+	bl_led__gpio_set(bl_led_active);
 
 	return BL_ERROR_NONE;
 }

@@ -21,9 +21,19 @@
 
 #include "error.h"
 
-union bl_msg_data;
-
 #define BL_LED_COUNT 16
+
+/** LED source globals */
+typedef struct {
+	uint8_t  led;
+	uint8_t  src_mask;
+	uint32_t gpios;
+	uint32_t gpior;
+	uint32_t gpio_bsrr;
+} bl_led_channel_t;
+
+extern volatile unsigned bl_led_active;
+extern bl_led_channel_t bl_led_channel[];
 
 /**
  * Initialise the LED module.
@@ -39,6 +49,14 @@ void bl_led_init(void);
 enum bl_error bl_led_set(uint16_t led_mask);
 
 void bl_led_status_set(bool enable);
+
+/**
+ * Setup enabled LEDs list.
+ *
+ * \param[in]  led_mask  Mask of LEDs to enable.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_led_setup(uint16_t led_mask);
 
 /**
  * Flash enabled LEDs in a fixed sequence.
