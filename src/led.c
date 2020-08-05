@@ -43,7 +43,7 @@
 #define LED_BR(pin)    (LED_BS(pin) << 16)
 #define LED_BSRR(port) ((port) + 0x18)
 
-unsigned led_count;
+unsigned bl_led_count;
 volatile unsigned bl_led_active;
 bl_led_channel_t bl_led_channel[BL_LED_COUNT];
 
@@ -186,7 +186,7 @@ enum bl_error bl_led_setup(uint16_t led_mask)
 	}
 
 	bl_led_active = 0;
-	led_count = 0;
+	bl_led_count = 0;
 
 	while (led_mask)
 	{
@@ -202,7 +202,7 @@ enum bl_error bl_led_setup(uint16_t led_mask)
 		led_mask &= ~(1U << i);
 
 		bl_led_active++;
-		led_count++;
+		bl_led_count++;
 	}
 
 	bl_led_active = 0;
@@ -232,7 +232,7 @@ enum bl_error bl_led_loop(void)
 	bl_led__gpio_clear(bl_led_active);
 
 	bl_led_active++;
-	if (bl_led_active >= led_count)
+	if (bl_led_active >= bl_led_count)
 		bl_led_active = 0;
 
 	bl_led__gpio_set(bl_led_active);

@@ -136,8 +136,9 @@ enum bl_error bl_acq_start(
 		/* Finalize Config. */
 		config->frequency = frequency;
 
+		unsigned multiplex = mode ? bl_led_count : 1;
 		config->frequency_trigger = (config->frequency *
-				config->sw_oversample);
+				config->sw_oversample * multiplex);
 		config->frequency_sample = (config->frequency_trigger <<
 				config->oversample);
 

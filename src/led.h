@@ -32,6 +32,8 @@ typedef struct {
 	uint32_t gpio_bsrr;
 } bl_led_channel_t;
 
+
+extern unsigned bl_led_count;
 extern volatile unsigned bl_led_active;
 extern bl_led_channel_t bl_led_channel[];
 
