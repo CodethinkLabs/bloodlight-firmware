@@ -7,7 +7,7 @@ declare DEFAULT_DEVICE="--auto"
 # - the green LED    (1 << 14)
 # - an infra-red LED (1 <<  2)
 # Override with `LED_MASK=`.
-declare DEFAULT_LED_MASK=0x4004
+declare DEFAULT_LED_MASK=0xF000
 
 # Default to enabling all channels. Override with `SRC_MASK=`.
 declare DEFAULT_SRC_MASK=0x7f
@@ -67,7 +67,7 @@ run_cal()
 	./tools/bl chancfg "$device" 18 6  0  0  1 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask"
+	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Run an acquisition.
@@ -104,7 +104,7 @@ run_acq()
 	./tools/bl chancfg "$device" 6 6  860701 0 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask"
+	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Turn off the lights and stop any acquisition.
@@ -149,7 +149,7 @@ run_cal_acq()
 	rm "$TMP_CFG"
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask"
+	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
 }
 
 if [ $# -lt 1 ]; then
