@@ -59,6 +59,7 @@ static const char *msg_errors[] = {
 	[BL_ERROR_ACTIVE_ACQUISITION] = "In acquisition state",
 	[BL_ERROR_BAD_FREQUENCY]      = "Unsupported frequency combination",
 	[BL_ERROR_NOT_IMPLEMENTED]    = "Feature not implemented",
+	[BL_ERROR_HARDWARE_CONFLICT]  = "Hardware conflict",
 };
 
 static inline unsigned bl_msg_str_to_index(
