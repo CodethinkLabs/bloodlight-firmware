@@ -27,6 +27,7 @@ enum bl_error {
 	BL_ERROR_ACTIVE_ACQUISITION, /**< There is an active acquisition. */
 	BL_ERROR_BAD_FREQUENCY,      /**< Frequency combo not supported. */
 	BL_ERROR_NOT_IMPLEMENTED,    /**< Feature not implemented. */
+	BL_ERROR_HARDWARE_CONFLICT,  /**< Hardware conflict in config. */
 };
 
 #endif

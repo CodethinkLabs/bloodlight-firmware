@@ -38,6 +38,10 @@ enum bl_acq_source {
 	BL_ACQ_5V0,
 	BL_ACQ_TMP,
 
+#if (BL_REVISION > 1)
+	BL_ACQ_EXT,
+#endif
+
 	BL_ACQ__SRC_COUNT /**< Not a source, but a count of sources. */
 };
 

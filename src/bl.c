@@ -59,7 +59,7 @@ void bl_init(void)
 
 	rcc_clock_setup_pll(rcc_config);
 
-	bl_tick_init(rcc_config->ahb_frequency / 8);
+	bl_tick_init(rcc_config->ahb_frequency);
 	bl_usb_init();
 	bl_led_init();
 	bl_acq_init(rcc_config->ahb_frequency);
