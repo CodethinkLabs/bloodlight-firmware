@@ -8,7 +8,7 @@ clean:
 bl: bl.c msg.o device.o sig.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-convert: convert.c msg.o sig.o
+convert: convert.c msg.o sig.o fifo.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 calibrate: calibrate.c msg.o sig.o
