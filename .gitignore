@@ -6,3 +6,5 @@ tools/bl
 tools/*.o
 tools/convert
 tools/calibrate
+.vscode/
+
