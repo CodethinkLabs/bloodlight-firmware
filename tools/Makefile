@@ -3,7 +3,7 @@ LDFLAGS=-g -ludev
 
 all: bl convert calibrate
 clean:
-	rm -f bl convert *.o
+	rm -f bl convert calibrate *.o
 
 bl: bl.c msg.o device.o sig.o
 	$(CC) -o $@ $^ $(LDFLAGS)
