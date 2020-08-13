@@ -5,7 +5,7 @@ all: bl convert calibrate
 clean:
 	rm -f bl convert calibrate *.o
 
-bl: bl.c msg.o device.o sig.o
+bl: bl.c msg.o device.o sig.o util.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 convert: convert.c msg.o sig.o fifo.o
