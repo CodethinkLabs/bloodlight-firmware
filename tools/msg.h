@@ -1,6 +1,8 @@
 #ifndef BL_TOOLS_MSG_H
 #define BL_TOOLS_MSG_H
 
+#include <stdbool.h>
+
 /**
  * Parse from given file stream into given message data structure.
  *

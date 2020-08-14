@@ -30,6 +30,9 @@
 
 #include "msg.h"
 #include "sig.h"
+#include "fifo.h"
+
+#define FIFO_MAX 1024
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);
 
@@ -152,60 +155,14 @@ static void init_chan_lookup(unsigned src_mask)
 	}
 }
 
-#define FIFO_MAX 1024
-
-struct fifo {
-	uint32_t values[FIFO_MAX];
-	uint16_t write;
-	uint16_t read;
-	uint16_t used;
-};
-
-static struct fifo fifos[BL_ACQ__SRC_COUNT];
-
-static inline uint16_t fifo_advance(uint16_t pos)
-{
-	pos++;
-	return (pos >= FIFO_MAX) ? 0 : pos;
-}
-
-static bool fifo_write(unsigned idx, uint32_t value)
-{
-	struct fifo *fifo = &fifos[idx];
-
-	if (fifo->used == FIFO_MAX) {
-		return false;
-	}
-
-	fifo->values[fifo->read] = value;
-	fifo->read = fifo_advance(fifo->read);
-	fifo->used++;
-
-	return true;
-}
-
-static bool fifo_read(unsigned idx, uint32_t *value)
-{
-	struct fifo *fifo = &fifos[idx];
-
-	if (fifo->used == 0) {
-		return false;
-	}
-
-	*value = fifo->values[fifo->write];
-	fifo->write = fifo_advance(fifo->write);
-	fifo->used--;
-
-	return true;
-}
-
 static int bl_sample_msg_to_file(
 		FILE *file,
 		unsigned frequency,
 		union bl_msg_data *msg,
 		unsigned src_mask,
 		unsigned num_channels,
-		enum bl_format format)
+		enum bl_format format,
+		struct fifo **fifos)
 {
 	static unsigned curr_channel = 0;
 
@@ -245,7 +202,7 @@ static int bl_sample_msg_to_file(
 				value = (uint32_t)bl_sample_to_signed(value);
 			}
 
-			if (!fifo_write(chan[msg->sample_data.channel], value)) {
+			if (!fifo_write(fifos[chan[msg->sample_data.channel]], value)) {
 				fprintf(stderr, "FIFO overflow\n");
 				return EXIT_FAILURE;
 			}
@@ -253,14 +210,14 @@ static int bl_sample_msg_to_file(
 
 		unsigned ready = UINT_MAX;
 		for (unsigned i = 0; i < num_channels; i++) {
-			if (fifos[i].used < ready) {
-				ready = fifos[i].used;
+			if (fifos[i]->used < ready) {
+				ready = fifos[i]->used;
 			}
 		}
 
 		for (unsigned i = 0; i < ready; i++) {
 			for (unsigned j = 0; j < num_channels; j++) {
-				fifo_read(j, &value);
+				fifo_read(fifos[j], &value);
 				written = fwrite(&value, sizeof(value), 1, file);
 				if (written != 1) {
 					fprintf(stderr, "Failed to write wave_data\n");
@@ -284,6 +241,7 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 	unsigned frequency;
 	FILE *file;
 	int ret;
+	struct fifo *fifos[BL_ACQ__SRC_COUNT];
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -309,6 +267,15 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 	} else {
 		file = stdout;
+	}
+
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		fifos[i] = fifo_create(FIFO_MAX);
+		if (fifos[i] == NULL) {
+			fprintf(stderr, "Failed to create fifo: %s\n",
+					strerror(errno));
+			return EXIT_FAILURE;
+		}
 	}
 
 	if (format == BL_FORMAT_WAV) {
@@ -360,13 +327,16 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 
 		ret = bl_sample_msg_to_file(file, frequency, &msg, src_mask,
-				num_channels, format);
+				num_channels, format, fifos);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
 		}
 	}
-
 cleanup:
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		fifo_destroy(fifos[i]);
+	}
+
 	if (argc == ARG__COUNT) {
 		fclose(file);
 	}

@@ -1,6 +1,8 @@
 #ifndef BL_TOOLS_SIG_H
 #define BL_TOOLS_SIG_H
 
+#include <stdbool.h>
+
 extern volatile bool bl_sig_killed;
 
 /**
