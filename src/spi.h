@@ -22,4 +22,17 @@
  */
 void bl_spi_init(void);
 
+/**
+ * Initialise the DMA IRQs to be used by SPI module.
+ */
+void bl_spi_dma_init(void);
+
+/**
+ * Send data through SPI with DMA
+ * \param[in]  tx_buf  transmission buffer address.
+ * \param[in]  rx_buf  receive buffer address.
+ * \return \ref 0 on success
+ */
+int bl_spi_dma_transceive(uint8_t *tx_buf, uint8_t *rx_buf, int len);
+
 #endif

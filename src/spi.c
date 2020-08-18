@@ -17,16 +17,45 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/spi.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/dma.h>
 
 #include "spi.h"
 #include "led.h"
+
+/* SPI receive completed with DMA */
+void dma1_channel4_isr(void)
+{
+	if ((DMA1_ISR &DMA_ISR_TCIF2) != 0) {
+		DMA1_IFCR |= DMA_IFCR_CTCIF2;
+	}
+
+	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
+
+	spi_disable_rx_dma(SPI2);
+
+	dma_disable_channel(DMA1, DMA_CHANNEL4);
+}
+
+/* SPI transmit completed with DMA */
+void dma1_channel5_isr(void)
+{
+	if ((DMA1_ISR &DMA_ISR_TCIF3) != 0) {
+		DMA1_IFCR |= DMA_IFCR_CTCIF3;
+	}
+
+	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL5);
+
+	spi_disable_tx_dma(SPI2);
+
+	dma_disable_channel(DMA1, DMA_CHANNEL5);
+}
 
 static void bl_spi__setup(void)
 {
 	rcc_periph_clock_enable(RCC_SPI2);
 	/* For spi signal pins */
 	rcc_periph_clock_enable(RCC_GPIOB);
-
 	/* For spi DMA */
 	rcc_periph_clock_enable(RCC_DMA1);
 
@@ -36,7 +65,7 @@ static void bl_spi__setup(void)
 			GPIO13 | GPIO14 | GPIO15);
 	gpio_set_af(GPIOB, GPIO_AF5, GPIO13 | GPIO14 | GPIO15);
 
-	//spi initialization;
+	/* SPI initialization */
 	spi_set_master_mode(SPI2);
 	spi_set_baudrate_prescaler(SPI2, SPI_CR1_BR_FPCLK_DIV_64);
 	spi_set_clock_polarity_0(SPI2);
@@ -50,6 +79,66 @@ static void bl_spi__setup(void)
 	spi_fifo_reception_threshold_8bit(SPI2);
 	SPI_I2SCFGR(SPI2) &= ~SPI_I2SCFGR_I2SMOD;
 	spi_enable(SPI2);
+}
+
+/* Exported function, documented in spi.h */
+int bl_spi_dma_transceive(uint8_t *tx_buf, uint8_t *rx_buf, int len)
+{
+	/* Reset SPI data register. */
+	volatile uint8_t temp_data __attribute__ ((unused));
+	while (SPI_SR(SPI2) & (SPI_SR_RXNE | SPI_SR_OVR)) {
+		temp_data = SPI_DR(SPI2);
+	}
+
+	/* Set up rx dma, note it has higher priority to avoid overrun */
+	dma_set_peripheral_address(DMA1, DMA_CHANNEL4, (uint32_t)&SPI2_DR);
+	dma_set_memory_address(DMA1, DMA_CHANNEL4, (uint32_t)rx_buf);
+	dma_set_number_of_data(DMA1, DMA_CHANNEL4, len);
+	dma_set_read_from_peripheral(DMA1, DMA_CHANNEL4);
+	dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL4);
+	dma_set_peripheral_size(DMA1, DMA_CHANNEL4, DMA_CCR_PSIZE_8BIT);
+	dma_set_memory_size(DMA1, DMA_CHANNEL4, DMA_CCR_MSIZE_8BIT);
+	dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
+
+	/* Set up tx dma */
+	dma_set_peripheral_address(DMA1, DMA_CHANNEL5, (uint32_t)&SPI2_DR);
+	dma_set_memory_address(DMA1, DMA_CHANNEL5, (uint32_t)tx_buf);
+	dma_set_number_of_data(DMA1, DMA_CHANNEL5, len);
+	dma_set_read_from_memory(DMA1, DMA_CHANNEL5);
+	dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL5);
+	dma_set_peripheral_size(DMA1, DMA_CHANNEL5, DMA_CCR_PSIZE_8BIT);
+	dma_set_memory_size(DMA1, DMA_CHANNEL5, DMA_CCR_MSIZE_8BIT);
+	dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_HIGH);
+
+	/* Enable dma transfer complete interrupts */
+	dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
+	dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL5);
+
+	/* Activate dma channels */
+	dma_enable_channel(DMA1, DMA_CHANNEL4);
+	dma_enable_channel(DMA1, DMA_CHANNEL5);
+
+	/* Enable the spi transfer via dma
+	 * This will immediately start the transmission,
+	 * after which when the receive is complete, the
+	 * receive dma will activate
+	 */
+	spi_enable_rx_dma(SPI2);
+	spi_enable_tx_dma(SPI2);
+
+	return 0;
+}
+
+/* Exported function, documented in spi.h */
+void bl_spi_dma_init(void)
+{
+	/* DMA IRQ setup, priority set to be lower than acq */
+	/* SPI2 RX on DMA1 Channel 4 */
+	nvic_set_priority(NVIC_DMA1_CHANNEL4_IRQ, 0);
+	nvic_enable_irq(NVIC_DMA1_CHANNEL4_IRQ);
+	/* SPI2 TX on DMA1 Channel 5 */
+	nvic_set_priority(NVIC_DMA1_CHANNEL5_IRQ, 0);
+	nvic_enable_irq(NVIC_DMA1_CHANNEL5_IRQ);
 }
 
 /* Exported function, documented in spi.h */
