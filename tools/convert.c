@@ -162,69 +162,55 @@ static int bl_sample_msg_to_file(
 		unsigned src_mask,
 		unsigned num_channels,
 		enum bl_format format,
-		struct fifo **fifos)
+		struct fifo **fifos,
+		unsigned *time_index)
 {
-	static unsigned curr_channel = 0;
-
 	unsigned count = msg->sample_data.count;
 
-	if (format == BL_FORMAT_CSV) {
-		static unsigned counter;
+	size_t written;
 
-		float period = 1000.0 / frequency;
-		for (unsigned s = 0; s < count; s++) {
-			uint32_t sample = msg->type == BL_MSG_SAMPLE_DATA16 ?
-					msg->sample_data.data16[s] :
-					msg->sample_data.data32[s];
-
-			float x_ms = period * counter;
-			unsigned c = curr_channel++;
-			fprintf(file, "%d,%f,%"PRIu32"\n", c, x_ms, sample);
-			if (curr_channel >= num_channels) {
-				curr_channel = 0;
-			}
-			counter++;
+	uint32_t value;
+	for (unsigned i = 0; i < count; i++) {
+		if (msg->type == BL_MSG_SAMPLE_DATA16) {
+			/* Upscale 16-bit samples to 32-bit. */
+			value = msg->sample_data.data16[i];
+			value = (value << 16) | value;
+		} else {
+			value = msg->sample_data.data32[i];
 		}
-	} else {
-		size_t written;
 
-		uint32_t value;
-		for (unsigned i = 0; i < count; i++) {
-			if (msg->type == BL_MSG_SAMPLE_DATA16) {
-				/* Upscale 16-bit samples to 32-bit. */
-				value = msg->sample_data.data16[i];
-				value = (value << 16) | value;
+		if (format == BL_FORMAT_WAV) {
+			value = (uint32_t)bl_sample_to_signed(value);
+		}
+
+		if (!fifo_write(fifos[chan[msg->sample_data.channel]], value)) {
+			fprintf(stderr, "FIFO overflow\n");
+			return EXIT_FAILURE;
+		}
+	}
+
+	unsigned ready = UINT_MAX;
+	for (unsigned i = 0; i < num_channels; i++) {
+		if (fifos[i]->used < ready) {
+			ready = fifos[i]->used;
+		}
+	}
+
+	for (unsigned i = 0; i < ready; i++) {
+		for (unsigned j = 0; j < num_channels; j++) {
+			fifo_read(fifos[j], &value);
+			if (format == BL_FORMAT_CSV) {
+				float x_ms =  (*time_index) * 1000.0 / frequency;
+				written = fprintf(file, "%d,%f,%"PRIu32"\n", j, x_ms, value);
 			} else {
-				value = msg->sample_data.data32[i];
+				written = fwrite(&value, sizeof(value), 1, file);
 			}
-
-			if (format == BL_FORMAT_WAV) {
-				value = (uint32_t)bl_sample_to_signed(value);
-			}
-
-			if (!fifo_write(fifos[chan[msg->sample_data.channel]], value)) {
-				fprintf(stderr, "FIFO overflow\n");
+			if (written < 1) {
+				fprintf(stderr, "Failed to write wave_data\n");
 				return EXIT_FAILURE;
 			}
 		}
-
-		unsigned ready = UINT_MAX;
-		for (unsigned i = 0; i < num_channels; i++) {
-			if (fifos[i]->used < ready) {
-				ready = fifos[i]->used;
-			}
-		}
-
-		for (unsigned i = 0; i < ready; i++) {
-			for (unsigned j = 0; j < num_channels; j++) {
-				fifo_read(fifos[j], &value);
-				written = fwrite(&value, sizeof(value), 1, file);
-				if (written != 1) {
-					fprintf(stderr, "Failed to write wave_data\n");
-					return EXIT_FAILURE;
-				}
-			}
-		}
+		(*time_index)++;
 	}
 
 	fflush(file);
@@ -248,6 +234,9 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		ARG_PATH,
 		ARG__COUNT,
 	};
+
+	// For incrementing the time between subsequent samples
+	unsigned time_index = 0;
 
 	if (argc < ARG_PATH || argc > ARG__COUNT) {
 		fprintf(stderr, "Usage:\n");
@@ -327,7 +316,7 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 
 		ret = bl_sample_msg_to_file(file, frequency, &msg, src_mask,
-				num_channels, format, fifos);
+				num_channels, format, fifos, &time_index);
 		if (ret != EXIT_SUCCESS) {
 			goto cleanup;
 		}
