@@ -489,6 +489,9 @@ typedef struct
 	const uint16_t      irq;
 	unsigned            enable;
 
+	bool     calibrated;
+	uint32_t calfact;
+
 	unsigned          samples_per_dma;
 	volatile uint16_t dma_buffer[BL_ACQ_DMA_MAX];
 
@@ -511,6 +514,7 @@ static bl_acq_adc_t bl_acq_adc1 =
 	.dma_channel = DMA_CHANNEL1,
 	.irq         = NVIC_DMA1_CHANNEL1_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 
 static bl_acq_adc_t bl_acq_adc2 =
@@ -523,6 +527,7 @@ static bl_acq_adc_t bl_acq_adc2 =
 	.dma_channel = DMA_CHANNEL1,
 	.irq         = NVIC_DMA2_CHANNEL1_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 
 static bl_acq_adc_t bl_acq_adc3 =
@@ -535,6 +540,7 @@ static bl_acq_adc_t bl_acq_adc3 =
 	.dma_channel = DMA_CHANNEL5,
 	.irq         = NVIC_DMA2_CHANNEL5_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 
 static bl_acq_adc_t bl_acq_adc4 =
@@ -547,6 +553,7 @@ static bl_acq_adc_t bl_acq_adc4 =
 	.dma_channel = DMA_CHANNEL2,
 	.irq         = NVIC_DMA2_CHANNEL2_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 #else
 static bl_acq_adc_t bl_acq_adc1 =
@@ -560,6 +567,7 @@ static bl_acq_adc_t bl_acq_adc1 =
 	.dmamux_req  = DMAMUX_CxCR_DMAREQ_ID_ADC1,
 	.irq         = NVIC_DMA1_CHANNEL1_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 
 static bl_acq_adc_t bl_acq_adc2 =
@@ -573,6 +581,7 @@ static bl_acq_adc_t bl_acq_adc2 =
 	.dmamux_req  = DMAMUX_CxCR_DMAREQ_ID_ADC2,
 	.irq         = NVIC_DMA1_CHANNEL2_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 
 static bl_acq_adc_t bl_acq_adc3 =
@@ -586,6 +595,7 @@ static bl_acq_adc_t bl_acq_adc3 =
 	.dmamux_req  = DMAMUX_CxCR_DMAREQ_ID_ADC3,
 	.irq         = NVIC_DMA1_CHANNEL3_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 
 static bl_acq_adc_t bl_acq_adc4 =
@@ -599,6 +609,7 @@ static bl_acq_adc_t bl_acq_adc4 =
 	.dmamux_req  = DMAMUX_CxCR_DMAREQ_ID_ADC4,
 	.irq         = NVIC_DMA1_CHANNEL4_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 
 static bl_acq_adc_t bl_acq_adc5 =
@@ -612,6 +623,7 @@ static bl_acq_adc_t bl_acq_adc5 =
 	.dmamux_req  = DMAMUX_CxCR_DMAREQ_ID_ADC5,
 	.irq         = NVIC_DMA1_CHANNEL5_IRQ,
 	.enable      = 0,
+	.calibrated  = false,
 };
 #endif
 
@@ -631,8 +643,13 @@ static void bl_acq_adc_calibrate(bl_acq_adc_t *adc)
 	adc_enable_regulator(adc->base);
 	bl_delay_us(TADCVREG_STUP);
 
-	/* TODO: Explicitly calibrate single ended by setting DIFSEL. */
+	/* Explicitly calibrate single ended. */
+	ADC_CR(adc->base) &= ~ADC_CR_ADCALDIF;
+
 	adc_calibrate(adc->base);
+
+	adc->calibrated = true;
+	adc->calfact    = ADC_CALFACT(adc->base);
 
 	adc_disable_regulator(adc->base);
 
@@ -791,6 +808,10 @@ static void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag)
 	adc_enable_regulator(adc->base);
 	bl_delay_us(TADCVREG_STUP);
 	adc_power_on(adc->base);
+
+	if (adc->calibrated) {
+		ADC_CALFACT(adc->base) = adc->calfact;
+	}
 
 	adc_enable_dma_circular_mode(adc->base);
 	adc_enable_dma(adc->base);
