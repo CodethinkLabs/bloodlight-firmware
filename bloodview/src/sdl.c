@@ -106,6 +106,11 @@ bool sdl_init(const char *font_path)
 		goto error;
 	}
 
+	ctx.main_menu_open = true;
+	sdl_tk_widget_focus(
+			ctx.main_menu,
+			ctx.main_menu_open);
+
 	return true;
 
 error:
