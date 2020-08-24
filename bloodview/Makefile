@@ -22,6 +22,7 @@ BV_SRC = \
 	src/bloodview.c \
 	src/main-menu.c \
 	src/data-avg.c \
+	src/graph.c \
 	src/sdl.c
 
 BV_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(BV_SRC)))

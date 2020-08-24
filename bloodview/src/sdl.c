@@ -20,6 +20,7 @@
 
 #include "sdl-tk/widget.h"
 
+#include "graph.h"
 #include "main-menu.h"
 
 /** Mask of SDL subsystems we use. */
@@ -131,6 +132,7 @@ static void sdl__handle_input(SDL_Event *event)
 				break;
 
 			default:
+				graph_handle_input(event);
 				break;
 			}
 			break;
@@ -172,10 +174,18 @@ bool sdl_handle_input(void)
 /* Exported interface, documented in sdl.h */
 void sdl_present(void)
 {
+	const SDL_Rect r = {
+		.x = 0,
+		.y = 0,
+		.w = ctx.w,
+		.h = ctx.h,
+	};
 	SDL_Color bg = sdl_tk_colour_get(SDL_TK_COLOUR_BACKGROUND);
 
 	SDL_SetRenderDrawColor(ctx.ren, bg.r, bg.g, bg.b, 255);
 	SDL_RenderClear(ctx.ren);
+
+	graph_render(ctx.ren, &r);
 
 	sdl_tk_widget_render(ctx.main_menu, ctx.ren, ctx.w / 2, ctx.h / 2);
 	SDL_RenderPresent(ctx.ren);
