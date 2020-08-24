@@ -11,8 +11,8 @@ LDFLAGS += $(shell pkg-config sdl2 SDL2_ttf --libs)
 ifeq ($(VARIANT), release)
 	CFLAGS += -O2 -DNDEBUG
 else
-	CFLAGS += -O0 -g
-	LDFLAGS += -g
+	CFLAGS += -O0 -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
+	LDFLAGS += -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
 endif
 
 MKDIR =	mkdir -p
