@@ -18,6 +18,7 @@ endif
 MKDIR =	mkdir -p
 
 LIB_SRC = \
+	src/text.c \
 	src/colour.c
 
 LIB_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(LIB_SRC)))
