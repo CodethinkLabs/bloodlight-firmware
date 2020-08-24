@@ -41,7 +41,7 @@
 
 
 #if (BL_REVISION == 1)
-	#define BL_ACQ_DMA_MAX 128
+	#define BL_ACQ_DMA_MAX 64
 
 	#define BL_ACQ_ADC_FREQ_MAX_SINGLE 72000000
 	#define BL_ACQ_ADC_FREQ_MAX_MULTI  BL_ACQ_ADC_FREQ_MAX_SINGLE
@@ -52,7 +52,7 @@
 	/* ADC calibration max trimming time in uS. */
 	#define TOFFTRIM_MAX 2000
 #else
-	#define BL_ACQ_DMA_MAX 1024
+	#define BL_ACQ_DMA_MAX 512
 
 	#define BL_ACQ_ADC_FREQ_MAX_SINGLE 60000000
 	#define BL_ACQ_ADC_FREQ_MAX_MULTI  52000000
@@ -302,9 +302,10 @@ static void bl_acq_dma_channel_enable(bl_acq_dma_t *dma,
 	dma_set_peripheral_size(dma->base, channel, DMA_CCR_PSIZE_16BIT);
 	dma_set_memory_size(dma->base, channel, DMA_CCR_MSIZE_16BIT);
 
+	dma_enable_half_transfer_interrupt(dma->base, channel);
 	dma_enable_transfer_complete_interrupt(dma->base, channel);
 
-	dma_set_number_of_data(dma->base, channel, count);
+	dma_set_number_of_data(dma->base, channel, (count * 2));
 
 	dma_enable_circular_mode(dma->base, channel);
 	dma_enable_channel(dma->base, channel);
@@ -321,6 +322,7 @@ static void bl_acq_dma_disable(bl_acq_dma_t *dma)
 		}
 
 		dma_disable_transfer_complete_interrupt(dma->base, i);
+		dma_disable_half_transfer_interrupt(dma->base, i);
 		dma_disable_channel(dma->base, i);
 	}
 	dma->channel_mask = 0x00;
@@ -493,7 +495,7 @@ typedef struct
 	uint32_t calfact;
 
 	unsigned          samples_per_dma;
-	volatile uint16_t dma_buffer[BL_ACQ_DMA_MAX];
+	volatile uint16_t dma_buffer[BL_ACQ_DMA_MAX * 2];
 
 	bl_acq_adc_config_t config;
 } bl_acq_adc_t;
@@ -2030,9 +2032,9 @@ static inline void bl_acq_channel_commit_sample_by_index(
 	}
 }
 
-static inline void bl_acq_adc_dma_isr(bl_acq_adc_t *adc)
+static inline void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 {
-	volatile uint16_t *p = adc->dma_buffer;
+	volatile uint16_t *p = &adc->dma_buffer[adc->samples_per_dma * buffer];
 
 	uint32_t sample[adc->config.channel_count];
 	for (unsigned c = 0; c < adc->config.channel_count; c++) {
@@ -2055,9 +2057,16 @@ static inline void bl_acq_adc_dma_isr(bl_acq_adc_t *adc)
 #define DMA_CHANNEL_ISR(__dma, __channel, __adc) \
 	void dma##__dma##_channel##__channel##_isr(void) \
 	{ \
-		bl_acq_adc_dma_isr(&bl_acq_adc##__adc); \
-		dma_clear_interrupt_flags(DMA##__dma, \
-				DMA_CHANNEL##__channel, DMA_TCIF); \
+		if (dma_get_interrupt_flag(DMA##__dma, \
+				DMA_CHANNEL##__channel, DMA_HTIF)) { \
+			bl_acq_adc_dma_isr(&bl_acq_adc##__adc, 0); \
+			dma_clear_interrupt_flags(DMA##__dma, \
+					DMA_CHANNEL##__channel, DMA_HTIF); \
+		} else { \
+			bl_acq_adc_dma_isr(&bl_acq_adc##__adc, 1); \
+			dma_clear_interrupt_flags(DMA##__dma, \
+					DMA_CHANNEL##__channel, DMA_TCIF); \
+		} \
 	}
 
 #if (BL_REVISION == 1)
