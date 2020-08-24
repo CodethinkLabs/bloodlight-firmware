@@ -41,7 +41,7 @@
 
 
 #if (BL_REVISION == 1)
-	#define BL_ACQ_DMA_MAX 64
+	#define BL_ACQ_DMA_MAX 2048
 
 	#define BL_ACQ_ADC_FREQ_MAX_SINGLE 72000000
 	#define BL_ACQ_ADC_FREQ_MAX_MULTI  BL_ACQ_ADC_FREQ_MAX_SINGLE
@@ -52,7 +52,7 @@
 	/* ADC calibration max trimming time in uS. */
 	#define TOFFTRIM_MAX 2000
 #else
-	#define BL_ACQ_DMA_MAX 512
+	#define BL_ACQ_DMA_MAX 4096
 
 	#define BL_ACQ_ADC_FREQ_MAX_SINGLE 60000000
 	#define BL_ACQ_ADC_FREQ_MAX_MULTI  52000000
