@@ -124,6 +124,29 @@ static inline unsigned data_avg__advance_pos(
 }
 
 /**
+ * Get value from the middle of the utilised capacity.
+ *
+ * \param[in]  c  A channel object.
+ * \return the value from the middle of the utilised capacity.
+ */
+static inline uint32_t data_avg__peek_middle(
+		const struct channel_data *c)
+{
+	unsigned seek = c->utilisation / 2;
+	unsigned mid;
+
+	assert(c->utilisation > 0);
+
+	if (c->write >= seek) {
+		mid = c->write - seek;
+	} else {
+		mid = c->capacity + c->write - seek;
+	}
+
+	return c->data[mid];
+}
+
+/**
  * Get a average sample from a channel.
  *
  * \param[in]  c  A channel object.
@@ -142,10 +165,9 @@ static inline uint32_t data_avg__get_average(
  * \return Normalised sample.
  */
 static inline uint32_t data_avg__get_normalised(
-		const struct channel_data *c,
-		uint32_t sample)
+		const struct channel_data *c)
 {
-	return INT32_MAX + sample - data_avg__get_average(c);
+	return INT32_MAX + data_avg__peek_middle(c) - data_avg__get_average(c);
 }
 
 /**
@@ -201,7 +223,7 @@ uint32_t data_avg_proc(
 	data_avg__add_sample(c, sample);
 
 	if (ctx->normalise) {
-		value = data_avg__get_normalised(c, sample);
+		value = data_avg__get_normalised(c);
 	} else {
 		value = data_avg__get_average(c);
 	}
