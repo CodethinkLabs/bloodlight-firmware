@@ -739,9 +739,21 @@ static enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 		return BL_ERROR_HARDWARE_CONFLICT;
 	}
 #else
-	/* TODO: Add support for hardware oversampling. */
-	if ((oversample > 0) || (shift > 0)) {
-		return BL_ERROR_NOT_IMPLEMENTED;
+	if (oversample > 0) {
+		uint32_t cfgr2 = ADC_CFGR2(adc->base);
+		cfgr2 &= ~(ADC_CFGR2_JOVSE | ADC_CFGR2_OVSR_MASK |
+				ADC_CFGR2_OVSS_MASK | ADC_CFGR2_TROVS |
+				ADC_CFGR2_ROVSM);
+
+		cfgr2 |= ADC_CFGR2_OVSR_VAL(oversample - 1);
+		cfgr2 |= ADC_CFGR2_OVSS_VAL(shift);
+		cfgr2 |= ADC_CFGR2_ROVSE;
+
+		ADC_CFGR2(adc->base) = cfgr2;
+	} else if (shift > 0) {
+		return BL_ERROR_HARDWARE_CONFLICT;
+	} else {
+		ADC_CFGR2(adc->base) &= ~ADC_CFGR2_ROVSE;
 	}
 
 	/* TODO: Add support for SMPPLUS (3.5 cycles). */
