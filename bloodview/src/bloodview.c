@@ -14,9 +14,43 @@
  * limitations under the License.
  */
 
+#include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "util.h"
+#include "main-menu.h"
+
+/** Bloodview global context data. */
+static struct {
+	bool quit;
+} bloodview_g;
+
+/* Exported interface, documented in bloodview.h */
+void bloodview_start_cal_cb(void *pw)
+{
+	BV_UNUSED(pw);
+}
+
+/* Exported interface, documented in bloodview.h */
+void bloodview_start_acq_cb(void *pw)
+{
+	BV_UNUSED(pw);
+}
+
+/* Exported interface, documented in bloodview.h */
+void bloodview_stop_cb(void *pw)
+{
+	BV_UNUSED(pw);
+}
+
+/* Exported interface, documented in bloodview.h */
+void bloodview_quit_cb(void *pw)
+{
+	BV_UNUSED(pw);
+
+	bloodview_g.quit = true;
+}
 
 /**
  * Main entry point from OS.
@@ -31,6 +65,9 @@ int main(int argc, char *argv[])
 
 	BV_UNUSED(argc);
 	BV_UNUSED(argv);
+
+	while (!bloodview_g.quit) {
+	}
 
 	ret = EXIT_SUCCESS;
 

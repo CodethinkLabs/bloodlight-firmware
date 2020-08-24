@@ -2,8 +2,11 @@ VARIANT = release
 
 BUILDDIR = build/$(VARIANT)
 
-CFLAGS = -Wall -Wextra -pedantic --std=gnu11
+CFLAGS = -Wall -Wextra -pedantic --std=gnu11 -Isdl-tk/include
 LDFLAGS = -pthread
+
+CFLAGS += $(shell pkg-config sdl2 SDL2_ttf --cflags)
+LDFLAGS += $(shell pkg-config sdl2 SDL2_ttf --libs)
 
 ifeq ($(VARIANT), release)
 	CFLAGS += -O2 -DNDEBUG
@@ -15,7 +18,8 @@ endif
 MKDIR =	mkdir -p
 
 BV_SRC = \
-	src/bloodview.c
+	src/bloodview.c \
+	src/main-menu.c
 
 BV_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(BV_SRC)))
 
@@ -27,7 +31,7 @@ clean:
 sdl-tk/sdl-tk.a:
 	make -BC sdl-tk VARIANT=$(VARIANT)
 
-bloodview: $(BV_OBJ)
+bloodview: $(BV_OBJ) sdl-tk/sdl-tk.a
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(BV_OBJ): $(BUILDDIR)/%.o : %.c
