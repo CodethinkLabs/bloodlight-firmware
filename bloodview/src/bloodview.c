@@ -20,6 +20,7 @@
 
 #include "sdl.h"
 #include "util.h"
+#include "device.h"
 #include "main-menu.h"
 
 /** Bloodview global context data. */
@@ -31,18 +32,30 @@ static struct {
 void bloodview_start_cal_cb(void *pw)
 {
 	BV_UNUSED(pw);
+
+	if (device_calibrate_start()) {
+		sdl_main_menu_close();
+	}
 }
 
 /* Exported interface, documented in bloodview.h */
 void bloodview_start_acq_cb(void *pw)
 {
 	BV_UNUSED(pw);
+
+	if (device_acquisition_start()) {
+		sdl_main_menu_close();
+	}
 }
 
 /* Exported interface, documented in bloodview.h */
 void bloodview_stop_cb(void *pw)
 {
 	BV_UNUSED(pw);
+
+	if (device_stop()) {
+		/* Don't close menu here, because it's probably still wanted. */
+	}
 }
 
 /* Exported interface, documented in bloodview.h */
@@ -51,6 +64,14 @@ void bloodview_quit_cb(void *pw)
 	BV_UNUSED(pw);
 
 	bloodview_g.quit = true;
+}
+
+void bloodview_device_state_change_cb(
+		void *pw, device_state_t state)
+{
+	BV_UNUSED(pw);
+
+	main_menu_set_acq_available(state != DEVICE_STATE_ACTIVE);
 }
 
 /**
@@ -71,12 +92,18 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	if (!device_init(NULL, bloodview_device_state_change_cb, NULL)) {
+		goto cleanup;
+	}
+
 	while (!bloodview_g.quit && sdl_handle_input()) {
 		sdl_present();
 	}
 
 	ret = EXIT_SUCCESS;
 
+cleanup:
+	device_fini();
 	sdl_fini();
 
 	return ret;

@@ -8,6 +8,9 @@ LDFLAGS = -pthread
 CFLAGS += $(shell pkg-config sdl2 SDL2_ttf --cflags)
 LDFLAGS += $(shell pkg-config sdl2 SDL2_ttf --libs)
 
+CFLAGS += $(shell pkg-config libudev --cflags)
+LDFLAGS += $(shell pkg-config libudev --libs)
+
 ifeq ($(VARIANT), release)
 	CFLAGS += -O2 -DNDEBUG
 else
@@ -22,11 +25,18 @@ BV_SRC = \
 	src/bloodview.c \
 	src/main-menu.c \
 	src/data-avg.c \
+	src/device.c \
 	src/graph.c \
 	src/data.c \
 	src/sdl.c
 
 BV_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(BV_SRC)))
+
+# TODO: improve how we get tool stuff
+TOOL_OBJ = \
+	../tools/device.o \
+	../tools/msg.o \
+	../tools/sig.o
 
 all: bloodview
 clean:
@@ -36,7 +46,7 @@ clean:
 sdl-tk/sdl-tk.a:
 	make -BC sdl-tk VARIANT=$(VARIANT)
 
-bloodview: $(BV_OBJ) sdl-tk/sdl-tk.a
+bloodview: $(BV_OBJ) $(TOOL_OBJ) sdl-tk/sdl-tk.a
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(BV_OBJ): $(BUILDDIR)/%.o : %.c
