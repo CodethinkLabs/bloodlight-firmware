@@ -17,6 +17,11 @@
 #ifndef BV_UTIL_H
 #define BV_UTIL_H
 
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
 /**
  * Helper to squash warnings about unused variables.
  *
@@ -33,5 +38,59 @@
  */
 #define BV_ARRAY_LEN(_a) \
 	((sizeof(_a)) / (sizeof(*_a)))
+
+/**
+ * Parse an unsigned value from a string.
+ *
+ * \param[in]  string  String to be parsed.
+ * \param[in]  out     Returns the value parsed out of string on success.
+ * \return true on success, false on error.
+ */
+static inline bool util_read_unsigned(
+		const char *string,
+		unsigned *out)
+{
+	unsigned long long temp;
+	char *end = NULL;
+
+	errno = 0;
+	temp = strtoull(string, &end, 0);
+
+	if (end == string || errno == ERANGE) {
+		return false;
+	}
+
+	if (temp > (unsigned long long)UINT_MAX) {
+		return false;
+	}
+
+	*out = (unsigned)temp;
+	return true;
+}
+
+/**
+ * Parse an double value from a string.
+ *
+ * \param[in]  string  String to be parsed.
+ * \param[in]  out     Returns the value parsed out of string on success.
+ * \return true on success, false on error.
+ */
+static inline bool util_read_double(
+		const char *string,
+		double *out)
+{
+	double temp;
+	char *end = NULL;
+
+	errno = 0;
+	temp = strtod(string, &end);
+
+	if (end == string || errno == ERANGE) {
+		return false;
+	}
+
+	*out = temp;
+	return true;
+}
 
 #endif
