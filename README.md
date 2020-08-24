@@ -48,6 +48,12 @@ And the Bloodlight host tools:
 make -C tools/
 ```
 
+To make the [Bloodview](bloodview/) live-view and control application, run:
+
+```bash
+make -BC bloodview/ run
+```
+
 Installation
 ------------
 
