@@ -14,12 +14,18 @@ jobs:
                make
                clang
                libudev-dev
+               libsdl2-dev
+               libsdl2-ttf-dev
                gcc-arm-none-eabi
                libnewlib-arm-none-eabi
     - name: Build libopencm3
       run: make -j4 -C libopencm3
     - name: Build firmware
       run: make
+    - name: Build bloodview (gcc)
+      run: make -BC bloodview
+    - name: Build bloodview (clang)
+      run: CC=clang make -BC bloodview
     - name: Build tools (gcc)
       run: make -BC tools
     - name: Build tools (clang)
@@ -37,10 +43,16 @@ jobs:
                shellcheck
                clang-tools
                libudev-dev
+               libsdl2-dev
+               libsdl2-ttf-dev
     - name: Shellcheck
       run: shellcheck run.sh
+    - name: Clang scan-build bloodview
+      run: scan-build make -BC bloodview
     - name: Clang scan-build tools
       run: scan-build make -BC tools
+    - name: Cppcheck bloodview
+      run: cppcheck --enable=warning,performance,portability,information --std=c11 bloodview/
     - name: Cppcheck tools
       run: cppcheck --enable=warning,performance,portability,information --std=c11 tools/
     - name: Cppcheck firmware
