@@ -261,7 +261,6 @@ int bl_device_open(const char *dev_path)
 		bl_device_list_free(devices, count);
 		return -1;
 	}
-	bl_device_list_free(devices, count);
 
 	if (tcgetattr(dev_fd, &t) == 0) {
 		t.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -272,13 +271,17 @@ int bl_device_open(const char *dev_path)
 		if (tcsetattr(dev_fd, TCSANOW, &t) != 0) {
 			fprintf(stderr, "Failed set terminal attributes"
 				" of '%s': %s\n", dev_path, strerror(errno));
+			bl_device_list_free(devices, count);
 			return -1;
 		}
 	} else {
 		fprintf(stderr, "Failed get terminal attributes"
 				" of '%s': %s\n", dev_path, strerror(errno));
+		bl_device_list_free(devices, count);
 		return -1;
 	}
+
+	bl_device_list_free(devices, count);
 	return dev_fd;
 }
 
