@@ -11,8 +11,9 @@ LDFLAGS += $(shell pkg-config sdl2 SDL2_ttf --libs)
 ifeq ($(VARIANT), release)
 	CFLAGS += -O2 -DNDEBUG
 else
-	CFLAGS += -O0 -g
-	LDFLAGS += -g
+	CFLAGS += -O0 -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
+	LDFLAGS += -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
+	BLOODVIEW_ENV += LSAN_OPTIONS=suppressions=resources/lsan-suppr:print_suppressions=0
 endif
 
 MKDIR =	mkdir -p
@@ -41,4 +42,4 @@ $(BV_OBJ): $(BUILDDIR)/%.o : %.c
 
 # We need to run with sudo to open the device.
 run: bloodview
-	@sudo ./bloodview
+	@sudo $(BLOODVIEW_ENV) ./bloodview
