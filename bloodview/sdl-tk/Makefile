@@ -20,6 +20,7 @@ MKDIR =	mkdir -p
 LIB_SRC = \
 	src/text.c \
 	src/colour.c \
+	src/widget/action.c \
 	src/widget/widget.c \
 	src/widget/toggle.c
 
