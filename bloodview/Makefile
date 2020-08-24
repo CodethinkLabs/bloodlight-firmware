@@ -19,7 +19,8 @@ MKDIR =	mkdir -p
 
 BV_SRC = \
 	src/bloodview.c \
-	src/main-menu.c
+	src/main-menu.c \
+	src/sdl.c
 
 BV_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(BV_SRC)))
 

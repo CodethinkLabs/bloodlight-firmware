@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "sdl.h"
 #include "util.h"
 #include "main-menu.h"
 
@@ -66,10 +67,17 @@ int main(int argc, char *argv[])
 	BV_UNUSED(argc);
 	BV_UNUSED(argv);
 
-	while (!bloodview_g.quit) {
+	if (!sdl_init(NULL)) {
+		return EXIT_FAILURE;
+	}
+
+	while (!bloodview_g.quit && sdl_handle_input()) {
+		sdl_present();
 	}
 
 	ret = EXIT_SUCCESS;
+
+	sdl_fini();
 
 	return ret;
 }
