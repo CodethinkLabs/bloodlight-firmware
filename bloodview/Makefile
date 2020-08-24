@@ -23,6 +23,7 @@ BV_SRC = \
 	src/main-menu.c \
 	src/data-avg.c \
 	src/graph.c \
+	src/data.c \
 	src/sdl.c
 
 BV_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(BV_SRC)))
