@@ -20,7 +20,8 @@ MKDIR =	mkdir -p
 LIB_SRC = \
 	src/text.c \
 	src/colour.c \
-	src/widget/widget.c
+	src/widget/widget.c \
+	src/widget/toggle.c
 
 LIB_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(LIB_SRC)))
 
@@ -32,5 +33,5 @@ sdl-tk.a: $(LIB_OBJ)
 	$(AR) -rcs $@ $^
 
 $(LIB_OBJ): $(BUILDDIR)/%.o : %.c
-	@$(MKDIR) $(BUILDDIR)/src
+	@$(MKDIR) $(BUILDDIR)/src/widget
 	$(CC) $(CFLAGS) -c -o $@ $<
