@@ -21,6 +21,7 @@
 
 #include <pthread.h>
 
+#include "util.h"
 #include "graph.h"
 
 /** Extra sample slots per graph */
@@ -415,9 +416,38 @@ static bool graph__invert(unsigned idx)
 	return true;
 }
 
+/**
+ * Call a hander function for keyboard input, on appropriate graphs.
+ *
+ * \param[in]  shift  Whether shift key is pressed.
+ * \param[in]  ctrl   Whether ctrl key is pressed.
+ * \param[in]  func   Function to call for appropriate graphs.
+ */
+static bool graph__key_handler(
+		bool shift,
+		bool ctrl,
+		bool (*func)(unsigned idx))
+{
+	bool ret = false;
+
+	BV_UNUSED(ctrl);
+
+	if (shift) {
+		for (unsigned i = 0; i < graph_g.count; i++) {
+			ret |= func(i);
+		}
+	} else {
+		ret |= func(graph_g.current);
+	}
+
+	return ret;
+}
+
 /* Exported function, documented in graph.h */
 bool graph_handle_input(
-		const SDL_Event *event)
+		const SDL_Event *event,
+		bool shift,
+		bool ctrl)
 {
 	bool handled = false;
 
@@ -432,19 +462,23 @@ bool graph_handle_input(
 	case SDL_KEYDOWN:
 		switch (event->key.keysym.sym) {
 		case SDLK_UP:
-			handled = graph__y_scale_inc(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_inc);
 			break;
 
 		case SDLK_DOWN:
-			handled = graph__y_scale_dec(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_dec);
 			break;
 
 		case SDLK_LEFT:
-			handled = graph__x_scale_inc(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_inc);
 			break;
 
 		case SDLK_RIGHT:
-			handled = graph__x_scale_dec(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_dec);
 			break;
 
 		case SDLK_PAGEUP:
@@ -471,7 +505,8 @@ bool graph_handle_input(
 			break;
 
 		case SDLK_i:
-			handled = graph__invert(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__invert);
 			break;
 		}
 		break;
