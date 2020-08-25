@@ -269,29 +269,10 @@ static bool data__register_filters(
 	return true;
 }
 
-/**
- * Count the bits sent in a mask
- *
- * \param[in]  mask  The mask to count the bits set in.
- * \return the number of bits set in mask.
- */
-static unsigned bit_count(unsigned mask)
-{
-	unsigned count = 0;
-
-	for (unsigned i = 0; i < sizeof(mask) * CHAR_BIT; i++) {
-		if (mask & (1u << i)) {
-			count++;
-		}
-	}
-
-	return count;
-}
-
 /* Exported interface, documented in data.h */
 bool data_start(bool calibrate, unsigned frequency, unsigned src_mask)
 {
-	unsigned channels = bit_count(src_mask);
+	unsigned channels = util_bit_count(src_mask);
 	unsigned n = 0;
 
 	assert(data_g.enabled == false);
