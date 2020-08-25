@@ -107,7 +107,7 @@ bool graph_create(unsigned idx, unsigned freq)
 
 	if (g->data == NULL) {
 		unsigned max = GRAPH_EXCESS + freq * GRAPH_HISTORY_SECONDS;
-		g->data = malloc(max * sizeof(*g->data));
+		g->data = calloc(max, sizeof(*g->data));
 		if (g->data == NULL) {
 			return false;
 		}
