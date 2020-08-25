@@ -75,6 +75,7 @@ struct main_menu_config_channel {
 	unsigned offset;
 	unsigned shift;
 	bool     sample32;
+	bool     inverted;
 
 	struct sdl_tk_widget *widget_shift;
 	struct sdl_tk_widget *widget_offset;
@@ -311,6 +312,7 @@ enum {
 	CHAN_OFFSET,
 	CHAN_SHIFT,
 	CHAN_32BIT,
+	CHAN_INVERT,
 };
 
 /**
@@ -344,6 +346,10 @@ static const struct main_menu_widget_desc bl_menu_config_chan_c_entries[] = {
 	[CHAN_32BIT] = {
 		.type   = WIDGET_TYPE_TOGGLE,
 		.title  = "32-bit samples",
+	},
+	[CHAN_INVERT] = {
+		.type   = WIDGET_TYPE_TOGGLE,
+		.title  = "Invert data",
 	},
 };
 
@@ -624,6 +630,7 @@ static void *get_config_pw_for_entry(
 		case CHAN_OFFSET: return &config.channel[chan_entry].offset;
 		case CHAN_SHIFT:  return &config.channel[chan_entry].shift;
 		case CHAN_32BIT:  return &config.channel[chan_entry].sample32;
+		case CHAN_INVERT: return &config.channel[chan_entry].inverted;
 		}
 
 	} else if (entries == bl_menu_config_led_entries) {
@@ -847,6 +854,12 @@ uint32_t main_menu_conifg_get_channel_offset(uint8_t channel)
 bool main_menu_conifg_get_channel_sample32(uint8_t channel)
 {
 	return config.channel[channel].sample32;
+}
+
+/* Exported interface, documented in main-menu.h */
+bool main_menu_conifg_get_channel_inverted(uint8_t channel)
+{
+	return config.channel[channel].inverted;
 }
 
 /* Exported interface, documented in main-menu.h */
