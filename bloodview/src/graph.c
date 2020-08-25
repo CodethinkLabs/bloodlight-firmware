@@ -38,6 +38,7 @@ struct graph {
 	unsigned ren; /**< Last rendered sample. */
 
 	uint64_t scale;
+	bool invert;
 };
 
 /** Graph global context. */
@@ -193,6 +194,22 @@ bool graph_data_add(unsigned idx, int32_t value)
 }
 
 /**
+ * Get a graph data value.
+ *
+ * \param[in]  g    The graph to get a data value from.
+ * \param[in]  pos  The position of the data value to get.
+ * \return a data value.
+ */
+static inline int32_t graph__data(const struct graph *g, unsigned pos)
+{
+	if (g->invert) {
+		return g->data[pos] * -1;
+	}
+
+	return g->data[pos];
+}
+
+/**
  * Render a graph.
  *
  * \param[in]  ren    The SDL renderer.
@@ -220,19 +237,19 @@ void graph__render(
 
 	y_off += r->y;
 	pos_next = graph_pos_decrement(g, g->pos);
-	y_next = y_off + g->data[pos_next] * g->scale / Y_SCALE_DATUM;
+	y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 
 	for (unsigned x = r->x + r->w; x > (unsigned)r->x; x--) {
 		for (unsigned i = 0; i < step - 1; i++) {
 			pos_next = graph_pos_decrement(g, pos_next);
 			y_prev = y_next;
-			y_next = y_off + g->data[pos_next] * g->scale / Y_SCALE_DATUM;
+			y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 			SDL_RenderDrawLine(ren, x, y_prev, x, y_next);
 		}
 
 		pos_next = graph_pos_decrement(g, pos_next);
 		y_prev = y_next;
-		y_next = y_off + g->data[pos_next] * g->scale / Y_SCALE_DATUM;
+		y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 		SDL_RenderDrawLine(ren, x, y_prev, x - 1, y_next);
 	}
 }
@@ -311,6 +328,21 @@ static bool graph__y_scale_dec(unsigned idx)
 	return (g->scale != old);
 }
 
+/**
+ * Toggle a graph's inversion state.
+ *
+ * \param[in]  idx  The graph index to invert.
+ * \return true.
+ */
+static bool graph__invert(unsigned idx)
+{
+	struct graph *g = graph_g.channel + idx;
+
+	g->invert = !g->invert;
+
+	return true;
+}
+
 /* Exported function, documented in graph.h */
 bool graph_handle_input(
 		const SDL_Event *event)
@@ -356,6 +388,10 @@ bool graph_handle_input(
 		case SDLK_RETURN:
 			graph_g.single = !graph_g.single;
 			handled = true;
+			break;
+
+		case SDLK_i:
+			handled = graph__invert(graph_g.current);
 			break;
 		}
 		break;
