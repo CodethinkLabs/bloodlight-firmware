@@ -29,6 +29,9 @@
 #define Y_SCALE_DATUM (1u << 10)
 #define Y_SCALE_STEP  (1u <<  4)
 
+/** Maximum number of seconds of graph data to store for each channel. */
+#define GRAPH_HISTORY_SECONDS 64
+
 struct graph {
 	int32_t *data;
 
@@ -103,7 +106,7 @@ bool graph_create(unsigned idx, unsigned freq)
 	g = graph_g.channel + idx;
 
 	if (g->data == NULL) {
-		unsigned max = GRAPH_EXCESS + freq * 32;
+		unsigned max = GRAPH_EXCESS + freq * GRAPH_HISTORY_SECONDS;
 		g->data = malloc(max * sizeof(*g->data));
 		if (g->data == NULL) {
 			return false;
