@@ -40,6 +40,7 @@ struct graph {
 	unsigned pos; /**< Position of next sample to insert. */
 	unsigned ren; /**< Last rendered sample. */
 
+	unsigned step;
 	uint64_t scale;
 	bool invert;
 };
@@ -113,6 +114,7 @@ bool graph_create(unsigned idx, unsigned freq)
 		}
 		g->max = max;
 
+		g->step = 1;
 		g->scale = Y_SCALE_DATUM / 8;
 	} else {
 		return false;
@@ -226,15 +228,17 @@ void graph__render(
 		const SDL_Rect *r,
 		unsigned        y_off)
 {
+	unsigned step;
 	unsigned y_next;
 	unsigned y_prev;
 	unsigned pos_next;
-	const unsigned step = 1;
 	struct graph *g = graph_g.channel + idx;
 
 	if (idx >= graph_g.count) {
 		return;
 	}
+
+	step = g->step;
 
 	SDL_SetRenderDrawColor(ren, 255, 255, 255, SDL_ALPHA_OPAQUE);
 
@@ -342,6 +346,54 @@ static bool graph__y_scale_dec(unsigned idx)
 }
 
 /**
+ * Increment a graphs's x-scale.
+ *
+ * \param[in]  idx  Index of graph to scale.
+ * \return true if scale changed, false otherwise.
+ */
+static bool graph__x_scale_inc(unsigned idx)
+{
+	struct graph *g = graph_g.channel + idx;
+	unsigned old = g->step;
+
+	if (idx >= graph_g.count) {
+		return false;
+	}
+
+	g->step++;
+
+	if (g->step > 128) {
+		g->step = 128;
+	}
+
+	return (g->step != old);
+}
+
+/**
+ * Decrement a graphs's x-scale.
+ *
+ * \param[in]  idx  Index of graph to scale.
+ * \return true if scale changed, false otherwise.
+ */
+static bool graph__x_scale_dec(unsigned idx)
+{
+	struct graph *g = graph_g.channel + idx;
+	unsigned old = g->step;
+
+	if (idx >= graph_g.count) {
+		return false;
+	}
+
+	g->step--;
+
+	if (g->step == 0) {
+		g->step = 1;
+	}
+
+	return (g->step != old);
+}
+
+/**
  * Toggle a graph's inversion state.
  *
  * \param[in]  idx  The graph index to invert.
@@ -378,6 +430,14 @@ bool graph_handle_input(
 
 		case SDLK_DOWN:
 			handled = graph__y_scale_dec(graph_g.current);
+			break;
+
+		case SDLK_LEFT:
+			handled = graph__x_scale_inc(graph_g.current);
+			break;
+
+		case SDLK_RIGHT:
+			handled = graph__x_scale_dec(graph_g.current);
 			break;
 
 		case SDLK_PAGEUP:
