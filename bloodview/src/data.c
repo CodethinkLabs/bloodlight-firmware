@@ -25,6 +25,7 @@
 #include "graph.h"
 #include "data-avg.h"
 #include "main-menu.h"
+#include "data-invert.h"
 
 struct data_filter {
 	void *ctx;
@@ -200,6 +201,54 @@ static bool data__register_normalise(
 }
 
 /**
+ * Resister the inverting filter.
+ *
+ * \param[in]  frequency  The sampling frequency.
+ * \param[in]  channels   The number of channels.
+ * \param[in]  src_mask   Mask of enabled sources.
+ * \return true on success, or false on error.
+ */
+static bool data__register_invert(
+		unsigned frequency,
+		unsigned channels,
+		uint32_t src_mask)
+{
+	bool enabled = false;
+	struct data_filter *filter;
+	struct data_invert_config config = { 0 };
+
+	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+		config.invert[i] = main_menu_conifg_get_channel_inverted(i);
+		if (config.invert[i]) {
+			enabled = true;
+		}
+	}
+
+	if (!enabled) {
+		/* No inversion required. */
+		return true;
+	}
+
+	filter = data__allocate_filter();
+	if (filter == NULL) {
+		return false;
+	}
+
+	filter->ctx = data_invert_init(&config, frequency, channels, src_mask);
+	if (filter->ctx == NULL) {
+		/* No need to free the filter, it's already owned by the
+		 * global state. */
+		return false;
+	}
+
+	filter->fini = data_invert_fini;
+	filter->proc = data_invert_proc;
+
+	data_g.count++;
+	return true;
+}
+
+/**
  * Resister the normalising filter, if enabled.
  *
  * \param[in]  frequency  The sampling frequency.
@@ -253,6 +302,10 @@ static bool data__register_filters(
 		uint32_t src_mask)
 {
 	BV_UNUSED(calibrate);
+
+	if (!data__register_invert(frequency, channels, src_mask)) {
+		return false;
+	}
 
 	if (main_menu_conifg_get_filter_normalise_enabled() &&
 			!data__register_normalise(
