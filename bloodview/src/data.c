@@ -180,8 +180,6 @@ static bool data__register_normalise(
 		.normalise   = true,
 	};
 
-	BV_UNUSED(src_mask);
-
 	filter = data__allocate_filter();
 	if (filter == NULL) {
 		return false;
@@ -219,8 +217,6 @@ static bool data__register_ac_denoise(
 		.filter_freq = (frequency / main_menu_conifg_get_filter_ac_denoise_frequency()) * 1024,
 		.normalise   = false,
 	};
-
-	BV_UNUSED(src_mask);
 
 	filter = data__allocate_filter();
 	if (filter == NULL) {
