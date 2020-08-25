@@ -290,7 +290,12 @@ cleanup:
 	pthread_mutex_unlock(&graph_g.lock);
 }
 
-/* Exported function, documented in graph.h */
+/**
+ * Increment a graphs's y-scale.
+ *
+ * \param[in]  idx  Index of graph to scale.
+ * \return true if scale changed, false otherwise.
+ */
 static bool graph__y_scale_inc(unsigned idx)
 {
 	struct graph *g = graph_g.channel + idx;
@@ -309,7 +314,12 @@ static bool graph__y_scale_inc(unsigned idx)
 	return (g->scale != old);
 }
 
-/* Exported function, documented in graph.h */
+/**
+ * Decrement a graphs's y-scale.
+ *
+ * \param[in]  idx  Index of graph to scale.
+ * \return true if scale changed, false otherwise.
+ */
 static bool graph__y_scale_dec(unsigned idx)
 {
 	struct graph *g = graph_g.channel + idx;
