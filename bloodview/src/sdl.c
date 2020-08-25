@@ -39,6 +39,9 @@ static struct sdl_ctx
 
 	unsigned w;
 	unsigned h;
+
+	bool shift;
+	bool ctrl;
 } ctx;
 
 /* Exported interface, documented in sdl.h */
@@ -136,8 +139,32 @@ static void sdl__handle_input(SDL_Event *event)
 						ctx.main_menu_open);
 				break;
 
+			case SDLK_RSHIFT: /* Fall through */
+			case SDLK_LSHIFT:
+				ctx.shift = true;
+				break;
+
+			case SDLK_RCTRL: /* Fall through */
+			case SDLK_LCTRL:
+				ctx.ctrl = true;
+				break;
+
 			default:
 				graph_handle_input(event);
+				break;
+			}
+			break;
+
+		case SDL_KEYUP:
+			switch (event->key.keysym.sym) {
+			case SDLK_RSHIFT: /* Fall through */
+			case SDLK_LSHIFT:
+				ctx.shift = false;
+				break;
+
+			case SDLK_RCTRL: /* Fall through */
+			case SDLK_LCTRL:
+				ctx.ctrl = false;
 				break;
 			}
 			break;
@@ -164,6 +191,7 @@ bool sdl_handle_input(void)
 		case SDL_QUIT:
 			return false;
 
+		case SDL_KEYUP:
 		case SDL_KEYDOWN:
 		case SDL_MOUSEMOTION:
 		case SDL_MOUSEBUTTONDOWN:
