@@ -228,7 +228,9 @@ void graph__render(
 		const SDL_Rect *r,
 		unsigned        y_off)
 {
+	unsigned len;
 	unsigned step;
+	unsigned x_min;
 	unsigned y_next;
 	unsigned y_prev;
 	unsigned pos_next;
@@ -242,22 +244,27 @@ void graph__render(
 
 	SDL_SetRenderDrawColor(ren, 255, 255, 255, SDL_ALPHA_OPAQUE);
 
-	y_off += r->y;
+	len = 0;
 	pos_next = graph_pos_decrement(g, g->pos);
+
+	y_off += r->y;
 	y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 
-	for (unsigned x = r->x + r->w; x > (unsigned)r->x; x--) {
+	x_min = r->x;
+	for (unsigned x = r->x + r->w; x > x_min && len < g->len; x--) {
 		for (unsigned i = 0; i < step - 1; i++) {
 			pos_next = graph_pos_decrement(g, pos_next);
 			y_prev = y_next;
 			y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 			SDL_RenderDrawLine(ren, x, y_prev, x, y_next);
+			len++;
 		}
 
 		pos_next = graph_pos_decrement(g, pos_next);
 		y_prev = y_next;
 		y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 		SDL_RenderDrawLine(ren, x, y_prev, x - 1, y_next);
+		len++;
 	}
 }
 
