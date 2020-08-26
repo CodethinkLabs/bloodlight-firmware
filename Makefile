@@ -9,7 +9,12 @@ CFILES = \
 	src/msg.c \
 	src/usb.c \
 	src/mq.c \
-	src/acq.c
+	src/acq.c \
+	src/acq/timer.c \
+	src/acq/dma.c \
+	src/acq/adc.c \
+	src/acq/opamp.c \
+	src/acq/channel.c
 
 REVISION ?= 1
 CFLAGS += -DBL_REVISION=$(REVISION)
@@ -22,6 +27,8 @@ else
 	DEVICE         = stm32g474CET6
 	OOCD_INTERFACE = stlink-v2-1
 	OOCD_TARGET    = stm32g4x
+
+	CFILES += src/acq/dac.c
 endif
 
 # You shouldn't have to edit anything below here.
