@@ -115,7 +115,7 @@ bool graph_create(unsigned idx, unsigned freq)
 		}
 		g->max = max;
 
-		g->step = 1;
+		g->step = freq / 500 + 1;
 		g->scale = Y_SCALE_DATUM / 8;
 	} else {
 		return false;
