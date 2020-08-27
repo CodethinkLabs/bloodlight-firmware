@@ -55,7 +55,7 @@ uint32_t main_menu_conifg_get_oversample(void);
 /**
  * Get the gain for a given channel.
  *
- * \param[in]  channel  The channel read config from.
+ * \param[in]  channel  The channel to read config from.
  * \return the configured channel gain.
  */
 uint8_t main_menu_conifg_get_channel_gain(uint8_t channel);
@@ -63,7 +63,7 @@ uint8_t main_menu_conifg_get_channel_gain(uint8_t channel);
 /**
  * Get the shift for a given channel.
  *
- * \param[in]  channel  The channel read config from.
+ * \param[in]  channel  The channel to read config from.
  * \return the configured channel shift.
  */
 uint8_t main_menu_conifg_get_channel_shift(uint8_t channel);
@@ -71,7 +71,7 @@ uint8_t main_menu_conifg_get_channel_shift(uint8_t channel);
 /**
  * Get the offset for a given channel.
  *
- * \param[in]  channel  The channel read config from.
+ * \param[in]  channel  The channel to read config from.
  * \return the configured channel offset.
  */
 uint32_t main_menu_conifg_get_channel_offset(uint8_t channel);
@@ -79,10 +79,18 @@ uint32_t main_menu_conifg_get_channel_offset(uint8_t channel);
 /**
  * Get the sample value size for a given channel.
  *
- * \param[in]  channel  The channel read config from.
+ * \param[in]  channel  The channel to read config from.
  * \return the configured channel sample value size.
  */
 bool main_menu_conifg_get_channel_sample32(uint8_t channel);
+
+/**
+ * Get whether the channel is inverted.
+ *
+ * \param[in]  channel  The channel to read config from.
+ * \return the configured channel sample value size.
+ */
+bool main_menu_conifg_get_channel_inverted(uint8_t channel);
 
 /**
  * Get whether the normalisation filter is enabled.

@@ -33,6 +33,7 @@ of the acquisition.
 
 | Key                     | Meaning                             |
 | ----------------------- | ----------------------------------- |
+| <kbd>i</kbd>            | Toggle graph inversion.             |
 | <kbd>Return</kbd>       | Toggle single graph mode.           |
 | <kbd>Cursor Up</kbd>    | Increase scale in the Y direction.  |
 | <kbd>Cursor Down</kbd>  | Decrease scale in the Y direction.  |

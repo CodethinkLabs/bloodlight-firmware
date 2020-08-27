@@ -93,4 +93,23 @@ static inline bool util_read_double(
 	return true;
 }
 
+/**
+ * Count the bits sent in a mask
+ *
+ * \param[in]  mask  The mask to count the bits set in.
+ * \return the number of bits set in mask.
+ */
+static inline unsigned util_bit_count(unsigned mask)
+{
+	unsigned count = 0;
+
+	for (unsigned i = 0; i < sizeof(mask) * CHAR_BIT; i++) {
+		if (mask & (1u << i)) {
+			count++;
+		}
+	}
+
+	return count;
+}
+
 #endif

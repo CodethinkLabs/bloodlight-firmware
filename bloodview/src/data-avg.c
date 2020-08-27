@@ -72,6 +72,7 @@ error:
 	for (unsigned i = 0; i < count; i++) {
 		free(channel[i].data);
 	}
+	free(channel);
 
 	return NULL;
 }
