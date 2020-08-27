@@ -63,9 +63,13 @@ void graph_render(
  * Handle an input event
  *
  * \param[in]  event  The SDL renderer.
+ * \param[in]  shift  True if the shift key is pressed.
+ * \param[in]  ctrl   True if the control key is pressed.
  * \return true if the event was handled, or false otherwise.
  */
 bool graph_handle_input(
-		const SDL_Event *event);
+		const SDL_Event *event,
+		bool shift,
+		bool ctrl);
 
 #endif /* BV_GRAPH_H */

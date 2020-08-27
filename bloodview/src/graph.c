@@ -21,6 +21,7 @@
 
 #include <pthread.h>
 
+#include "util.h"
 #include "graph.h"
 
 /** Extra sample slots per graph */
@@ -28,6 +29,9 @@
 
 #define Y_SCALE_DATUM (1u << 10)
 #define Y_SCALE_STEP  (1u <<  4)
+
+/** Maximum number of seconds of graph data to store for each channel. */
+#define GRAPH_HISTORY_SECONDS 64
 
 struct graph {
 	int32_t *data;
@@ -37,6 +41,7 @@ struct graph {
 	unsigned pos; /**< Position of next sample to insert. */
 	unsigned ren; /**< Last rendered sample. */
 
+	unsigned step;
 	uint64_t scale;
 	bool invert;
 };
@@ -103,13 +108,14 @@ bool graph_create(unsigned idx, unsigned freq)
 	g = graph_g.channel + idx;
 
 	if (g->data == NULL) {
-		unsigned max = GRAPH_EXCESS + freq * 32;
-		g->data = malloc(max * sizeof(*g->data));
+		unsigned max = GRAPH_EXCESS + freq * GRAPH_HISTORY_SECONDS;
+		g->data = calloc(max, sizeof(*g->data));
 		if (g->data == NULL) {
 			return false;
 		}
 		g->max = max;
 
+		g->step = freq / 500 + 1;
 		g->scale = Y_SCALE_DATUM / 8;
 	} else {
 		return false;
@@ -223,34 +229,43 @@ void graph__render(
 		const SDL_Rect *r,
 		unsigned        y_off)
 {
+	unsigned len;
+	unsigned step;
+	unsigned x_min;
 	unsigned y_next;
 	unsigned y_prev;
 	unsigned pos_next;
-	const unsigned step = 1;
 	struct graph *g = graph_g.channel + idx;
 
 	if (idx >= graph_g.count) {
 		return;
 	}
 
+	step = g->step;
+
 	SDL_SetRenderDrawColor(ren, 255, 255, 255, SDL_ALPHA_OPAQUE);
 
-	y_off += r->y;
+	len = 0;
 	pos_next = graph_pos_decrement(g, g->pos);
+
+	y_off += r->y;
 	y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 
-	for (unsigned x = r->x + r->w; x > (unsigned)r->x; x--) {
+	x_min = r->x;
+	for (unsigned x = r->x + r->w; x > x_min && len < g->len; x--) {
 		for (unsigned i = 0; i < step - 1; i++) {
 			pos_next = graph_pos_decrement(g, pos_next);
 			y_prev = y_next;
 			y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 			SDL_RenderDrawLine(ren, x, y_prev, x, y_next);
+			len++;
 		}
 
 		pos_next = graph_pos_decrement(g, pos_next);
 		y_prev = y_next;
 		y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
 		SDL_RenderDrawLine(ren, x, y_prev, x - 1, y_next);
+		len++;
 	}
 }
 
@@ -339,6 +354,54 @@ static bool graph__y_scale_dec(unsigned idx)
 }
 
 /**
+ * Increment a graphs's x-scale.
+ *
+ * \param[in]  idx  Index of graph to scale.
+ * \return true if scale changed, false otherwise.
+ */
+static bool graph__x_scale_inc(unsigned idx)
+{
+	struct graph *g = graph_g.channel + idx;
+	unsigned old = g->step;
+
+	if (idx >= graph_g.count) {
+		return false;
+	}
+
+	g->step++;
+
+	if (g->step > 128) {
+		g->step = 128;
+	}
+
+	return (g->step != old);
+}
+
+/**
+ * Decrement a graphs's x-scale.
+ *
+ * \param[in]  idx  Index of graph to scale.
+ * \return true if scale changed, false otherwise.
+ */
+static bool graph__x_scale_dec(unsigned idx)
+{
+	struct graph *g = graph_g.channel + idx;
+	unsigned old = g->step;
+
+	if (idx >= graph_g.count) {
+		return false;
+	}
+
+	g->step--;
+
+	if (g->step == 0) {
+		g->step = 1;
+	}
+
+	return (g->step != old);
+}
+
+/**
  * Toggle a graph's inversion state.
  *
  * \param[in]  idx  The graph index to invert.
@@ -353,9 +416,38 @@ static bool graph__invert(unsigned idx)
 	return true;
 }
 
+/**
+ * Call a hander function for keyboard input, on appropriate graphs.
+ *
+ * \param[in]  shift  Whether shift key is pressed.
+ * \param[in]  ctrl   Whether ctrl key is pressed.
+ * \param[in]  func   Function to call for appropriate graphs.
+ */
+static bool graph__key_handler(
+		bool shift,
+		bool ctrl,
+		bool (*func)(unsigned idx))
+{
+	bool ret = false;
+
+	BV_UNUSED(ctrl);
+
+	if (shift) {
+		for (unsigned i = 0; i < graph_g.count; i++) {
+			ret |= func(i);
+		}
+	} else {
+		ret |= func(graph_g.current);
+	}
+
+	return ret;
+}
+
 /* Exported function, documented in graph.h */
 bool graph_handle_input(
-		const SDL_Event *event)
+		const SDL_Event *event,
+		bool shift,
+		bool ctrl)
 {
 	bool handled = false;
 
@@ -370,11 +462,23 @@ bool graph_handle_input(
 	case SDL_KEYDOWN:
 		switch (event->key.keysym.sym) {
 		case SDLK_UP:
-			handled = graph__y_scale_inc(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_inc);
 			break;
 
 		case SDLK_DOWN:
-			handled = graph__y_scale_dec(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_dec);
+			break;
+
+		case SDLK_LEFT:
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_inc);
+			break;
+
+		case SDLK_RIGHT:
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_dec);
 			break;
 
 		case SDLK_PAGEUP:
@@ -401,7 +505,8 @@ bool graph_handle_input(
 			break;
 
 		case SDLK_i:
-			handled = graph__invert(graph_g.current);
+			handled = graph__key_handler(shift, ctrl,
+					graph__invert);
 			break;
 		}
 		break;
