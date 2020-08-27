@@ -30,6 +30,7 @@
 #include "sdl-tk/widget/toggle.h"
 
 #include "util.h"
+#include "locked.h"
 #include "bloodview.h"
 #include "main-menu.h"
 
@@ -886,7 +887,13 @@ double main_menu_conifg_get_filter_ac_denoise_frequency(void)
 	return config.filter.ac_denoise;
 }
 
-static const char *stringify_unsigned(unsigned value)
+/**
+ * Convert an unsigned value to a string.
+ *
+ * \param[in]  value  The value to convert to a string.
+ * \return A string on success, or NULL on failure.
+ */
+static char *stringify_unsigned(unsigned value)
 {
 	static char buffer[32];
 	int ret;
@@ -899,40 +906,140 @@ static const char *stringify_unsigned(unsigned value)
 		return NULL;
 	}
 
-	return buffer;
+	return strdup(buffer);
+}
+
+/** Type pf update to apply to a widget. */
+enum update_type {
+	UPDATE_TYPE_SET_VALUE,
+	UPDATE_TYPE_ENABLE,
+};
+
+/** Details of an update to apply to a menu. */
+struct update {
+	enum update_type type;
+	struct sdl_tk_widget *widget;
+	union update_data {
+		struct {
+			char *value;
+		} set_value;
+		struct {
+			bool enable;
+		} enable;
+	} data;
+};
+
+/**
+ * Update context.
+ *
+ * Contains a list of updates that need to be applied to the main menu
+ * before it is next rendered.
+ */
+struct {
+	struct update list[64];
+	locked_uint_t count;
+} update_ctx;
+
+/**
+ * Put an update onto the update context list.
+ *
+ * \param[in]  type    The type of update to perform.
+ * \param[in]  widget  The widget to update.
+ * \param[in]  data    The type-specific data.
+ * \return true on succes, or false on error.
+ */
+static bool main_menu__push_update(
+		enum update_type type,
+		struct sdl_tk_widget *widget,
+		const union update_data *data)
+{
+	bool ret = true;
+
+	locked_uint_claim(&update_ctx.count);
+	if (update_ctx.count.value == BV_ARRAY_LEN(update_ctx.list)) {
+		ret = false;
+		goto cleanup;
+	}
+
+	update_ctx.list[update_ctx.count.value].type = type;
+	update_ctx.list[update_ctx.count.value].widget = widget;
+	update_ctx.list[update_ctx.count.value].data = *data;
+	update_ctx.count.value++;
+
+cleanup:
+	locked_uint_release(&update_ctx.count);
+	return ret;
+}
+
+/* Exported interface, documented in main-menu.h */
+void main_menu_update(void)
+{
+	if (update_ctx.count.value == 0) {
+		return;
+	}
+
+	locked_uint_claim(&update_ctx.count);
+	for (unsigned i = 0; i < update_ctx.count.value; i++) {
+		switch (update_ctx.list[i].type) {
+		case UPDATE_TYPE_SET_VALUE:
+			sdl_tk_widget_input_set_value(
+					update_ctx.list[i].widget,
+					update_ctx.list[i].data.set_value.value);
+			free(update_ctx.list[i].data.set_value.value);
+			break;
+		case UPDATE_TYPE_ENABLE:
+			sdl_tk_widget_enable(
+					update_ctx.list[i].widget,
+					update_ctx.list[i].data.enable.enable);
+			break;
+		}
+	}
+
+	update_ctx.count.value = 0;
+	locked_uint_release(&update_ctx.count);
 }
 
 /* Exported interface, documented in main-menu.h */
 bool main_menu_conifg_set_channel_shift(uint8_t channel, uint8_t shift)
 {
-	const char *shift_string = stringify_unsigned(shift);
+	union update_data data;
 
-	if (shift_string == NULL) {
+	data.set_value.value = stringify_unsigned(shift);
+	if (data.set_value.value == NULL) {
 		return false;
 	}
 
-	return sdl_tk_widget_input_set_value(
+	return main_menu__push_update(
+			UPDATE_TYPE_SET_VALUE,
 			config.channel[channel].widget_shift,
-			shift_string);
+			&data);
 }
 
 /* Exported interface, documented in main-menu.h */
 bool main_menu_conifg_set_channel_offset(uint8_t channel, uint32_t offset)
 {
-	const char *offset_string = stringify_unsigned(offset);
+	union update_data data;
 
-	if (offset_string == NULL) {
+	data.set_value.value = stringify_unsigned(offset);
+	if (data.set_value.value == NULL) {
 		return false;
 	}
 
-	return sdl_tk_widget_input_set_value(
+	return main_menu__push_update(
+			UPDATE_TYPE_SET_VALUE,
 			config.channel[channel].widget_offset,
-			offset_string);
+			&data);
 }
 
 /* Exported interface, documented in main-menu.h */
 void main_menu_set_acq_available(bool available)
 {
-	sdl_tk_widget_enable(config.widget_cal, available);
-	sdl_tk_widget_enable(config.widget_acq, available);
+	union update_data data = {
+		.enable = {
+			.enable = available,
+		},
+	};
+
+	main_menu__push_update(UPDATE_TYPE_ENABLE, config.widget_cal, &data);
+	main_menu__push_update(UPDATE_TYPE_ENABLE, config.widget_acq, &data);
 }
