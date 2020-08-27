@@ -28,8 +28,7 @@ static uint32_t last_ms_us = 0;
 
 #define MAX_TIMER_RES_US 1000
 #define MIN_TIMER_RES_US   10
-static uint32_t res     = MAX_TIMER_RES_US;
-static uint32_t new_res = MAX_TIMER_RES_US;
+static uint32_t res = MAX_TIMER_RES_US;
 
 static uint32_t sys_tick_frequency;
 
@@ -52,15 +51,16 @@ void sys_tick_handler(void)
 void bl_tick_init(uint32_t frequency)
 {
 	sys_tick_frequency = frequency;
-
-	/* Set up the systick to trigger every microsecond*/
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
 
+	/* Set up the systick to trigger every microsecond*/
 	uint32_t mhz = sys_tick_frequency / 1000000;
+
 	/* System clock is xMHz, so 1/x usec per "tick" there and we want to tick
 	 * res * usec, so that means a counter of (res * x) -1
 	 */
 	systick_set_reload((res * mhz) - 1);
+
 	systick_clear();
 	systick_interrupt_enable();
 	systick_counter_enable();
