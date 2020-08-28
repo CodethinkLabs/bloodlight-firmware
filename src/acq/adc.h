@@ -38,13 +38,13 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag);
 void bl_acq_adc_disable(bl_acq_adc_t *adc, uint32_t ccr_flag);
 
-bl_acq_adc_group_t *bl_acq_adc_get_group(bl_acq_adc_t *adc);
+bl_acq_adc_group_t *bl_acq_adc_get_group(const bl_acq_adc_t *adc);
 
 #include "timer.h"
-bl_acq_timer_t     *bl_acq_adc_get_timer(bl_acq_adc_t *adc);
+bl_acq_timer_t     *bl_acq_adc_get_timer(const bl_acq_adc_t *adc);
 
 #include "dma.h"
-bl_acq_dma_t       *bl_acq_adc_get_dma(bl_acq_adc_t *adc);
+bl_acq_dma_t       *bl_acq_adc_get_dma(const bl_acq_adc_t *adc);
 
 #endif
 

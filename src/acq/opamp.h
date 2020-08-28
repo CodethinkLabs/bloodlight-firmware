@@ -29,12 +29,12 @@ void bl_acq_opamp_disable(bl_acq_opamp_t *opamp);
 
 #if (BL_REVISION >= 2)
 #include "dac.h"
-bl_acq_dac_t *bl_acq_opamp_get_dac(bl_acq_opamp_t *opamp,
+bl_acq_dac_t *bl_acq_opamp_get_dac(const bl_acq_opamp_t *opamp,
 		uint8_t *dac_channel);
 #endif
 
 #include "adc.h"
-bl_acq_adc_t *bl_acq_opamp_get_adc(bl_acq_opamp_t *opamp,
+bl_acq_adc_t *bl_acq_opamp_get_adc(const bl_acq_opamp_t *opamp,
 		uint8_t *adc_channel);
 
 #endif

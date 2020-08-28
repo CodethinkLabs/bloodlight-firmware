@@ -616,17 +616,17 @@ void bl_acq_adc_disable(bl_acq_adc_t *adc, uint32_t ccr_flag)
 	adc->config.channel_count = 0;
 }
 
-bl_acq_adc_group_t *bl_acq_adc_get_group(bl_acq_adc_t *adc)
+bl_acq_adc_group_t *bl_acq_adc_get_group(const bl_acq_adc_t *adc)
 {
 	return adc->group;
 }
 
-bl_acq_timer_t *bl_acq_adc_get_timer(bl_acq_adc_t *adc)
+bl_acq_timer_t *bl_acq_adc_get_timer(const bl_acq_adc_t *adc)
 {
 	return *(adc->timer);
 }
 
-bl_acq_dma_t *bl_acq_adc_get_dma(bl_acq_adc_t *adc)
+bl_acq_dma_t *bl_acq_adc_get_dma(const bl_acq_adc_t *adc)
 {
 	return *(adc->dma);
 }

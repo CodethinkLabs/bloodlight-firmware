@@ -64,6 +64,8 @@ void bl_acq_dma_enable(bl_acq_dma_t *dma)
 #if (BL_REVISION >= 2)
 	rcc_periph_clock_enable(dma->dmamux_rcc);
 #endif
+
+	dma->enable = true;
 }
 
 void bl_acq_dma_disable(bl_acq_dma_t *dma)
