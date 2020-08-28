@@ -112,12 +112,12 @@ void bl_acq_timer_disable(bl_acq_timer_t *timer)
 	bl_acq__rcc_disable_ref(timer->rcc_unit, &timer->enable);
 }
 
-void bl_acq_timer_start(bl_acq_timer_t *timer)
+void bl_acq_timer_start(const bl_acq_timer_t *timer)
 {
 	timer_enable_counter(timer->base);
 }
 
-void bl_acq_timer_stop(bl_acq_timer_t *timer)
+void bl_acq_timer_stop(const bl_acq_timer_t *timer)
 {
 	timer_disable_counter(timer->base);
 }

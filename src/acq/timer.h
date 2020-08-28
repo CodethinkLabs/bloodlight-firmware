@@ -17,8 +17,8 @@ enum bl_error bl_acq_timer_configure(bl_acq_timer_t *timer, uint32_t frequency);
 void bl_acq_timer_enable(bl_acq_timer_t *timer);
 void bl_acq_timer_disable(bl_acq_timer_t *timer);
 
-void bl_acq_timer_start(bl_acq_timer_t *timer);
-void bl_acq_timer_stop(bl_acq_timer_t *timer);
+void bl_acq_timer_start(const bl_acq_timer_t *timer);
+void bl_acq_timer_stop(const bl_acq_timer_t *timer);
 
 void bl_acq_timer_start_all(void);
 void bl_acq_timer_stop_all(void);
