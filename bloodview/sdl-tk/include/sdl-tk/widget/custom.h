@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef SDL_TK_WIDGET_CUSTOM_H
-#define SDL_TK_WIDGET_CUSTOM_H
-
-#include "sdl-tk/widget.h"
-
 /**
  * \file
  * \brief Header for implementing new widgets.
  *
  * This only needs to be incuded where you're creating a new widget type.
  */
+
+#ifndef SDL_TK_WIDGET_CUSTOM_H
+#define SDL_TK_WIDGET_CUSTOM_H
+
+#include "sdl-tk/widget.h"
 
 /**
  * Types of input focus for an sdl-tk widget.
@@ -39,16 +39,16 @@ enum sdl_tk_widget_focus {
  * Common base class of an sdl-tk widget.
  */
 struct sdl_tk_widget {
-	struct sdl_tk_widget     *parent;
-	enum sdl_tk_widget_focus  focus;
+	struct sdl_tk_widget     *parent; /**< Parent widget or NULL. */
+	enum sdl_tk_widget_focus  focus;  /**< Focus state. */
 
-	char *title;
-	bool  disabled;
+	char *title;    /**< Widget's title. */
+	bool  disabled; /**< Whether the widget is disabled. */
 
-	unsigned w;
-	unsigned h;
+	unsigned w; /**< Widget width. */
+	unsigned h; /**< Widget height. */
 
-	const struct sdl_tk_widget_vt *t;
+	const struct sdl_tk_widget_vt *t; /**< Widget type-specific vtable. */
 };
 
 /** The sdl-tk widget interface v-table. */
@@ -126,9 +126,16 @@ struct sdl_tk_widget_vt {
 			enum sdl_tk_colour    col);
 };
 
+/** Border width. */
 #define BORDER_WIDTH  2
+
+/** Gutter width. */
 #define GUTTER_WIDTH  2
+
+/** Padding width. */
 #define PADDING_WIDTH 2
+
+/** Full edge width. */
 #define EDGE_WIDTH    (BORDER_WIDTH + GUTTER_WIDTH + PADDING_WIDTH)
 
 #endif /* SDL_TK_WIDGET_CUSTOM_H */
