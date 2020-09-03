@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for the Colour module.
+ *
+ * This provides easy access to the toolkit colour scheme.
+ */
+
 #ifndef SDL_TK_COLOUR_H
 #define SDL_TK_COLOUR_H
 
