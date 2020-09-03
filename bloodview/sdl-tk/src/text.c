@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the text module.
+ *
+ * This provides a simple interface for creating text textures.
+ */
+
 #include <stdio.h>
 
 #include "text.h"
@@ -21,8 +28,8 @@
 
 /** An sdk-tk text font. */
 struct sdl_font {
-	TTF_Font *font;
-	unsigned  size;
+	TTF_Font *font; /**< A font handle. */
+	unsigned  size; /**< Pt size of the font. */
 };
 
 /** Array of common text entries at various sizes and in various colours. */

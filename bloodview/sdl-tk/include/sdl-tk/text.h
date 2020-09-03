@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for the Text module.
+ *
+ * This provides a simple interface for creating text textures.
+ */
+
 #ifndef SDL_TK_TEXT_H
 #define SDL_TK_TEXT_H
 
@@ -28,9 +35,9 @@
  * An sdl-tk text object.
  */
 struct sdl_tk_text {
-	unsigned     w;
-	unsigned     h;
-	SDL_Texture *t;
+	unsigned     w; /**< Texture width in pixels. */
+	unsigned     h; /**< Texture height in pixels. */
+	SDL_Texture *t; /**< An SDL texture containing text. */
 };
 
 /**
