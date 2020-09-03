@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the Toggle widget.
+ *
+ * This is a toggle widget, i.e. a checkbox.
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 
@@ -25,12 +32,12 @@
 
 /** The sdl-tk toggle-type widget object. */
 struct sdl_tk_widget_toggle {
-	struct sdl_tk_widget base;
+	struct sdl_tk_widget base;   /**< Widget base class. */
 
-	sdl_tk_widget_toggle_cb  cb;
-	void                    *pw;
+	sdl_tk_widget_toggle_cb  cb; /**< Client callback for value changes. */
+	void                    *pw; /**< Client private word. */
 
-	bool value;
+	bool value; /**< Current value. */
 };
 
 /**
@@ -66,6 +73,12 @@ static void sdl_tk_widget_toggle_render(
 	SDL_TK_UNUSED(y);
 }
 
+/**
+ * Set the toggle widget to a new value.
+ *
+ * \param[in]  toggle  The toggle widget to update.
+ * \param[in]  value   The new value to set.
+ */
 static void set_value(
 		struct sdl_tk_widget_toggle *toggle,
 		bool value)
