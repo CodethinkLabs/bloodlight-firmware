@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the Action widget.
+ *
+ * This is an action widget, i.e. a button.
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 
@@ -25,10 +32,10 @@
 
 /** The sdl-tk action-type widget object. */
 struct sdl_tk_widget_action {
-	struct sdl_tk_widget base;
+	struct sdl_tk_widget base;  /**< Widget base class. */
 
-	sdl_tk_widget_action_cb cb;
-	void *pw;
+	sdl_tk_widget_action_cb cb; /**< Callback for performaing action. */
+	void *pw;                   /**< Client private word. */
 };
 
 /**
