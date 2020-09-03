@@ -38,3 +38,9 @@ sdl-tk.a: $(LIB_OBJ)
 $(LIB_OBJ): $(BUILDDIR)/%.o : %.c
 	@$(MKDIR) $(BUILDDIR)/src/widget
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+docs:
+	$(MKDIR) build/docs
+	doxygen docs/doxygen.conf
+
+.PHONY: all clean docs
