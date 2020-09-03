@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the Menu widget.
+ *
+ * This is a menu widget supporting submenus.
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 
@@ -34,19 +41,19 @@ enum sdl_tk_widget_state {
 
 /** Menu entry object. */
 struct sdl_tk_widget_menu_entry {
-	struct sdl_tk_text       *title[SDL_TK_WIDGET__COUNT];
-	const struct sdl_tk_text *detail[SDL_TK_WIDGET__COUNT];
-	struct sdl_tk_widget     *widget;
+	struct sdl_tk_text       *title[SDL_TK_WIDGET__COUNT];  /**< Name. */
+	const struct sdl_tk_text *detail[SDL_TK_WIDGET__COUNT]; /**< Detail. */
+	struct sdl_tk_widget     *widget;                       /**< Widget. */
 };
 
 /** The sdl-tk menu-type widget object. */
 struct sdl_tk_widget_menu {
-	struct sdl_tk_widget  base;
-	struct sdl_tk_text   *title;
+	struct sdl_tk_widget  base;  /**< Widget base class. */
+	struct sdl_tk_text   *title; /**< Menu title. */
 
-	struct sdl_tk_widget_menu_entry *entries;
-	unsigned                         count;
-	unsigned                         current;
+	struct sdl_tk_widget_menu_entry *entries; /**< Menu entries. */
+	unsigned                         count;   /**< Menu entry count. */
+	unsigned                         current; /**< Current menu entry. */
 };
 
 /**
@@ -73,6 +80,13 @@ static void sdl_tk_widget_menu_destroy(
 	free(menu);
 }
 
+/**
+ * Get the current state of an entry.
+ *
+ * \param[in]  menu   Menu containing the entry.
+ * \param[in]  entry  Menu entry to get state of.
+ * \return menu entry's current state.
+ */
 static enum sdl_tk_widget_state sdl_tk_entry_state(
 		const struct sdl_tk_widget_menu *menu,
 		const struct sdl_tk_widget_menu_entry *entry)
