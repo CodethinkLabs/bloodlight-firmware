@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for the Input widget.
+ *
+ * This is single-line text input widget.
+ */
+
 #ifndef SDL_TK_WIDGET_INPUT_H
 #define SDL_TK_WIDGET_INPUT_H
 
