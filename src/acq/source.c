@@ -16,7 +16,7 @@ typedef struct
 	bl_acq_adc_t   **adc;
 	uint8_t          adc_channel;
 	uint32_t         adc_ccr_flag;
-	bool             enable;
+	uint32_t         enable;
 
 	union bl_msg_data *msg;
 
@@ -34,7 +34,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc2,
 		.adc_channel  = 1,
 		.adc_ccr_flag = 0,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_PD2] = {
 		.gpio_port    = GPIOA,
@@ -44,7 +44,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc1,
 		.adc_channel  = 4,
 		.adc_ccr_flag = 0,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_PD3] = {
 		.gpio_port    = GPIOA,
@@ -54,7 +54,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc2,
 		.adc_channel  = 4,
 		.adc_ccr_flag = 0,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_PD4] = {
 		.gpio_port    = GPIOA,
@@ -64,7 +64,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc2,
 		.adc_channel  = 2,
 		.adc_ccr_flag = 0,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_3V3] = {
 		.gpio_port    = GPIOA,
@@ -74,7 +74,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc1,
 		.adc_channel  = 2,
 		.adc_ccr_flag = 0,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_5V0] = {
 		.gpio_port    = GPIOA,
@@ -84,7 +84,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc1,
 		.adc_channel  = 3,
 		.adc_ccr_flag = 0,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_TMP] = {
 		.gpio_port    = 0,
@@ -93,7 +93,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc1,
 		.adc_channel  = ADC_CHANNEL_TEMP,
 		.adc_ccr_flag = ADC_CCR_TSEN,
-		.enable       = false,
+		.enable       = 0,
 	},
 #else
 	[BL_ACQ_PD1] = {
@@ -102,7 +102,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.opamp        = &bl_acq_opamp3,
 		.opamp_used   = true,
 		.adc          = NULL,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_PD2] = {
 		.gpio_port    = GPIOB,
@@ -110,7 +110,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.opamp        = &bl_acq_opamp4,
 		.opamp_used   = true,
 		.adc          = NULL,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_PD3] = {
 		.gpio_port    = GPIOB,
@@ -118,7 +118,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.opamp        = &bl_acq_opamp6,
 		.opamp_used   = true,
 		.adc          = NULL,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_PD4] = {
 		.gpio_port    = GPIOA,
@@ -126,7 +126,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.opamp        = &bl_acq_opamp1,
 		.opamp_used   = true,
 		.adc          = NULL,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_3V3] = {
 		.gpio_port    = 0,
@@ -135,7 +135,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc1,
 		.adc_channel  = ADC_CHANNEL_VBAT,
 		.adc_ccr_flag = ADC_CCR_VBATEN,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_5V0] = {
 		.gpio_port    = GPIOA,
@@ -145,7 +145,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc2,
 		.adc_channel  = 4,
 		.adc_ccr_flag = 0,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_TMP] = {
 		.gpio_port    = 0,
@@ -154,7 +154,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.adc          = &bl_acq_adc1,
 		.adc_channel  = ADC_CHANNEL_TEMP,
 		.adc_ccr_flag = ADC_CCR_TSEN,
-		.enable       = false,
+		.enable       = 0,
 	},
 	[BL_ACQ_EXT] = {
 		.gpio_port    = GPIOB,
@@ -162,7 +162,7 @@ static bl_acq_source_t bl_acq_source[] =
 		.opamp        = &bl_acq_opamp5,
 		.opamp_used   = true,
 		.adc          = NULL,
-		.enable       = false,
+		.enable       = 0,
 	},
 #endif
 };
@@ -199,7 +199,8 @@ void bl_acq_source_enable(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (src->enable) {
+	src->enable++;
+	if (src->enable > 1) {
 		/* Already enabled. */
 		return;
 	}
@@ -226,13 +227,20 @@ void bl_acq_source_enable(enum bl_acq_source source)
 		src->msg->sample_data.count    = 0;
 		src->msg->sample_data.reserved = 0x00;
 	}
-
-	src->enable = true;
 }
 
 void bl_acq_source_disable(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
+
+	if (src->enable == 0) {
+		return;
+	}
+
+	src->enable--;
+	if (src->enable > 0) {
+		return;
+	}
 
 	if ((src->adc != NULL) && (src->config.opamp_gain <= 1)) {
 		bl_acq_adc_disable(*(src->adc), src->adc_ccr_flag);
@@ -241,8 +249,6 @@ void bl_acq_source_disable(enum bl_acq_source source)
 	}
 
 	/* Don't need to do anything here to disable GPIO (it is floating). */
-
-	src->enable = false;
 
 	/* Send remaining queued samples. */
 	union bl_msg_data *msg = src->msg;
@@ -283,10 +289,6 @@ bl_acq_timer_t * bl_acq_source_get_timer(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (!src->config.enable) {
-		return NULL;
-	}
-
 	if (src->opamp_used) {
 		bl_acq_adc_t *adc = bl_acq_opamp_get_adc(
 				*(src->opamp), NULL);
@@ -300,7 +302,7 @@ bl_acq_opamp_t * bl_acq_source_get_opamp(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (!src->config.enable || !src->opamp_used) {
+	if (!src->opamp_used) {
 		return NULL;
 	}
 
@@ -324,10 +326,6 @@ bl_acq_adc_t * bl_acq_source_get_adc(enum bl_acq_source source,
 	uint8_t *adc_channel)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
-
-	if (!src->config.enable) {
-		return NULL;
-	}
 
 	if (src->opamp_used) {
 		return bl_acq_opamp_get_adc(*(src->opamp), adc_channel);
