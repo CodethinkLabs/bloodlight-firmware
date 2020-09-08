@@ -14,9 +14,17 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to the device module.
+ *
+ * This module handles controlling the device and receiving messages.
+ */
+
 #ifndef BV_DEVICE_H
 #define BV_DEVICE_H
 
+/** List of device states. */
 typedef enum device_state {
 	DEVICE_STATE_NONE,
 	DEVICE_STATE_IDLE,
@@ -37,9 +45,9 @@ typedef void (* device_state_change_cb)(
  *
  * This will try to connect to a device, and fail if it can't.
  *
- * \param[in]  device Node to open, or NULL for device discovery.
- * \param[in]  cb     Callback to handle 
- * \param[in]  pw     Client private context data.
+ * \param[in]  dev_path Node to open, or NULL for device discovery.
+ * \param[in]  cb       Callback to handle device state changes.
+ * \param[in]  pw       Client private context data.
  * \return true on success, or false on error.
  */
 bool device_init(

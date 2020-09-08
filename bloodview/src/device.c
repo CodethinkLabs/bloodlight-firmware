@@ -14,6 +14,16 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the device module.
+ *
+ * This module handles controlling the device and receiving messages.
+ *
+ * The device is opened on the main thread, and a device thread is created
+ * for interacting with the device.
+ */
+
 #include <time.h>
 #include <stdio.h>
 #include <assert.h>
@@ -42,21 +52,21 @@
 
 /** Device module global context. */
 static struct {
-	locked_uint_t state;
-	int           dev_fd;
+	locked_uint_t state;  /**< Mutex locked device state. */
+	int           dev_fd; /**< Device file descriptor. */
 
-	device_state_change_cb  cb;
-	void                   *pw;
+	device_state_change_cb  cb; /**< Device state change callback. */
+	void                   *pw; /**< Client private data. */
 
-	volatile bool quit;
-	pthread_t     thread_id;
+	volatile bool quit;      /**< Whether the device thread should exit. */
+	pthread_t     thread_id; /**< The device thread. */
 
-	union bl_msg_data msg[MSG_FIFO_MAX];
-	unsigned          msg_next_free;
-	unsigned          msg_next_queued;
-	locked_uint_t     msg_used;
+	union bl_msg_data msg[MSG_FIFO_MAX]; /**< Message queue for sending. */
+	unsigned          msg_next_free;     /**< Free slot in message queue. */
+	unsigned          msg_next_queued;   /**< Next message to be sent. */
+	locked_uint_t     msg_used;          /**< Occupancy of message queue. */
 
-	FILE *rec;
+	FILE *rec; /**< File for acquisition recordings. */
 } bv_device_g;
 
 /**
@@ -285,8 +295,8 @@ static bool device__thread_send_msg(
  *
  * \param[in]  sent_type  The type of any outstanding sent message.
  * \param[in]  recv_msg   The incoming response message to handle.
- * \return BL_MSG__COUNT if the \ref recv_msg was a response to \ref sent_type,
- *         or \ref sent_type otherwise.
+ * \return BL_MSG__COUNT if the recv_msg was a response to sent_type,
+ *         or sent_type otherwise.
  */
 static enum bl_msg_type device__thread_receive_msg_response(
 		const enum bl_msg_type  *sent_type,
@@ -564,7 +574,13 @@ static bool device__queue_channel_conf_messages(bool calibrate)
 	return true;
 }
 
-/* Exported function, documented in device.h */
+/**
+ * Start an acquisition.
+ *
+ * \param[in]  ctx_string  A context for printing in logging messages.
+ * \param[in]  calibrate   True if acquisition is for calibration.
+ * \return true on success, or false on error.
+ */
 static bool device__start(
 		const char *ctx_string,
 		bool calibrate)
