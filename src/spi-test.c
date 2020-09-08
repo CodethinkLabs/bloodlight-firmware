@@ -14,22 +14,29 @@
  * limitations under the License.
  */
 
+#include <libopencm3/stm32/spi.h>
+
 #include "bl.h"
+#include "spi.h"
 #include "led.h"
 
 static void bl_spi_test(void)
 {
-	uint16_t counter = 0;
+	uint8_t tx_counter = 0;
+
+	bl_spi_init();
 	bl_led_set(0xFFFF);
 	while (1)
 	{
-		for (int i = 0; i < 1000000; i++)
+		spi_send8(SPI2, tx_counter);
+		uint8_t rx_counter = spi_read8(SPI2);
+		for (int i = 0; i < 2000000; i++)
 		{
 			__asm__("nop");
 		}
 
-		bl_led_set(counter << 8);
-		counter++;
+		bl_led_set(rx_counter << 8);
+		tx_counter++;
 	}
 }
 
