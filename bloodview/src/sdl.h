@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to the SDL module.
+ *
+ * This module handles interaction with SDL.
+ */
+
 #ifndef BV_SDL_H
 #define BV_SDL_H
 
