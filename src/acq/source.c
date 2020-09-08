@@ -18,7 +18,9 @@ typedef struct
 	uint32_t         adc_ccr_flag;
 	uint32_t         enable;
 
-	union bl_msg_data *msg;
+	uint8_t channel_count;
+	uint8_t channel[BL_ACQ_CHANNEL_COUNT];
+	uint8_t channel_current;
 
 	bl_acq_source_config_t config;
 } bl_acq_source_t;
@@ -195,6 +197,19 @@ enum bl_error bl_acq_source_configure(enum bl_acq_source source)
 	return BL_ERROR_NONE;
 }
 
+void bl_acq_source_assign_channel(enum bl_acq_source source, unsigned channel)
+{
+	bl_acq_source_t *src = &bl_acq_source[source];
+
+	for (unsigned i = 0; i < src->channel_count; i++) {
+		if (src->channel[i] == channel) {
+			return;
+		}
+	}
+
+	src->channel[src->channel_count++] = channel;
+}
+
 void bl_acq_source_enable(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
@@ -216,16 +231,6 @@ void bl_acq_source_enable(enum bl_acq_source source)
 		bl_acq_opamp_enable(*(src->opamp));
 	} else if (src->adc != NULL) {
 		bl_acq_adc_enable(*(src->adc), src->adc_ccr_flag);
-	}
-
-	/* Initialize message queue. */
-	src->msg = bl_mq_acquire(source);
-	if (src->msg != NULL) {
-		src->msg->type = config->sample32 ?
-			BL_MSG_SAMPLE_DATA32 : BL_MSG_SAMPLE_DATA16;
-		src->msg->sample_data.channel  = source;
-		src->msg->sample_data.count    = 0;
-		src->msg->sample_data.reserved = 0x00;
 	}
 }
 
@@ -249,27 +254,6 @@ void bl_acq_source_disable(enum bl_acq_source source)
 	}
 
 	/* Don't need to do anything here to disable GPIO (it is floating). */
-
-	/* Send remaining queued samples. */
-	union bl_msg_data *msg = src->msg;
-		if (msg != NULL) {
-		bool pending;
-		switch (msg->type) {
-		case BL_MSG_SAMPLE_DATA16:
-		case BL_MSG_SAMPLE_DATA32:
-			pending = (msg->sample_data.count > 0);
-			break;
-		default:
-			pending = false;
-			break;
-		}
-
-		if (pending) {
-			bl_mq_commit(source);
-		}
-
-		src->msg = NULL;
-	}
 }
 
 bool bl_acq_source_is_enabled(enum bl_acq_source source)
@@ -337,61 +321,8 @@ bl_acq_adc_t *bl_acq_source_get_adc(enum bl_acq_source source,
 	return *(src->adc);
 }
 
-
-static inline uint16_t bl_acq_sample_pack16(
-		uint32_t sample, uint32_t offset, uint8_t shift)
-{
-	if (sample < offset) return 0;
-	sample -= offset;
-	sample >>= shift;
-	return (sample > 0xFFFF) ? 0xFFFF : sample;
-}
-
-void bl_acq_source_commit_sample(enum bl_acq_source source, uint32_t sample)
+uint8_t bl_acq_source_get_channel(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
-	const bl_acq_source_config_t *config = &src->config;
-
-	union bl_msg_data *msg = src->msg;
-	/* Note: We don't check for NULL due to cost. */
-
-	if (config->sample32) {
-		uint8_t count = msg->sample_data.count++;
-		msg->sample_data.data32[count] = sample;
-
-		if (msg->sample_data.count >= MSG_SAMPLE_DATA32_MAX) {
-			bl_mq_commit(source);
-			msg = bl_mq_acquire(source);
-
-			/* Note: We dont' check for failure to acquire a msg
-			 * due to the cost of checking in an interrupt. */
-
-			msg->type = BL_MSG_SAMPLE_DATA32;
-			msg->sample_data.channel  = source;
-			msg->sample_data.count    = 0;
-			msg->sample_data.reserved = 0;
-
-			src->msg = msg;
-		}
-	} else {
-		uint8_t count = msg->sample_data.count++;
-		uint16_t sample16 = bl_acq_sample_pack16(sample,
-				config->sw_offset, config->sw_shift);
-		msg->sample_data.data16[count] = sample16;
-
-		if (msg->sample_data.count >= MSG_SAMPLE_DATA16_MAX) {
-			bl_mq_commit(source);
-			msg = bl_mq_acquire(source);
-
-			/* Note: We dont' check for failure to acquire a msg
-			 * due to the cost of checking in an interrupt. */
-
-			msg->type = BL_MSG_SAMPLE_DATA16;
-			msg->sample_data.channel  = source;
-			msg->sample_data.count    = 0;
-			msg->sample_data.reserved = 0;
-
-			src->msg = msg;
-		}
-	}
+	return src->channel[src->channel_current];
 }

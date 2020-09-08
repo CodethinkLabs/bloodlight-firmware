@@ -30,7 +30,7 @@ extern bl_acq_adc_t *bl_acq_adc5;
 void bl_acq_adc_calibrate(bl_acq_adc_t *adc);
 
 enum bl_error bl_acq_adc_channel_configure(bl_acq_adc_t *adc,
-	uint8_t channel, uint8_t index);
+	uint8_t channel, uint8_t source);
 enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 		uint32_t frequency, uint32_t sw_oversample,
 		uint8_t oversample, uint8_t shift);

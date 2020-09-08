@@ -1,6 +1,7 @@
 #include "adc.h"
 #include "rcc.h"
 #include "source.h"
+#include "channel.h"
 
 #include "../util.h"
 #include "../delay.h"
@@ -199,7 +200,7 @@ typedef struct
 {
 	unsigned channel_count;
 	uint8_t  channel_adc[ADC_CHANNEL_COUNT];
-	uint8_t  channel_index[ADC_CHANNEL_COUNT];
+	uint8_t  channel_source[ADC_CHANNEL_COUNT];
 	uint8_t  smp[ADC_CHANNEL_COUNT];
 } bl_acq_adc_config_t;
 
@@ -397,12 +398,12 @@ void bl_acq_adc_calibrate(bl_acq_adc_t *adc)
 }
 
 enum bl_error bl_acq_adc_channel_configure(bl_acq_adc_t *adc,
-	uint8_t channel, uint8_t index)
+	uint8_t channel, uint8_t source)
 {
 	bl_acq_adc_config_t *config = &adc->config;
 
 	config->channel_adc[config->channel_count] = channel;
-	config->channel_index[config->channel_count] = index;
+	config->channel_source[config->channel_count] = source;
 	config->channel_count++;
 
 	return BL_ERROR_NONE;
@@ -648,8 +649,9 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 	}
 
 	for (unsigned c = 0; c < adc->config.channel_count; c++) {
-		bl_acq_source_commit_sample(
-				adc->config.channel_index[c], sample[c]);
+		unsigned channel = bl_acq_source_get_channel(
+				adc->config.channel_source[c]);
+		bl_acq_channel_commit_sample(channel, sample[c]);
 	}
 }
 

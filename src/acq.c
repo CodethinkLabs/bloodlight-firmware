@@ -97,11 +97,22 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
+	/* For now, channels have a direct mapping to sources. */
+	uint16_t acq_chan_mask = src_mask;
+
+	/* Get source list from channels */
+	uint16_t acq_src_mask = 0;
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if ((acq_chan_mask & (1U << i)) != 0) {
+			acq_src_mask |= (1U << bl_acq_channel_get_source(i));
+		}
+	}
+
 	enum bl_acq_source src[BL_ACQ__SRC_COUNT];
 	unsigned           src_count = 0;
 
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		if ((src_mask & (1U << i)) != 0) {
+		if ((acq_src_mask & (1U << i)) != 0) {
 			src[src_count++] = i;
 		}
 	}
@@ -291,6 +302,13 @@ enum bl_error bl_acq_start(
 		}
 	}
 
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if (acq_chan_mask & (1U << i)) {
+			enum bl_acq_source source = bl_acq_channel_get_source(i);
+			bl_acq_source_assign_channel(source, i);
+		}
+	}
+
 	/* Configure ADCs. */
 	for (unsigned i = 0; i < src_count; i++) {
 		bl_acq_source_config_t *config =
@@ -313,12 +331,9 @@ enum bl_error bl_acq_start(
 	}
 
 	/* Enable all of the channels. */
-	for (unsigned i = 0; i < src_count; i++) {
-		bl_acq_source_config_t *config =
-				bl_acq_source_get_config(src[i]);
-
-		if (config->enable) {
-			bl_acq_source_enable(src[i]);
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if (acq_chan_mask & (1U << i)) {
+			bl_acq_channel_enable(i);
 		}
 	}
 
@@ -337,21 +352,29 @@ enum bl_error bl_acq_channel_conf(
 		uint32_t offset,
 		bool     sample32)
 {
+	enum bl_error err;
+
+	if (bl_acq_channel_is_enabled(index)) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+
+	err = bl_acq_channel_configure(index, index, sample32, offset, shift);
+	if (err != BL_ERROR_NONE) {
+		return err;
+	}
+
+	/* TODO: Split out source config command into new host msg. */
 	if (bl_acq_source_is_enabled(index)) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-
-	bl_acq_source_config_t *config = bl_acq_source_get_config(index);
+	bl_acq_source_config_t *src_config = bl_acq_source_get_config(index);
 
 	/* Config setting is incomplete here so validation is done later. */
 
-	config->opamp_gain   = gain;
-	config->opamp_offset = 0;
-	config->shift        = 0;
-	config->sw_shift     = shift;
-	config->sw_offset    = offset;
-	config->sample32     = sample32;
+	src_config->opamp_gain   = gain;
+	src_config->opamp_offset = 0;
+	src_config->shift        = 0;
 
 	return BL_ERROR_NONE;
 }
@@ -364,9 +387,9 @@ enum bl_error bl_acq_abort(void)
 	bl_acq_is_active = false;
 
 	/* Disable all channels. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		if (bl_acq_source_is_enabled(i)) {
-			bl_acq_source_disable(i);
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if (bl_acq_channel_is_enabled(i)) {
+			bl_acq_channel_disable(i);
 		}
 	}
 

@@ -14,7 +14,8 @@ CFILES = \
 	src/acq/dma.c \
 	src/acq/adc.c \
 	src/acq/opamp.c \
-	src/acq/source.c
+	src/acq/source.c \
+	src/acq/channel.c
 
 REVISION ?= 1
 CFLAGS += -DBL_REVISION=$(REVISION)
