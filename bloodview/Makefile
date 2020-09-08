@@ -26,6 +26,7 @@ BV_SRC = \
 	src/bloodview.c \
 	src/main-menu.c \
 	src/data-avg.c \
+	src/data-cal.c \
 	src/device.c \
 	src/graph.c \
 	src/data.c \

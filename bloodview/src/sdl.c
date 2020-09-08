@@ -222,6 +222,7 @@ void sdl_present(void)
 
 	graph_render(ctx.ren, &r);
 
+	main_menu_update();
 	sdl_tk_widget_render(ctx.main_menu, ctx.ren, ctx.w / 2, ctx.h / 2);
 	SDL_RenderPresent(ctx.ren);
 }

@@ -25,6 +25,11 @@
 struct sdl_tk_widget *main_menu_create(void);
 
 /**
+ * Update the main menu state.
+ */
+void main_menu_update(void);
+
+/**
  * Get the LED mask.
  *
  * \return the led mask to use.

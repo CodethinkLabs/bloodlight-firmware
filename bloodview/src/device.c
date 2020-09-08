@@ -21,8 +21,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <pthread.h>
-
 #include "../../src/msg.h"
 #include "../../tools/msg.h"
 #include "../../tools/device.h"
@@ -30,6 +28,7 @@
 #include "data.h"
 #include "util.h"
 #include "device.h"
+#include "locked.h"
 #include "main-menu.h"
 
 /** Special code for indicating the start of an acquisition. */
@@ -37,80 +36,6 @@
 
 /** Special code for indicating the start of a calibration. */
 #define MSG_START_SPECIAL_ACQ ((enum bl_msg_type) 254)
-
-/** A locked unsigned integer. */
-typedef struct locked_uint {
-	pthread_mutex_t lock;
-	unsigned        value;
-} locked_uint_t;
-
-/**
- * Check whether a locked value is equal to a given value.
- *
- * \param[in]  lu     Locked unsigned value to check.
- * \param[in]  value  The value to compare against.
- * \return true if the locked unsigned value is equal to the given value.
- */
-static inline bool locked_uint_is_equal(
-		locked_uint_t *lu,
-		unsigned value)
-{
-	bool ret;
-
-	pthread_mutex_lock(&lu->lock);
-	ret = (lu->value == value);
-	pthread_mutex_unlock(&lu->lock);
-
-	return ret;
-}
-
-/**
- * Increment a locked unsigned value.
- *
- * \param[in]  lu  Locked unsigned value to change.
- */
-static inline void locked_uint_inc(
-		locked_uint_t *lu)
-{
-	pthread_mutex_lock(&lu->lock);
-	lu->value++;
-	pthread_mutex_unlock(&lu->lock);
-}
-
-/**
- * Decrement a locked unsigned value.
- *
- * \param[in]  lu  Locked unsigned value to change.
- */
-static inline void locked_uint_dec(
-		locked_uint_t *lu)
-{
-	pthread_mutex_lock(&lu->lock);
-	lu->value--;
-	pthread_mutex_unlock(&lu->lock);
-}
-
-/**
- * Set a locked unsigned value.
- *
- * \param[in]  lu     Locked unsigned value to change.
- * \param[in]  value  New value.
- * \return true if the locked value changed, false otherwise.
- */
-static inline bool locked_uint_set(
-		locked_uint_t *lu,
-		unsigned value)
-{
-	bool ret = false;
-
-	pthread_mutex_lock(&lu->lock);
-	if (lu->value != value) {
-		lu->value = value;
-		ret = true;
-	}
-	pthread_mutex_unlock(&lu->lock);
-	return ret;
-}
 
 /** Maximum number of messages that can be queued for sending. */
 #define MSG_FIFO_MAX 16

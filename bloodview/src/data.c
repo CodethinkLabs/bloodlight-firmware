@@ -24,6 +24,7 @@
 #include "util.h"
 #include "graph.h"
 #include "data-avg.h"
+#include "data-cal.h"
 #include "main-menu.h"
 #include "data-invert.h"
 
@@ -160,6 +161,62 @@ static struct data_filter *data__allocate_filter(void)
 	memset(filter, 0, sizeof(*filter));
 
 	return filter;
+}
+
+/**
+ * Resister the calibration filter, if enabled.
+ *
+ * \param[in]  frequency  The sampling frequency.
+ * \param[in]  channels   The number of channels.
+ * \param[in]  src_mask   Mask of enabled sources.
+ * \return true on success, or false on error.
+ */
+static bool data__register_calibrate(
+		unsigned frequency,
+		unsigned channels,
+		uint32_t src_mask)
+{
+	struct data_filter *filter;
+
+	filter = data__allocate_filter();
+	if (filter == NULL) {
+		return false;
+	}
+
+	filter->ctx = data_cal_init(frequency, channels, src_mask);
+	if (filter->ctx == NULL) {
+		/* No need to free the filter, it's already owned by the
+		 * global state. */
+		return false;
+	}
+
+	filter->fini = data_cal_fini;
+	filter->proc = data_cal_proc;
+
+	data_g.count++;
+	return true;
+}
+
+/**
+ * Resister the sample value recovery filter, if required.
+ *
+ * This revovers the true values for calibrated channels.
+ *
+ * \param[in]  frequency  The sampling frequency.
+ * \param[in]  channels   The number of channels.
+ * \param[in]  src_mask   Mask of enabled sources.
+ * \return true on success, or false on error.
+ */
+static bool data__register_recover(
+		unsigned frequency,
+		unsigned channels,
+		uint32_t src_mask)
+{
+	BV_UNUSED(frequency);
+	BV_UNUSED(channels);
+	BV_UNUSED(src_mask);
+
+	return true;
 }
 
 /**
@@ -301,7 +358,18 @@ static bool data__register_filters(
 		unsigned channels,
 		uint32_t src_mask)
 {
-	BV_UNUSED(calibrate);
+	if (calibrate) {
+		if (!data__register_calibrate(
+				frequency, channels, src_mask)) {
+			return false;
+		}
+	} else {
+		if (!data__register_recover(
+				frequency, channels, src_mask)) {
+			return false;
+		}
+	}
+
 
 	if (!data__register_invert(frequency, channels, src_mask)) {
 		return false;
