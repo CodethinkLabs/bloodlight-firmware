@@ -65,6 +65,7 @@ void bl_init(void)
 	bl_acq_init(rcc_config->ahb_frequency);
 }
 
+#ifndef BL_SPI_TEST
 int main(void)
 {
 	bl_init();
@@ -75,3 +76,4 @@ int main(void)
 		bl_usb_poll();
 	}
 }
+#endif

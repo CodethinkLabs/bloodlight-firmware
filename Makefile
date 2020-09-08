@@ -32,6 +32,11 @@ else
 	CFILES += src/acq/dac.c
 endif
 
+ifdef SPI-TEST
+	CFILES += src/spi-test.c
+	CFLAGS += -DBL_SPI_TEST
+endif
+
 # You shouldn't have to edit anything below here.
 OPENCM3_DIR=libopencm3
 
