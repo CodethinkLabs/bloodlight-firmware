@@ -58,3 +58,9 @@ $(BV_OBJ): $(BUILDDIR)/%.o : %.c
 # We need to run with sudo to open the device.
 run: bloodview
 	@sudo $(BLOODVIEW_ENV) ./bloodview
+
+docs:
+	$(MKDIR) build/docs
+	doxygen docs/doxygen.conf
+
+.PHONY: all clean docs
