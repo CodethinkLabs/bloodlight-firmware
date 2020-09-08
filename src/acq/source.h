@@ -1,5 +1,5 @@
-#ifndef BL_ACQ_CHANNEL_H
-#define BL_ACQ_CHANNEL_H
+#ifndef BL_ACQ_SOURCE_H
+#define BL_ACQ_SOURCE_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -38,37 +38,37 @@ typedef struct  {
 	uint8_t  sw_shift;
 
 	bool     sample32;
-} bl_acq_channel_config_t;
+} bl_acq_source_config_t;
 
 
-void bl_acq_channel_calibrate(enum bl_acq_source source);
+void bl_acq_source_calibrate(enum bl_acq_source source);
 
-enum bl_error bl_acq_channel_configure(enum bl_acq_source source);
+enum bl_error bl_acq_source_configure(enum bl_acq_source source);
 
-void bl_acq_channel_enable(enum bl_acq_source source);
-void bl_acq_channel_disable(enum bl_acq_source source);
+void bl_acq_source_enable(enum bl_acq_source source);
+void bl_acq_source_disable(enum bl_acq_source source);
 
-bool bl_acq_channel_is_enabled(enum bl_acq_source source);
+bool bl_acq_source_is_enabled(enum bl_acq_source source);
 
-bl_acq_channel_config_t *bl_acq_channel_get_config(enum bl_acq_source source);
+bl_acq_source_config_t *bl_acq_source_get_config(enum bl_acq_source source);
 
 #include "timer.h"
-bl_acq_timer_t *bl_acq_channel_get_timer(enum bl_acq_source source);
+bl_acq_timer_t *bl_acq_source_get_timer(enum bl_acq_source source);
 
 #include "opamp.h"
-bl_acq_opamp_t *bl_acq_channel_get_opamp(enum bl_acq_source source);
+bl_acq_opamp_t *bl_acq_source_get_opamp(enum bl_acq_source source);
 
 #if (BL_REVISION >= 2)
 #include "dac.h"
-bl_acq_dac_t *bl_acq_channel_get_dac(enum bl_acq_source source,
+bl_acq_dac_t *bl_acq_source_get_dac(enum bl_acq_source source,
 		uint8_t *dac_channel);
 #endif
 
 #include "adc.h"
-bl_acq_adc_t *bl_acq_channel_get_adc(enum bl_acq_source source,
+bl_acq_adc_t *bl_acq_source_get_adc(enum bl_acq_source source,
 		uint8_t *adc_channel);
 
-void bl_acq_channel_commit_sample(enum bl_acq_source source, uint32_t sample);
+void bl_acq_source_commit_sample(enum bl_acq_source source, uint32_t sample);
 
 #endif
 

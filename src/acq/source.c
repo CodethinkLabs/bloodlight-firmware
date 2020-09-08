@@ -1,4 +1,4 @@
-#include "channel.h"
+#include "source.h"
 #include "opamp.h"
 #include "adc.h"
 
@@ -7,7 +7,6 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/adc.h>
 
- 
 typedef struct
 {
 	uint32_t         gpio_port;
@@ -21,10 +20,10 @@ typedef struct
 
 	union bl_msg_data *msg;
 
-	bl_acq_channel_config_t config;
-} bl_acq_channel_t;
+	bl_acq_source_config_t config;
+} bl_acq_source_t;
 
-static bl_acq_channel_t bl_acq_channel[] =
+static bl_acq_source_t bl_acq_source[] =
 {
 #if (BL_REVISION == 1)
 	[BL_ACQ_PD1] = {
@@ -168,86 +167,85 @@ static bl_acq_channel_t bl_acq_channel[] =
 #endif
 };
 
-
-void bl_acq_channel_calibrate(enum bl_acq_source source)
+void bl_acq_source_calibrate(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
+	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (channel->opamp) {
-		bl_acq_opamp_calibrate(*(channel->opamp));
+	if (src->opamp) {
+		bl_acq_opamp_calibrate(*(src->opamp));
 	}
 
-	if (channel->adc) {
-		bl_acq_adc_calibrate(*(channel->adc));
+	if (src->adc) {
+		bl_acq_adc_calibrate(*(src->adc));
 	}
 }
 
-enum bl_error bl_acq_channel_configure(enum bl_acq_source source)
+enum bl_error bl_acq_source_configure(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
-	bl_acq_channel_config_t *config = &channel->config;
+	bl_acq_source_t *src = &bl_acq_source[source];
+	bl_acq_source_config_t *config = &src->config;
 
 	bool opamp_needed = (config->opamp_gain > 1) ||
 			(config->opamp_offset != 0);
-	if (opamp_needed && (channel->opamp == NULL)) {
+	if (opamp_needed && (src->opamp == NULL)) {
 		return BL_ERROR_HARDWARE_CONFLICT;
 	}
 
-	channel->opamp_used = opamp_needed || (channel->adc == NULL);
+	src->opamp_used = opamp_needed || (src->adc == NULL);
 	return BL_ERROR_NONE;
 }
 
-void bl_acq_channel_enable(enum bl_acq_source source)
+void bl_acq_source_enable(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
+	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (channel->enable) {
+	if (src->enable) {
 		/* Already enabled. */
 		return;
 	}
 
-	if (channel->gpio_port != 0) {
-		gpio_mode_setup(channel->gpio_port, GPIO_MODE_ANALOG,
-				GPIO_PUPD_NONE, (1U << channel->gpio_pin));
+	if (src->gpio_port != 0) {
+		gpio_mode_setup(src->gpio_port, GPIO_MODE_ANALOG,
+				GPIO_PUPD_NONE, (1U << src->gpio_pin));
 	}
 
-	const bl_acq_channel_config_t *config = &channel->config;
+	const bl_acq_source_config_t *config = &src->config;
 
-	if (channel->opamp_used && (channel->opamp != NULL)) {
-		bl_acq_opamp_enable(*(channel->opamp));
-	} else if (channel->adc != NULL) {
-		bl_acq_adc_enable(*(channel->adc), channel->adc_ccr_flag);
+	if (src->opamp_used && (src->opamp != NULL)) {
+		bl_acq_opamp_enable(*(src->opamp));
+	} else if (src->adc != NULL) {
+		bl_acq_adc_enable(*(src->adc), src->adc_ccr_flag);
 	}
 
 	/* Initialize message queue. */
-	channel->msg = bl_mq_acquire(source);
-	if (channel->msg != NULL) {
-		channel->msg->type = channel->config.sample32 ?
+	src->msg = bl_mq_acquire(source);
+	if (src->msg != NULL) {
+		src->msg->type = config->sample32 ?
 			BL_MSG_SAMPLE_DATA32 : BL_MSG_SAMPLE_DATA16;
-		channel->msg->sample_data.channel  = source;
-		channel->msg->sample_data.count    = 0;
-		channel->msg->sample_data.reserved = 0x00;
+		src->msg->sample_data.channel  = source;
+		src->msg->sample_data.count    = 0;
+		src->msg->sample_data.reserved = 0x00;
 	}
 
-	channel->enable = true;
+	src->enable = true;
 }
 
-void bl_acq_channel_disable(enum bl_acq_source source)
+void bl_acq_source_disable(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
+	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if ((channel->adc != NULL) && (channel->config.opamp_gain <= 1)) {
-		bl_acq_adc_disable(*(channel->adc), channel->adc_ccr_flag);
-	} else if (channel->opamp != NULL) {
-		bl_acq_opamp_disable(*(channel->opamp));
+	if ((src->adc != NULL) && (src->config.opamp_gain <= 1)) {
+		bl_acq_adc_disable(*(src->adc), src->adc_ccr_flag);
+	} else if (src->opamp != NULL) {
+		bl_acq_opamp_disable(*(src->opamp));
 	}
 
 	/* Don't need to do anything here to disable GPIO (it is floating). */
 
-	channel->enable = false;
+	src->enable = false;
 
 	/* Send remaining queued samples. */
-	union bl_msg_data *msg = channel->msg;
+	union bl_msg_data *msg = src->msg;
 		if (msg != NULL) {
 		bool pending;
 		switch (msg->type) {
@@ -264,57 +262,56 @@ void bl_acq_channel_disable(enum bl_acq_source source)
 			bl_mq_commit(source);
 		}
 
-		channel->msg = NULL;
+		src->msg = NULL;
 	}
 }
 
-
-bool bl_acq_channel_is_enabled(enum bl_acq_source source)
+bool bl_acq_source_is_enabled(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
-	return channel->enable;
+	bl_acq_source_t *src = &bl_acq_source[source];
+	return src->enable;
 }
 
 
-bl_acq_channel_config_t *bl_acq_channel_get_config(enum bl_acq_source source)
+bl_acq_source_config_t *bl_acq_source_get_config(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
-	return &channel->config;
+	bl_acq_source_t *src = &bl_acq_source[source];
+	return &src->config;
 }
 
-bl_acq_timer_t * bl_acq_channel_get_timer(enum bl_acq_source source)
+bl_acq_timer_t * bl_acq_source_get_timer(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
+	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (!channel->config.enable) {
+	if (!src->config.enable) {
 		return NULL;
 	}
 
-	if (channel->opamp_used) {
+	if (src->opamp_used) {
 		bl_acq_adc_t *adc = bl_acq_opamp_get_adc(
-				*(channel->opamp), NULL);
+				*(src->opamp), NULL);
 		return bl_acq_adc_get_timer(adc);
 	}
 
-	return bl_acq_adc_get_timer(*(channel->adc));
+	return bl_acq_adc_get_timer(*(src->adc));
 }
 
-bl_acq_opamp_t * bl_acq_channel_get_opamp(enum bl_acq_source source)
+bl_acq_opamp_t * bl_acq_source_get_opamp(enum bl_acq_source source)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
+	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (!channel->config.enable || !channel->opamp_used) {
+	if (!src->config.enable || !src->opamp_used) {
 		return NULL;
 	}
 
-	return *(channel->opamp);
+	return *(src->opamp);
 }
 
 #if (BL_REVISION >= 2)
-bl_acq_dac_t * bl_acq_channel_get_dac(enum bl_acq_source source,
+bl_acq_dac_t * bl_acq_source_get_dac(enum bl_acq_source source,
 	uint8_t *dac_channel)
 {
-	bl_acq_opamp_t *opamp = bl_acq_channel_get_opamp(source);
+	bl_acq_opamp_t *opamp = bl_acq_source_get_opamp(source);
 	if (opamp == NULL) {
 		return NULL;
 	}
@@ -323,23 +320,23 @@ bl_acq_dac_t * bl_acq_channel_get_dac(enum bl_acq_source source,
 }
 #endif
 
-bl_acq_adc_t * bl_acq_channel_get_adc(enum bl_acq_source source,
+bl_acq_adc_t * bl_acq_source_get_adc(enum bl_acq_source source,
 	uint8_t *adc_channel)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
+	bl_acq_source_t *src = &bl_acq_source[source];
 
-	if (!channel->config.enable) {
+	if (!src->config.enable) {
 		return NULL;
 	}
 
-	if (channel->opamp_used) {
-		return bl_acq_opamp_get_adc(*(channel->opamp), adc_channel);
+	if (src->opamp_used) {
+		return bl_acq_opamp_get_adc(*(src->opamp), adc_channel);
 	}
 
 	if (adc_channel != NULL) {
-		*adc_channel = channel->adc_channel;
+		*adc_channel = src->adc_channel;
 	}
-	return *(channel->adc);
+	return *(src->adc);
 }
 
 
@@ -352,12 +349,12 @@ static inline uint16_t bl_acq_sample_pack16(
 	return (sample > 0xFFFF) ? 0xFFFF : sample;
 }
 
-void bl_acq_channel_commit_sample(enum bl_acq_source source, uint32_t sample)
+void bl_acq_source_commit_sample(enum bl_acq_source source, uint32_t sample)
 {
-	bl_acq_channel_t *channel = &bl_acq_channel[source];
-	const bl_acq_channel_config_t *config = &channel->config;
+	bl_acq_source_t *src = &bl_acq_source[source];
+	const bl_acq_source_config_t *config = &src->config;
 
-	union bl_msg_data *msg = channel->msg;
+	union bl_msg_data *msg = src->msg;
 	/* Note: We don't check for NULL due to cost. */
 
 	if (config->sample32) {
@@ -376,7 +373,7 @@ void bl_acq_channel_commit_sample(enum bl_acq_source source, uint32_t sample)
 			msg->sample_data.count    = 0;
 			msg->sample_data.reserved = 0;
 
-			channel->msg = msg;
+			src->msg = msg;
 		}
 	} else {
 		uint8_t count = msg->sample_data.count++;
@@ -396,8 +393,7 @@ void bl_acq_channel_commit_sample(enum bl_acq_source source, uint32_t sample)
 			msg->sample_data.count    = 0;
 			msg->sample_data.reserved = 0;
 
-			channel->msg = msg;
+			src->msg = msg;
 		}
 	}
 }
-

@@ -1,6 +1,6 @@
 #include "adc.h"
 #include "rcc.h"
-#include "channel.h"
+#include "source.h"
 
 #include "../util.h"
 #include "../delay.h"
@@ -648,7 +648,7 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 	}
 
 	for (unsigned c = 0; c < adc->config.channel_count; c++) {
-		bl_acq_channel_commit_sample(
+		bl_acq_source_commit_sample(
 				adc->config.channel_index[c], sample[c]);
 	}
 }
