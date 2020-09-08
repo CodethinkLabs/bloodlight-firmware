@@ -20,7 +20,7 @@
 #include "spi.h"
 #include "led.h"
 
-static void bl_spi_test(void)
+static void bl_spi_simply_test(void)
 {
 	uint8_t tx_counter = 0;
 
@@ -40,8 +40,52 @@ static void bl_spi_test(void)
 	}
 }
 
+static void bl_spi_dma_test(void)
+{
+    uint8_t counter = 16;
+    uint8_t tx_packet[16], rx_packet[16];
+    int i;
+
+    for (i = 0; i < counter; i++)
+    {
+        tx_packet[i] = counter - i;
+        rx_packet[i] = 0x50;
+    }
+
+    bl_spi_init();
+	bl_spi_dma_init();
+    while (1)
+    {
+        bl_spi_dma_transceive(tx_packet, rx_packet, counter);
+
+        while (!(SPI_SR(SPI2) & SPI_SR_TXE))
+            ;
+        while (SPI_SR(SPI2) & SPI_SR_BSY)
+            ;
+
+        for (int j = 0; j < counter; j++)
+        {
+            bl_led_set(rx_packet[j] << 8);
+
+            for (i = 0; i < 20000000; i++)
+            {
+                __asm__("nop");
+            }
+        }
+
+        for (i = 0; i < 16; i++)
+        {
+            rx_packet[i] = 0x50;
+        }
+    }
+}
+
 int main(void)
 {
 	bl_init();
-	bl_spi_test();
+#ifdef BL_SPI_DMA_TEST
+	bl_spi_dma_test();
+#else
+	bl_spi_simply_test();
+#endif
 }

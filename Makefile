@@ -38,6 +38,10 @@ ifdef SPI-TEST
 	CFLAGS += -DBL_SPI_TEST
 endif
 
+ifdef SPI-DMA-TEST
+	CFLAGS += -DBL_SPI_DMA_TEST
+endif
+
 # You shouldn't have to edit anything below here.
 OPENCM3_DIR=libopencm3
 
