@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to the locked module.
+ *
+ * This module provides helpers for using mutex locked values.
+ */
+
 #ifndef BV_LOCKED_H
 #define BV_LOCKED_H
 
@@ -21,15 +28,14 @@
 
 /** A locked unsigned integer. */
 typedef struct locked_uint {
-	pthread_mutex_t   lock;
-	volatile unsigned value;
+	pthread_mutex_t   lock;  /**< The mutex lock. */
+	volatile unsigned value; /**< The locked value. */
 } locked_uint_t;
 
 /**
  * Claim a locked uint.
  *
- * \param[in]  lu     Locked unsigned value to change.
- * \param[in]  value  New value.
+ * \param[in]  lu  Locked unsigned to lock.
  * \return true if the locked value changed, false otherwise.
  */
 static inline bool locked_uint_claim(
@@ -41,8 +47,7 @@ static inline bool locked_uint_claim(
 /**
  * Release a locked uint.
  *
- * \param[in]  lu     Locked unsigned value to change.
- * \param[in]  value  New value.
+ * \param[in]  lu  Locked unsigned to unlock.
  * \return true if the locked value changed, false otherwise.
  */
 static inline bool locked_uint_release(
