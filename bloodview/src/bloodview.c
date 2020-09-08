@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Bloodview application implementation.
+ *
+ * This provides the main entry point from the OS, and high level functionality.
+ */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -66,7 +73,15 @@ void bloodview_quit_cb(void *pw)
 	bloodview_g.quit = true;
 }
 
-void bloodview_device_state_change_cb(
+/**
+ * Device state change callback.
+ *
+ * This is called when the device modult reports a state change,
+ *
+ * \param[in]  pw     Unused private word.
+ * \param[in]  state  The new device state.
+ */
+static void bloodview_device_state_change_cb(
 		void *pw, device_state_t state)
 {
 	BV_UNUSED(pw);

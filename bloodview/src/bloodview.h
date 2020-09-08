@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Bloodview application interface.
+ *
+ * This provides the high level application functionality.
+ */
+
 #ifndef BLOODVIEW_H
 #define BLOODVIEW_H
 
