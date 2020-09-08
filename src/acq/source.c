@@ -285,7 +285,7 @@ bl_acq_source_config_t *bl_acq_source_get_config(enum bl_acq_source source)
 	return &src->config;
 }
 
-bl_acq_timer_t * bl_acq_source_get_timer(enum bl_acq_source source)
+bl_acq_timer_t *bl_acq_source_get_timer(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
 
@@ -298,7 +298,7 @@ bl_acq_timer_t * bl_acq_source_get_timer(enum bl_acq_source source)
 	return bl_acq_adc_get_timer(*(src->adc));
 }
 
-bl_acq_opamp_t * bl_acq_source_get_opamp(enum bl_acq_source source)
+bl_acq_opamp_t *bl_acq_source_get_opamp(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
 
@@ -310,7 +310,7 @@ bl_acq_opamp_t * bl_acq_source_get_opamp(enum bl_acq_source source)
 }
 
 #if (BL_REVISION >= 2)
-bl_acq_dac_t * bl_acq_source_get_dac(enum bl_acq_source source,
+bl_acq_dac_t *bl_acq_source_get_dac(enum bl_acq_source source,
 	uint8_t *dac_channel)
 {
 	bl_acq_opamp_t *opamp = bl_acq_source_get_opamp(source);
@@ -322,7 +322,7 @@ bl_acq_dac_t * bl_acq_source_get_dac(enum bl_acq_source source,
 }
 #endif
 
-bl_acq_adc_t * bl_acq_source_get_adc(enum bl_acq_source source,
+bl_acq_adc_t *bl_acq_source_get_adc(enum bl_acq_source source,
 	uint8_t *adc_channel)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
