@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for the Action widget.
+ *
+ * This is basically a button type widget, that performs an action when
+ * activated.
+ */
+
 #ifndef SDL_TK_WIDGET_ACTION_H
 #define SDL_TK_WIDGET_ACTION_H
 

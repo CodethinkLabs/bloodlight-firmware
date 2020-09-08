@@ -1,3 +1,25 @@
+/*
+ * Copyright 2020 Codethink Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * \file
+ * \brief Implementation of the Menu widget.
+ *
+ * This is a menu widget supporting submenus.
+ */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -19,19 +41,19 @@ enum sdl_tk_widget_state {
 
 /** Menu entry object. */
 struct sdl_tk_widget_menu_entry {
-	struct sdl_tk_text       *title[SDL_TK_WIDGET__COUNT];
-	const struct sdl_tk_text *detail[SDL_TK_WIDGET__COUNT];
-	struct sdl_tk_widget     *widget;
+	struct sdl_tk_text       *title[SDL_TK_WIDGET__COUNT];  /**< Name. */
+	const struct sdl_tk_text *detail[SDL_TK_WIDGET__COUNT]; /**< Detail. */
+	struct sdl_tk_widget     *widget;                       /**< Widget. */
 };
 
 /** The sdl-tk menu-type widget object. */
 struct sdl_tk_widget_menu {
-	struct sdl_tk_widget  base;
-	struct sdl_tk_text   *title;
+	struct sdl_tk_widget  base;  /**< Widget base class. */
+	struct sdl_tk_text   *title; /**< Menu title. */
 
-	struct sdl_tk_widget_menu_entry *entries;
-	unsigned                         count;
-	unsigned                         current;
+	struct sdl_tk_widget_menu_entry *entries; /**< Menu entries. */
+	unsigned                         count;   /**< Menu entry count. */
+	unsigned                         current; /**< Current menu entry. */
 };
 
 /**
@@ -58,6 +80,13 @@ static void sdl_tk_widget_menu_destroy(
 	free(menu);
 }
 
+/**
+ * Get the current state of an entry.
+ *
+ * \param[in]  menu   Menu containing the entry.
+ * \param[in]  entry  Menu entry to get state of.
+ * \return menu entry's current state.
+ */
 static enum sdl_tk_widget_state sdl_tk_entry_state(
 		const struct sdl_tk_widget_menu *menu,
 		const struct sdl_tk_widget_menu_entry *entry)

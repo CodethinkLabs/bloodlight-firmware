@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for general utility functionality.
+ *
+ * Simple functionality that doesn't deserve its own module.
+ */
+
 #ifndef UTIL_H
 #define UTIL_H
 

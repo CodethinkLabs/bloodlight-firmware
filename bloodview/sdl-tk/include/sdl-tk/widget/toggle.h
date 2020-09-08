@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for the Toggle widget.
+ *
+ * This is basically a checkbox type on/off widget.
+ */
+
 #ifndef SDL_TK_WIDGET_TOGGLE_H
 #define SDL_TK_WIDGET_TOGGLE_H
 

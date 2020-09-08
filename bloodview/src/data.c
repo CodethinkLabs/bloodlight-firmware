@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the data module.
+ *
+ * This provides data filtering functionality.
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -28,12 +35,15 @@
 #include "main-menu.h"
 #include "data-invert.h"
 
+/** Data filter details. */
 struct data_filter {
-	void *ctx;
+	void *ctx; /**< The filter context. */
 
+	/** The filter finalisation callback. */
 	void (*fini)(
 			void *pw);
 
+	/** The filter's sample processing function. */
 	uint32_t (*proc)(
 			void *pw,
 			unsigned channel,

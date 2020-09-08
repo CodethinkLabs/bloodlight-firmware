@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for the Menu widget.
+ *
+ * This is a menu widget that supports submenus.
+ */
+
 #ifndef SDL_TK_WIDGET_MENU_H
 #define SDL_TK_WIDGET_MENU_H
 
@@ -35,7 +42,7 @@ typedef struct sdl_tk_widget *(* sdl_tk_widget_menu_entry_cb)(
 /**
  * Create a menu-type widget.
  *
- * The given \ref cb is only called during the execution of this function,
+ * The given `cb` is only called during the execution of this function,
  * while the menu widget is being constructed.
  *
  * \param[in]  parent       Parent widget, or NULL.

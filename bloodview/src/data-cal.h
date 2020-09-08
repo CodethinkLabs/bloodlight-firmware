@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to calibration filter.
+ *
+ * This module works out the correct channel settings for 16-bit acquisitions.
+ */
+
 #ifndef BV_DATA_CAL_H
 #define BV_DATA_CAL_H
 

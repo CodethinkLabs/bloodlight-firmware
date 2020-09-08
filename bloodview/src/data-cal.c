@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of device 16-bit value calibration.
+ *
+ * This module works out the correct channel settings for 16-bit acquisitions.
+ */
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -27,16 +34,16 @@
 
 /** Channel tracking. */
 struct channel_data {
-	uint32_t sample_min;
-	uint32_t sample_max;
+	uint32_t sample_min; /**< Lowest sample seen for channel. */
+	uint32_t sample_max; /**< Highest sample seen for channel. */
 };
 
 /** Calibration context. */
 struct data_cal_ctx {
-	struct channel_data *channel;
-	unsigned count;
+	struct channel_data *channel; /**< Array of channels' info. */
+	unsigned count;               /**< Number of entries in channels. */
 
-	uint32_t src_mask;
+	uint32_t src_mask;            /**< Acquisition source mask. */
 };
 
 /**

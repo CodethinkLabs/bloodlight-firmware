@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the Colour module.
+ *
+ * Generates the sdl-tk colour scheme.
+ */
+
 #include "sdl-tk/colour.h"
 
 /**

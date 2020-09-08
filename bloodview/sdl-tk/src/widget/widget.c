@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the generic widget handling.
+ *
+ * This is a generic interface to any kind of widget.
+ */
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>

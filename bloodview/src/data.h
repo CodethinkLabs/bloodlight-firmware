@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to the data module.
+ *
+ * This module handles incoming sample data.
+ */
+
 #ifndef BV_DATA_H
 #define BV_DATA_H
 
@@ -33,7 +40,7 @@ void data_finish(void);
 bool data_start(bool calibrate, unsigned frequency, unsigned src_mask);
 
 /**
- * Handle a \ref BL_MSG_SAMPLE_DATA16 message.
+ * Handle a BL_MSG_SAMPLE_DATA16 message.
  *
  * \param[in]  msg  The sample message to process.
  * \return true on success, false on error.
@@ -41,7 +48,7 @@ bool data_start(bool calibrate, unsigned frequency, unsigned src_mask);
 bool data_handle_msg_u16(const bl_msg_sample_data_t *msg);
 
 /**
- * Handle a \ref BL_MSG_SAMPLE_DATA32 message.
+ * Handle a BL_MSG_SAMPLE_DATA32 message.
  *
  * \param[in]  msg  The sample message to process.
  * \return true on success, false on error.

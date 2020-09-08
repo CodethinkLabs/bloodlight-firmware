@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to sample averaging filter.
+ *
+ * This module averages samples over a given range.
+ */
+
 #ifndef BV_DATA_AVG_H
 #define BV_DATA_AVG_H
 
@@ -21,11 +28,11 @@
  * The data averaging filter's configuration.
  *
  * The filter frequency indicates with width of the window to average samples
- * over, and is set in 1/1024ths of a Hz.
+ * over.
  */
 struct data_avg_config {
-	unsigned filter_freq;
-	bool     normalise;
+	unsigned filter_freq; /**< Filter frequency in 1/1024ths of a Hz */
+	bool     normalise;   /**< Whether to normalise samples. */
 };
 
 /**

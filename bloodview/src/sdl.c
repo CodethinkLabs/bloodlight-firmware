@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the SDL handling.
+ *
+ * This module handles interaction with SDL.
+ */
+
 #include <stdio.h>
 
 #include <SDL2/SDL.h>
@@ -27,22 +34,22 @@
 #define BL_SDL_INIT_MASK (SDL_INIT_VIDEO)
 
 /**
- * SDL module context global.
+ * SDL module context global data.
  */
 static struct sdl_ctx
 {
-	SDL_Window   *win;
-	SDL_Renderer *ren;
+	SDL_Window   *win; /**< SDL window object. */
+	SDL_Renderer *ren; /**< SDL renderer object. */
 
-	struct sdl_tk_widget *main_menu;
-	bool                  main_menu_open;
+	struct sdl_tk_widget *main_menu;      /**< Main menu sdl-tk widget. */
+	bool                  main_menu_open; /**< Whether the menu is open. */
 
-	unsigned w;
-	unsigned h;
+	unsigned w; /**< Viewport width. */
+	unsigned h; /**< Viewport height, */
 
-	bool shift;
-	bool ctrl;
-} ctx;
+	bool shift; /**< Whether shift is pressed. */
+	bool ctrl;  /**< Whether ctrl is pressed. */
+} ctx; /**< SDL module context global object. */
 
 /* Exported interface, documented in sdl.h */
 void sdl_fini(void)

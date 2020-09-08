@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to data inversion filter.
+ *
+ * This module inverts samples, flipping the data upside-down.
+ */
+
 #ifndef BV_DATA_INVERT_H
 #define BV_DATA_INVERT_H
 
@@ -23,6 +30,7 @@
  * The data inverting filter's configuration.
  */
 struct data_invert_config {
+	/** Whether each channel should be inverted. */
 	bool invert[BL_ACQ__SRC_COUNT];
 };
 

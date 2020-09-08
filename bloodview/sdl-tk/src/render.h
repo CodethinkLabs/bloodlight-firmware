@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for general rendering functionality.
+ *
+ * Basic rendering functionality.
+ */
+
 #ifndef RENDER_H
 #define RENDER_H
 

@@ -1,3 +1,25 @@
+/*
+ * Copyright 2020 Codethink Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * \file
+ * \brief Implementation of the Input widget.
+ *
+ * This is a single-line text entry widget.
+ */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -11,16 +33,22 @@
 
 /** The sdl-tk input-type widget object. */
 struct sdl_tk_widget_input {
-	struct sdl_tk_widget  base;
-	struct sdl_tk_text   *title;
+	struct sdl_tk_widget  base;  /**< Widget base class. */
+	struct sdl_tk_text   *title; /**< Widget title. */
 
-	sdl_tk_widget_input_cb  cb;
-	void                   *pw;
+	sdl_tk_widget_input_cb  cb; /**< Client update callback. */
+	void                   *pw; /**< Client private word. */
 
+	/** Text to render to represent widget value. */
 	struct sdl_tk_text *detail[SDL_TK_COLOUR__COUNT];
-	char               *value;
+	char               *value; /**< The current widget value. */
 };
 
+/**
+ * Lay out an input widget.
+ *
+ * \param[in]  input  The input widget to lay out.
+ */
 static void sdl_tk_widget_input__layout(
 		struct sdl_tk_widget_input *input)
 {
@@ -60,6 +88,12 @@ static void sdl_tk_widget_input_layout(
 	sdl_tk_widget_input__layout(input);
 }
 
+/**
+ * Update the detail rendered value textures.
+ *
+ * \param[in]  input  The input widget update detail for.
+ * \return true on success, or false on failure.
+ */
 static bool sdl_tk_widget_input__update_detail(
 		struct sdl_tk_widget_input *input)
 {

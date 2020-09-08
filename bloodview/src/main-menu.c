@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the main menu.
+ *
+ * This module implements the main menu.
+ */
+
 #include <ctype.h>
 #include <assert.h>
 #include <stdint.h>
@@ -44,73 +51,80 @@ enum widget_type {
 
 /** Main menu widget descriptor. */
 struct main_menu_widget_desc {
-	enum widget_type type;
-	const char *title;
+	enum widget_type type; /**< Widget type to create. */
+	const char *title;     /**< Widget title. */
 	union {
 		struct main_menu_widget_desc_menu {
+			/** Array of menu entries' details. */
 			const struct main_menu_widget_desc *entries;
+			/** Count of menu entries. */
 			unsigned count;
-		} menu;
+		} menu; /**< Menu widget type-specific data. */
 		struct main_menu_widget_desc_input {
+			/** Client callback for input. */
 			const sdl_tk_widget_input_cb cb;
+			/** Initial value. */
 			const char *initial;
-		} input;
+		} input; /**< Input widget type-specific data. */
 		struct main_menu_widget_desc_action {
+			/** Client callback for activation. */
 			const sdl_tk_widget_action_cb cb;
+			/**< Client private data. */
 			void *pw;
-		} action;
+		} action; /**< Action widget type-specific data. */
 		struct main_menu_widget_desc_toggle {
-			bool initial;
-		} toggle;
+			bool initial; /**< Initial value. */
+		} toggle; /**< Toggle widget type-specific data. */
 	};
 };
 
 /** Current configuration for LEDs. */
 struct main_menu_config_leds {
-	uint8_t leds[BL_LED_COUNT];
+	uint8_t leds[BL_LED_COUNT]; /**< Array of LED enablement. */
 };
 
 /** Current configuration for a channel. */
 struct main_menu_config_channel {
-	unsigned gain;
-	unsigned offset;
-	unsigned shift;
-	bool     sample32;
-	bool     inverted;
+	unsigned gain;     /**< Channel gain. */
+	unsigned offset;   /**< Offset for 16-bit sample mode. */
+	unsigned shift;    /**< Shift for 16-bit sample mode. */
+	bool     sample32; /**< Whether 16-bit sample mode is enabled. */
+	bool     inverted; /**< Whether the data should be inverted. */
 
-	struct sdl_tk_widget *widget_shift;
-	struct sdl_tk_widget *widget_offset;
+	struct sdl_tk_widget *widget_shift;  /**< Widget for channel shift. */
+	struct sdl_tk_widget *widget_offset; /**< Widget for channel offset. */
 };
 
 /** Current acquisition configuration. */
 struct main_menu_config_acq_params {
-	unsigned frequency;
-	unsigned oversample;
-	uint8_t  sources[BL_ACQ__SRC_COUNT];
+	unsigned frequency;                  /**< Sampling frequency in Hz. */
+	unsigned oversample;                 /**< Oversample count. */
+	uint8_t  sources[BL_ACQ__SRC_COUNT]; /**< Source enablement. */
 };
 
 /** Current filter configuration. */
 struct main_menu_config_filter {
-	uint8_t normalise_enable;
-	double  normalise;
+	uint8_t normalise_enable; /**< Normalisation filter enabled. */
+	double  normalise;        /**< Frequency parameter for normalisation. */
 
-	uint8_t ac_denoise_enable;
-	double  ac_denoise;
+	uint8_t ac_denoise_enable; /**< Denoising filter enabled. */
+	double  ac_denoise;        /**< Frequency parameter for denoising */
 
-	struct sdl_tk_widget *widget_normalise;
-	struct sdl_tk_widget *widget_ac_denoise;
+	struct sdl_tk_widget *widget_normalise;  /**< Normalisation widget. */
+	struct sdl_tk_widget *widget_ac_denoise; /**< Denoising widget. */
 };
 
 /** Main menu configuration entries. */
 struct main_menu_config {
-	struct main_menu_config_acq_params acq;
+	struct main_menu_config_acq_params acq; /**< Acquisition config. */
+	/** Channel config. */
 	struct main_menu_config_channel channel[BL_ACQ__SRC_COUNT];
-	struct main_menu_config_leds led;
-	struct main_menu_config_filter filter;
+	struct main_menu_config_leds led;       /**< LED config. */
+	struct main_menu_config_filter filter;  /**< Data filter config. */
 
-	struct sdl_tk_widget *widget_cal;
-	struct sdl_tk_widget *widget_acq;
-	struct sdl_tk_widget *widget_stop;
+	struct sdl_tk_widget *widget_cal;  /**< Widget for calibration. */
+	struct sdl_tk_widget *widget_acq;  /**< Widget for acquisition. */
+	struct sdl_tk_widget *widget_stop; /**< Widget to stop device. */
 };
 
 /** Bloodview main menu configuration context. */
@@ -911,22 +925,23 @@ static char *stringify_unsigned(unsigned value)
 
 /** Type pf update to apply to a widget. */
 enum update_type {
-	UPDATE_TYPE_SET_VALUE,
-	UPDATE_TYPE_ENABLE,
+	UPDATE_TYPE_SET_VALUE, /**< Value setting update. */
+	UPDATE_TYPE_ENABLE,    /**< Widget enable/disable update type. */
 };
 
 /** Details of an update to apply to a menu. */
 struct update {
-	enum update_type type;
-	struct sdl_tk_widget *widget;
+	enum update_type type;        /**< Type of main menu update. */
+	struct sdl_tk_widget *widget; /**< Widget to update. */
+	/** Update type-specific data. */
 	union update_data {
 		struct {
-			char *value;
-		} set_value;
+			char *value;  /**< Value to set. */
+		} set_value;          /**< \ref UPDATE_TYPE_SET_VALUE data. */
 		struct {
-			bool enable;
-		} enable;
-	} data;
+			bool enable;  /**< Whether to enable or disable. */
+		} enable;             /**< \ref UPDATE_TYPE_ENABLE data. */
+	} data;                       /**< Update type-specific data. */
 };
 
 /**
@@ -936,8 +951,8 @@ struct update {
  * before it is next rendered.
  */
 struct {
-	struct update list[64];
-	locked_uint_t count;
+	struct update list[64]; /**< Array of pending main menu updates.*/
+	locked_uint_t count;    /**< Number of pending main menu updates. */
 } update_ctx;
 
 /**

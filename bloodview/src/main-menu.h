@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to main menu module.
+ *
+ * This module implements the main menu.
+ */
+
 #ifndef MAIN_MENU_H
 #define MAIN_MENU_H
 

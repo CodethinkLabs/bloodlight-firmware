@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of sample averaging.
+ *
+ * This module averages samples over a given range.
+ */
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -24,21 +31,21 @@
 
 /** Channel tracking. */
 struct channel_data {
-	uint32_t *data;
+	uint32_t *data; /**< Historical sample data buffer. */
 
-	uint64_t  sum;
-	unsigned  read;
-	unsigned  write;
-	unsigned  capacity;
-	unsigned  utilisation;
+	uint64_t  sum;         /**< Rolling sum of samples in data buffer. */
+	unsigned  read;        /**< Read position in buffer. */
+	unsigned  write;       /**< Write position in data buffer. */
+	unsigned  capacity;    /**< Maximum capacity of data buffer, */
+	unsigned  utilisation; /**< Amount of data buffer used. */
 };
 
 /** Averaging filter context. */
 struct data_avg_ctx {
-	struct channel_data *channel;
-	unsigned count;
+	struct channel_data *channel; /**< Array of channel's data. */
+	unsigned count;               /**< Number of entries in array. */
 
-	bool normalise;
+	bool normalise; /**< Whether to apply normalisation. */
 };
 
 /* Exported interface, documented in data-avg.h */
@@ -154,7 +161,8 @@ static inline uint32_t data_avg__get_average(
 /**
  * Get a normalised sample from a channel.
  *
- * \param[in]  c  A channel object.
+ * \param[in]  c       A channel object.
+ * \param[in]  sample  Sample to normalise.
  * \return Normalised sample.
  */
 static inline uint32_t data_avg__get_normalised(

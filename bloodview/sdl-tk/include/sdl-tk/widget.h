@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Header for the generic widget handling.
+ *
+ * This provides a generic interface to any kind of widget.
+ */
+
 #ifndef SDL_TK_WIDGET_H
 #define SDL_TK_WIDGET_H
 

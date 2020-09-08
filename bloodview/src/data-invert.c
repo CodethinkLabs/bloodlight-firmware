@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of data inversion.
+ *
+ * This module inverts samples, flipping the data upside-down.
+ */
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -22,10 +29,10 @@
 #include "data-invert.h"
 #include "util.h"
 
-/** Averaging filter context. */
+/** Inversion filter context. */
 struct data_invert_ctx {
-	unsigned invert;
-	unsigned count;
+	unsigned invert; /**< Mask of channels in invert. */
+	unsigned count;  /**< Number of channels. */
 };
 
 /* Exported interface, documented in data-invert.h */

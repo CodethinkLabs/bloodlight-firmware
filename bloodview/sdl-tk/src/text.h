@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Internal header for the Text module.
+ *
+ * This provides a simple interface for creating text textures.
+ */
+
 #ifndef TEXT_H
 #define TEXT_H
 
