@@ -8,6 +8,7 @@ CFILES = \
 	src/bl.c \
 	src/msg.c \
 	src/usb.c \
+	src/spi.c \
 	src/mq.c \
 	src/acq.c \
 	src/acq/timer.c \
