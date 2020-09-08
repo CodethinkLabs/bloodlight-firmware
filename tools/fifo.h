@@ -17,6 +17,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+/* fifo, a first-in first-out structure containing 32-bit integers */
+
 struct fifo {
 	uint32_t *values;
 	uint16_t capacity;
@@ -30,3 +32,21 @@ void fifo_destroy(struct fifo *fifo);
 bool fifo_peek_back(const struct fifo *fifo, uint16_t steps, uint32_t *out);
 bool fifo_write(struct fifo *fifo, uint32_t value);
 bool fifo_read(struct fifo *fifo, uint32_t *value);
+
+/* pfifo, a first-in first-out structure containing void pointers */
+/* Since the contents of the fifo may be of arbitrary complexity,
+ * responsibility for freeing the contents is left to the user */
+
+struct pfifo {
+	void **values;
+	uint16_t capacity;
+	uint16_t write;
+	uint16_t read;
+	uint16_t used;
+};
+
+struct pfifo *pfifo_create(uint16_t capacity);
+void pfifo_destroy(struct pfifo *fifo);
+bool pfifo_write(struct pfifo *fifo, void *value);
+bool pfifo_read(struct pfifo *fifo, void **value);
+bool pfifo_peek_back(const struct pfifo *fifo, uint16_t steps, void **out);
