@@ -97,15 +97,20 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
+	enum bl_acq_source src[BL_ACQ__SRC_COUNT];
+	unsigned           src_count = 0;
+
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
+		if ((src_mask & (1U << i)) != 0) {
+			src[src_count++] = i;
+		}
+	}
+
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		/* Finalize Config. */
-		config->enable = ((src_mask & (1U << i)) != 0);
-		if (!config->enable) {
-			continue;
-		}
-
 		config->frequency     = frequency;
 		config->sw_oversample = oversample;
 		config->oversample    = 0;
@@ -116,29 +121,30 @@ enum bl_error bl_acq_start(
 				config->oversample);
 
 		/* Finalize configuration. */
-		enum bl_error status = bl_acq_source_configure(i);
+		enum bl_error status = bl_acq_source_configure(src[i]);
 		if (status != BL_ERROR_NONE) {
 			return status;
 		}
 	}
 
 	/* Configure timer(s). */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_timer_t *timer = bl_acq_source_get_timer(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_timer_t *timer = bl_acq_source_get_timer(src[i]);
 		if (timer == NULL) {
 			continue;
 		}
 
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		/* Ensure same frequency for all users of the timer. */
-		for (unsigned j = (i + 1); j < BL_ACQ__SRC_COUNT; j++) {
-			if (bl_acq_source_get_timer(j) != timer) {
+		for (unsigned j = (i + 1); j < src_count; j++) {
+			if (bl_acq_source_get_timer(src[j]) != timer) {
 				continue;
 			}
 
-			bl_acq_source_config_t *config_b
-					= bl_acq_source_get_config(i);
+			bl_acq_source_config_t *config_b =
+					bl_acq_source_get_config(src[j]);
 
 			if (config->frequency_trigger !=
 					config_b->frequency_trigger) {
@@ -155,24 +161,24 @@ enum bl_error bl_acq_start(
 
 #if (BL_REVISION >= 2)
 	/* Configure DACs. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		uint8_t dac_channel;
-		bl_acq_dac_t *dac = bl_acq_source_get_dac(
-			i, &dac_channel);
+		bl_acq_dac_t *dac = bl_acq_source_get_dac(src[i], &dac_channel);
 		if (dac == NULL) {
 			continue;
 		}
 
 		/* Ensure same offsets for all users of same DAC channel. */
-		for (unsigned j = (i + 1); j < BL_ACQ__SRC_COUNT; j++) {
-			bl_acq_source_config_t *config_b
-					= bl_acq_source_get_config(j);
+		for (unsigned j = (i + 1); j < src_count; j++) {
+			bl_acq_source_config_t *config_b =
+					bl_acq_source_get_config(src[j]);
 
 			uint8_t dac_channel_b;
 			bl_acq_dac_t *dac_b = bl_acq_source_get_dac(
-					j, &dac_channel_b);
+					src[j], &dac_channel_b);
 
 			if ((dac_b != dac) || (dac_channel_b != dac_channel)) {
 				continue;
@@ -193,10 +199,11 @@ enum bl_error bl_acq_start(
 #endif
 
 	/* Configure OPAMPs. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
-		bl_acq_opamp_t *opamp = bl_acq_source_get_opamp(i);
+		bl_acq_opamp_t *opamp = bl_acq_source_get_opamp(src[i]);
 		if (opamp == NULL) {
 			continue;
 		}
@@ -215,8 +222,8 @@ enum bl_error bl_acq_start(
 
 	bool multi = false;
 	bl_acq_adc_t *first_adc = NULL;
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_adc_t *chan_adc = bl_acq_source_get_adc(i, NULL);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_adc_t *chan_adc = bl_acq_source_get_adc(src[i], NULL);
 		if (chan_adc == NULL) {
 			continue;
 		}
@@ -228,8 +235,8 @@ enum bl_error bl_acq_start(
 		first_adc = chan_adc;
 	}
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_adc_t *adc = bl_acq_source_get_adc(i, NULL);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_adc_t *adc = bl_acq_source_get_adc(src[i], NULL);
 		if (adc == NULL) {
 			continue;
 		}
@@ -247,24 +254,26 @@ enum bl_error bl_acq_start(
 	}
 
 	/* Configure ADC Channels. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		uint8_t adc_channel;
-		bl_acq_adc_t *adc = bl_acq_source_get_adc(i, &adc_channel);
+		bl_acq_adc_t *adc = bl_acq_source_get_adc(src[i], &adc_channel);
 		if (adc == NULL) {
 			continue;
 		}
 
 		/* Ensure same ADC configs for all users of same ADC. */
-		for (unsigned j = (i + 1); j < BL_ACQ__SRC_COUNT; j++) {
-			bl_acq_adc_t *adc_b = bl_acq_source_get_adc(j, NULL);
+		for (unsigned j = (i + 1); j < src_count; j++) {
+			bl_acq_adc_t *adc_b = bl_acq_source_get_adc(
+					src[j], NULL);
 			if (adc_b != adc) {
 				continue;
 			}
 
-			bl_acq_source_config_t *config_b
-					= bl_acq_source_get_config(j);
+			bl_acq_source_config_t *config_b =
+					bl_acq_source_get_config(src[j]);
 
 			if (config->oversample != config_b->oversample) {
 				return BL_ERROR_HARDWARE_CONFLICT;
@@ -276,18 +285,19 @@ enum bl_error bl_acq_start(
 		}
 
 		enum bl_error status = bl_acq_adc_channel_configure(
-				adc, adc_channel, i);
+				adc, adc_channel, src[i]);
 		if (status != BL_ERROR_NONE) {
 			return status;
 		}
 	}
 
 	/* Configure ADCs. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		uint8_t adc_channel;
-		bl_acq_adc_t *adc = bl_acq_source_get_adc(i, &adc_channel);
+		bl_acq_adc_t *adc = bl_acq_source_get_adc(src[i], &adc_channel);
 		if (adc == NULL) {
 			continue;
 		}
@@ -303,11 +313,12 @@ enum bl_error bl_acq_start(
 	}
 
 	/* Enable all of the channels. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		if (config->enable) {
-			bl_acq_source_enable(i);
+			bl_acq_source_enable(src[i]);
 		}
 	}
 
@@ -354,14 +365,9 @@ enum bl_error bl_acq_abort(void)
 
 	/* Disable all channels. */
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_source_config_t *config = bl_acq_source_get_config(i);
-		if (!config->enable) {
-			continue;
+		if (bl_acq_source_is_enabled(i)) {
+			bl_acq_source_disable(i);
 		}
-
-		config->enable = false;
-
-		bl_acq_source_disable(i);
 	}
 
 	return BL_ERROR_NONE;
