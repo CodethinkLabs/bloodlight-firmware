@@ -18,6 +18,7 @@ jobs:
                libsdl2-ttf-dev
                gcc-arm-none-eabi
                libnewlib-arm-none-eabi
+               libfftw3-dev
     - name: Build libopencm3
       run: make -j4 -C libopencm3
     - name: Build firmware
@@ -45,6 +46,7 @@ jobs:
                libudev-dev
                libsdl2-dev
                libsdl2-ttf-dev
+               libfftw3-dev
     - name: Shellcheck
       run: shellcheck run.sh
     - name: Clang scan-build bloodview

@@ -7,5 +7,6 @@ tools/*.o
 tools/convert
 tools/calibrate
 tools/normalize
+tools/fft
 .vscode/
 
