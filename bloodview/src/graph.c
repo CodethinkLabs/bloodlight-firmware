@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Implementation of the graph module.
+ *
+ * This renders sample data in real time.
+ */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,23 +34,27 @@
 /** Extra sample slots per graph */
 #define GRAPH_EXCESS 1024
 
+/** Reference for scaling in the vertical dimension. */
 #define Y_SCALE_DATUM (1u << 10)
+
+/** Step size for vertical scale increments. */
 #define Y_SCALE_STEP  (1u <<  4)
 
 /** Maximum number of seconds of graph data to store for each channel. */
 #define GRAPH_HISTORY_SECONDS 64
 
+/** Per-graph data context. */
 struct graph {
-	int32_t *data;
+	int32_t *data; /**< The graph's sample data. */
 
 	unsigned max; /**< Maximum number of samples \ref data can store. */
 	unsigned len; /**< Number of available samples (<= \ref max). */
 	unsigned pos; /**< Position of next sample to insert. */
 	unsigned ren; /**< Last rendered sample. */
 
-	unsigned step;
-	uint64_t scale;
-	bool invert;
+	unsigned step;  /**< Rendering scale in time dimension. */
+	uint64_t scale; /**< The vertical scale. */
+	bool invert;    /**< Whether to invert the magnitudes. */
 };
 
 /** Graph global context. */

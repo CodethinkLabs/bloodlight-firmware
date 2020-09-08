@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to the graph module.
+ *
+ * This module handles graph construction and rendering.
+ */
+
 #ifndef BV_GRAPH_H
 #define BV_GRAPH_H
 
