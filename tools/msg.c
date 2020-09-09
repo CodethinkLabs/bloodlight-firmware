@@ -42,6 +42,7 @@ static char buffer[BUFFER_LEN + 1];
 static const char *msg_types[] = {
 	[BL_MSG_RESPONSE]      = "Response",
 	[BL_MSG_LED]           = "LED",
+	[BL_MSG_SOURCE_CONF]   = "Source Config",
 	[BL_MSG_CHANNEL_CONF]  = "Channel Config",
 	[BL_MSG_START]         = "Start",
 	[BL_MSG_ABORT]         = "Abort",
@@ -155,7 +156,7 @@ static uint16_t bl_msg__yaml_read_unsigned(FILE *file, const char *field, bool *
 	unsigned value;
 	int ret;
 
-	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 ]: %u\n",
+	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 -]: %u\n",
 			buffer, &value);
 	if (ret == 2) {
 		if (strcmp(buffer, field) == 0) {
@@ -172,7 +173,7 @@ static uint16_t bl_msg__yaml_read_hex(FILE *file, const char *field, bool *succe
 	unsigned value;
 	int ret;
 
-	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 ]: 0x%x\n",
+	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 -]: 0x%x\n",
 			buffer, &value);
 	if (ret == 2) {
 		if (strcmp(buffer, field) == 0) {
@@ -216,18 +217,26 @@ bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 		msg->led.led_mask = bl_msg__yaml_read_hex(file, "LED Mask", &ok);
 		break;
 
+	case BL_MSG_SOURCE_CONF:
+		msg->source_conf.source        = bl_msg__yaml_read_unsigned(file, "Source",              &ok);
+		msg->source_conf.opamp_gain    = bl_msg__yaml_read_unsigned(file, "Op-Amp Gain",         &ok);
+		msg->source_conf.opamp_offset  = bl_msg__yaml_read_unsigned(file, "Op-Amp Offset",       &ok);
+		msg->source_conf.sw_oversample = bl_msg__yaml_read_unsigned(file, "Software Oversample", &ok);
+		msg->source_conf.hw_oversample = bl_msg__yaml_read_unsigned(file, "Hardware Oversample", &ok);
+		msg->source_conf.hw_shift      = bl_msg__yaml_read_unsigned(file, "Hardware Shift",      &ok);
+		break;
+
 	case BL_MSG_CHANNEL_CONF:
 		msg->channel_conf.channel  = bl_msg__yaml_read_unsigned(file, "Channel",  &ok);
-		msg->channel_conf.gain     = bl_msg__yaml_read_unsigned(file, "Gain",     &ok);
+		msg->channel_conf.source   = bl_msg__yaml_read_unsigned(file, "Source",   &ok);
 		msg->channel_conf.shift    = bl_msg__yaml_read_unsigned(file, "Shift",    &ok);
 		msg->channel_conf.offset   = bl_msg__yaml_read_unsigned(file, "Offset",   &ok);
 		msg->channel_conf.sample32 = bl_msg__yaml_read_unsigned(file, "Sample32", &ok);
 		break;
 
 	case BL_MSG_START:
-		msg->start.frequency  = bl_msg__yaml_read_unsigned(file, "Frequency",  &ok);
-		msg->start.oversample = bl_msg__yaml_read_unsigned(file, "Oversample", &ok);
-		msg->start.src_mask   = bl_msg__yaml_read_hex(file, "Source Mask",     &ok);
+		msg->start.frequency  = bl_msg__yaml_read_unsigned(file, "Frequency",   &ok);
+		msg->start.src_mask   = bl_msg__yaml_read_hex(file,      "Source Mask", &ok);
 		break;
 
 	case BL_MSG_SAMPLE_DATA16:
@@ -301,11 +310,26 @@ void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 				msg->led.led_mask);
 		break;
 
+	case BL_MSG_SOURCE_CONF:
+		fprintf(file, "    Source: %"PRIu8"\n",
+				msg->source_conf.source);
+		fprintf(file, "    Op-Amp Gain: %"PRIu8"\n",
+				msg->source_conf.opamp_gain);
+		fprintf(file, "    Op-Amp Offset: %"PRIu16"\n",
+				msg->source_conf.opamp_offset);
+		fprintf(file, "    Software Oversample: %"PRIu16"\n",
+				msg->source_conf.sw_oversample);
+		fprintf(file, "    Hardware Oversample: %"PRIu8"\n",
+				msg->source_conf.hw_oversample);
+		fprintf(file, "    Hardware Shift: %"PRIu8"\n",
+				msg->source_conf.hw_shift);
+		break;
+
 	case BL_MSG_CHANNEL_CONF:
 		fprintf(file, "    Channel: %"PRIu8"\n",
 				msg->channel_conf.channel);
-		fprintf(file, "    Gain: %"PRIu8"\n",
-				msg->channel_conf.gain);
+		fprintf(file, "    Source: %"PRIu8"\n",
+				msg->channel_conf.source);
 		fprintf(file, "    Shift: %"PRIu8"\n",
 				msg->channel_conf.shift);
 		fprintf(file, "    Offset: %"PRIu32"\n",
@@ -317,8 +341,6 @@ void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 	case BL_MSG_START:
 		fprintf(file, "    Frequency: %"PRIu8"\n",
 				msg->start.frequency);
-		fprintf(file, "    Oversample: %"PRIu8"\n",
-				msg->start.oversample);
 		fprintf(file, "    Source Mask: 0x%"PRIx8"\n",
 				msg->start.src_mask);
 		break;

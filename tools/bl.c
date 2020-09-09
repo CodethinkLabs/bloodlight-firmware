@@ -113,9 +113,9 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	unsigned arg_optional_count;
 	uint32_t sample32 = 0;
 	uint32_t channel = 0;
+	uint32_t source = 0;
 	uint32_t offset = 0;
 	uint32_t shift = 0;
-	uint32_t gain = 0;
 	bool success;
 	int ret;
 	int dev_fd;
@@ -124,7 +124,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		ARG_CMD,
 		ARG_DEV_PATH,
 		ARG_CHANNEL,
-		ARG_GAIN,
+		ARG_SOURCE,
 		ARG_OFFSET,
 		ARG_SHIFT,
 		ARG_SAMPLE32,
@@ -137,7 +137,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH|--auto|-a> \\\n"
 				"  \t<CHANNEL> \\\n"
-				"  \t<GAIN> \\\n"
+				"  \t<SOURCE> \\\n"
 				"  \t[OFFSET] \\\n"
 				"  \t[SHIFT] \\\n"
 				"  \t[SAMPLE32]\n",
@@ -147,8 +147,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 		fprintf(stderr, "Provide the channel specific configuration, including optional\n");
 		fprintf(stderr, "shift and offset which can be used to fit values to 16-bit.\n");
 		fprintf(stderr, "\n");
-		fprintf(stderr, "A GAIN value must be a power of two"
-				" up to 16.\n");
+		fprintf(stderr, "SOURCE is the acquisition source associated with the channel.\n");
 		fprintf(stderr, "\n");
 		fprintf(stderr, "If an OFFSET is not provided, "
 				"it will default to 0 (no offset).\n");
@@ -163,7 +162,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 
 	success = true;
 	success &= read_sized_uint(argv[ARG_CHANNEL], &channel, sizeof(msg.channel_conf.channel));
-	success &= read_sized_uint(argv[ARG_GAIN], &gain, sizeof(msg.channel_conf.gain));
+	success &= read_sized_uint(argv[ARG_SOURCE], &source, sizeof(msg.channel_conf.source));
 
 	switch (arg_optional_count)
 	{
@@ -185,9 +184,113 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 
 	msg.channel_conf.sample32 = sample32;
 	msg.channel_conf.channel = channel;
+	msg.channel_conf.source = source;
 	msg.channel_conf.offset = offset;
 	msg.channel_conf.shift = shift;
-	msg.channel_conf.gain = gain;
+
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+
+	bl_msg_yaml_print(stdout, &msg);
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
+		bl_device_close(dev_fd);
+		return ret;
+	}
+	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+	bl_device_close(dev_fd);
+	return ret;
+
+}
+
+static int bl_cmd_source_conf(int argc, char *argv[])
+{
+	union bl_msg_data msg = {
+		.source_conf = {
+			.type = BL_MSG_SOURCE_CONF,
+		}
+	};
+	unsigned arg_optional_count;
+	uint32_t hw_oversample = 0;
+	uint32_t sw_oversample = 0;
+	uint32_t opamp_offset = 0;
+	uint32_t opamp_gain = 0;
+	uint32_t hw_shift = 0;
+	uint32_t source = 0;
+	bool success;
+	int dev_fd;
+	int ret;
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG_SOURCE,
+		ARG_OPAMP_GAIN,
+		ARG_OPAMP_OFFSET,
+		ARG_SOFTWARE_OVERSAMPLE,
+		ARG_HARDWARE_OVERSAMPLE,
+		ARG_HARDWARE_SHIFT,
+		ARG__COUNT,
+	};
+
+	arg_optional_count = argc - ARG_HARDWARE_OVERSAMPLE;
+	if (argc < (ARG_HARDWARE_OVERSAMPLE) || argc > ARG__COUNT) {
+		fprintf(stderr, "Usage:\n");
+		fprintf(stderr, "  %s %s \\\n"
+				"  \t<DEVICE_PATH|--auto|-a> \\\n"
+				"  \t<SOURCE> \\\n"
+				"  \t<OPAMP GAIN> \\\n"
+				"  \t<OPAMP OFFSET>\\\n"
+				"  \t<SOFTWARE OVERSAMPLE> \\\n"
+				"  \t[HARDWARE OVERSAMPLE] \\\n"
+				"  \t[HARDWARE SHIFT]\n",
+				argv[ARG_PROG],
+				argv[ARG_CMD]);
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Provide the source specific configuration\n");
+		return EXIT_FAILURE;
+	}
+
+	success = true;
+	success &= read_sized_uint(argv[ARG_SOURCE],
+			&source,
+			sizeof(msg.source_conf.source));
+	success &= read_sized_uint(argv[ARG_OPAMP_GAIN],
+			&opamp_gain,
+			sizeof(msg.source_conf.opamp_gain));
+	success &= read_sized_uint(argv[ARG_OPAMP_OFFSET],
+			&opamp_offset,
+			sizeof(msg.source_conf.opamp_offset));
+	success &= read_sized_uint(argv[ARG_SOFTWARE_OVERSAMPLE],
+			&sw_oversample,
+			sizeof(msg.source_conf.sw_oversample));
+
+	switch (arg_optional_count)
+	{
+	case 2:
+		success &= read_sized_uint(argv[ARG_HARDWARE_OVERSAMPLE],
+				&hw_oversample,
+				sizeof(msg.source_conf.hw_oversample));
+		/* Fall through */
+	case 1:
+		success &= read_sized_uint(argv[ARG_HARDWARE_SHIFT],
+				&hw_shift,
+				sizeof(msg.source_conf.hw_shift));
+		break;
+	}
+
+	if (!success) {
+		fprintf(stderr, "Failed to parse arguments.\n");
+		return EXIT_FAILURE;
+	}
+
+	msg.source_conf.source = source;
+	msg.source_conf.opamp_gain = opamp_gain;
+	msg.source_conf.opamp_offset = opamp_offset;
+	msg.source_conf.sw_oversample = sw_oversample;
+	msg.source_conf.hw_oversample = hw_oversample;
+	msg.source_conf.hw_shift = hw_shift;
 
 	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
 	if (dev_fd == -1) {
@@ -275,7 +378,6 @@ static int bl_cmd_start_stream(
 		ARG_CMD,
 		ARG_DEV_PATH,
 		ARG_FREQUENCY,
-		ARG_OVERSAMPLE,
 		ARG_SRC_MASK,
 		ARG__COUNT,
 	};
@@ -285,29 +387,23 @@ static int bl_cmd_start_stream(
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH|--auto|-a> \\\n"
 				"  \t<FREQUENCY> \\\n"
-				"  \t<OVERSAMPLE> \\\n"
 				"  \t<SRC_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
 		fprintf(stderr, "\n");
 		fprintf(stderr, "FREQUENCY is the sampling rate in Hz.\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "OVERSAMPLE is the number of samples to sum.\n");
 		return EXIT_FAILURE;
 	}
 
 	if (read_sized_uint(argv[ARG_SRC_MASK],
 			&src_mask, sizeof(msg.start.src_mask)) == false ||
 	    read_sized_uint(argv[ARG_FREQUENCY],
-			&frequency, sizeof(msg.start.frequency)) == false ||
-	    read_sized_uint(argv[ARG_OVERSAMPLE],
-			&oversample, sizeof(msg.start.oversample)) == false ) {
+			&frequency, sizeof(msg.start.frequency)) == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
 	}
 
 	msg.start.frequency  = frequency;
-	msg.start.oversample = oversample;
 	msg.start.src_mask   = src_mask;
 
 	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
@@ -358,6 +454,11 @@ static const struct bl_cmd {
 		.name = "led",
 		.help = "Turn LEDs on/off",
 		.fn = bl_cmd_led,
+	},
+	{
+		.name = "srccfg",
+		.help = "Set configuration for a given source",
+		.fn = bl_cmd_source_conf
 	},
 	{
 		.name = "chancfg",
