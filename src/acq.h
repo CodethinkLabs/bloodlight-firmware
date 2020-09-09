@@ -55,19 +55,36 @@ void bl_acq_init(uint32_t clock);
  *
  * \param[in]  frequency   Sampling frequency.
  * \param[in]  src_mask    Mask of sources to enable.
- * \param[in]  oversample  Number of bits to oversample by.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
-		uint32_t oversample,
 		uint16_t src_mask);
+
+/**
+ * Set the per-source configuration
+ *
+ * \param[in]  source         Channel (source) to configure
+ * \param[in]  opamp_gain     Hardware gain.
+ * \param[in]  opamp_offset   Hardware offset.
+ * \param[in]  sw_oversample  Software oversample.
+ * \param[in]  hw_oversample  Hardware oversample.
+ * \param[in]  hw_shift       Hardware shift.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_acq_source_conf(
+		uint8_t  source,
+		uint8_t  opamp_gain,
+		uint16_t opamp_offset,
+		uint16_t sw_oversample,
+		uint8_t  hw_oversample,
+		uint8_t  hw_shift);
 
 /**
  * Set the per-channel configuration
  *
- * \param[in]  channel   Channel (source) to configure
- * \param[in]  gain      OpAMP gain to apply for the channel
+ * \param[in]  channel   Channel to configure
+ * \param[in]  source    Acquisition source associated with the channel.
  * \param[in]  shift     Bits to shift sample values by (divides by (2^shift)
  * \param[in]  offset    Amount to offset sample values by
  * \param[in]  saturate  Whether to enable sample saturation.
@@ -75,7 +92,7 @@ enum bl_error bl_acq_start(
  */
 enum bl_error bl_acq_channel_conf(
 		uint8_t  channel,
-		uint8_t  gain,
+		uint8_t  source,
 		uint8_t  shift,
 		uint32_t offset,
 		bool     sample32);

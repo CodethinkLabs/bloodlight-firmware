@@ -82,7 +82,6 @@ void bl_acq_init(uint32_t clock)
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
-		uint32_t oversample,
 		uint16_t src_mask)
 {
 	if (src_mask == 0x00) {
@@ -122,9 +121,7 @@ enum bl_error bl_acq_start(
 				bl_acq_source_get_config(src[i]);
 
 		/* Finalize Config. */
-		config->frequency     = frequency;
-		config->sw_oversample = oversample;
-		config->oversample    = 0;
+		config->frequency = frequency;
 
 		config->frequency_trigger = (config->frequency *
 				config->sw_oversample);
@@ -345,36 +342,54 @@ enum bl_error bl_acq_start(
 }
 
 /* Exported function, documented in acq.h */
+enum bl_error bl_acq_source_conf(
+		uint8_t  source,
+		uint8_t  opamp_gain,
+		uint16_t opamp_offset,
+		uint16_t sw_oversample,
+		uint8_t  hw_oversample,
+		uint8_t  hw_shift)
+{
+	enum bl_error err;
+
+	if (bl_acq_source_is_enabled(source)) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+
+	bl_acq_source_config_t *src_config = bl_acq_source_get_config(source);
+
+	/* Config setting is incomplete here so validation is done later. */
+
+	src_config->opamp_gain    = opamp_gain;
+	src_config->opamp_offset  = opamp_offset;
+	src_config->sw_oversample = sw_oversample;
+	src_config->oversample    = hw_oversample;
+	src_config->shift         = hw_shift;
+
+	return BL_ERROR_NONE;
+}
+
+/* Exported function, documented in acq.h */
 enum bl_error bl_acq_channel_conf(
-		uint8_t  index,
-		uint8_t  gain,
+		uint8_t  channel,
+		uint8_t  source,
 		uint8_t  shift,
 		uint32_t offset,
 		bool     sample32)
 {
 	enum bl_error err;
 
-	if (bl_acq_channel_is_enabled(index)) {
+	if (bl_acq_channel_is_enabled(channel)) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
-
-	err = bl_acq_channel_configure(index, index, sample32, offset, shift);
-	if (err != BL_ERROR_NONE) {
-		return err;
-	}
-
-	/* TODO: Split out source config command into new host msg. */
-	if (bl_acq_source_is_enabled(index)) {
-		return BL_ERROR_ACTIVE_ACQUISITION;
-	}
-
-	bl_acq_source_config_t *src_config = bl_acq_source_get_config(index);
 
 	/* Config setting is incomplete here so validation is done later. */
 
-	src_config->opamp_gain   = gain;
-	src_config->opamp_offset = 0;
-	src_config->shift        = 0;
+	err = bl_acq_channel_configure(channel, source, sample32,
+			offset, shift);
+	if (err != BL_ERROR_NONE) {
+		return err;
+	}
 
 	return BL_ERROR_NONE;
 }
