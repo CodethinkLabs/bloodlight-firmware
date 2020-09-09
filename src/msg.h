@@ -54,15 +54,15 @@ typedef struct {
 } bl_msg_response_t;
 
 /**
-	* Data for \ref BL_MSG_LED.
-	*
-	* This simply turns LEDs on and off.
-	*
-	* While the interface allows multiple LEDs to be on simultaniously,
-	* it may not be possible to achieve on the hardware, due to power
-	* limitations.  Setting a value of 0x00 turns all LEDs off.  The
-	* least significant bit is LD1.
-	*/
+ * Data for \ref BL_MSG_LED.
+ *
+ * This simply turns LEDs on and off.
+ *
+ * While the interface allows multiple LEDs to be on simultaniously,
+ * it may not be possible to achieve on the hardware, due to power
+ * limitations.  Setting a value of 0x00 turns all LEDs off.  The
+ * least significant bit is LD1.
+ */
 typedef struct {
 	uint8_t  type;     /**< Must be \ref BL_MSG_LED */
 	uint16_t led_mask; /**< One bit per LED. */
@@ -88,10 +88,10 @@ typedef struct {
 } bl_msg_channel_conf_t;
 
 /**
-	* Data for \ref BL_MSG_SETUP.
-	*/
+ * Data for \ref BL_MSG_START.
+ */
 typedef struct {
-	uint8_t  type;       /**< Must be \ref BL_MSG_SETUP */
+	uint8_t  type;       /**< Must be \ref BL_MSG_START */
 	uint16_t frequency;  /**< Sampling rate in Hz. */
 	uint16_t src_mask;   /**< Mask of sources to enable. */
 } bl_msg_start_t;
@@ -101,7 +101,7 @@ typedef struct {
 	uint8_t type; /**< Must be \ref BL_MSG_ABORT */
 } bl_msg_abort_t;
 
-/** Data for \ref BL_MSG_SAMPLE_DATA16. */
+/** Data for \ref BL_MSG_SAMPLE_DATA16 and \ref BL_MSG_SAMPLE_DATA32. */
 typedef struct {
 	uint8_t  type;     /**< Must be \ref BL_MSG_SAMPLE_DATA */
 	uint8_t  channel;  /**< Channel of sample data. */
