@@ -95,7 +95,7 @@ static int bl_cmd_led(int argc, char *argv[])
 	bl_msg_yaml_print(stdout, &msg);
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_device_close(dev_fd);
-		return ret;
+		return EXIT_FAILURE;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 	bl_device_close(dev_fd);
@@ -196,7 +196,7 @@ static int bl_cmd_channel_conf(int argc, char *argv[])
 	bl_msg_yaml_print(stdout, &msg);
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_device_close(dev_fd);
-		return ret;
+		return EXIT_FAILURE;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 	bl_device_close(dev_fd);
@@ -300,7 +300,7 @@ static int bl_cmd_source_conf(int argc, char *argv[])
 	bl_msg_yaml_print(stdout, &msg);
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_device_close(dev_fd);
-		return ret;
+		return EXIT_FAILURE;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 	bl_device_close(dev_fd);
@@ -339,7 +339,7 @@ static int bl_cmd__no_params_helper(
 	bl_msg_yaml_print(stdout, &msg);
 	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
 		bl_device_close(dev_fd);
-		return ret;
+		return EXIT_FAILURE;
 	}
 	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
 	bl_device_close(dev_fd);
