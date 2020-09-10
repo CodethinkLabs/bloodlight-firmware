@@ -3,6 +3,7 @@ bin/
 *.bin
 generated.*.ld
 tools/bl
+tools/bpm
 tools/*.o
 tools/convert
 tools/calibrate
