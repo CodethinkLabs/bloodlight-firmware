@@ -983,6 +983,11 @@ static bool main_menu__push_update(
 
 cleanup:
 	locked_uint_release(&update_ctx.count);
+	if (ret == false) {
+		if (type == UPDATE_TYPE_SET_VALUE) {
+			free(data->set_value.value);
+		}
+	}
 	return ret;
 }
 
