@@ -83,9 +83,8 @@ struct main_menu_config_leds {
 	uint8_t leds[BL_LED_COUNT]; /**< Array of LED enablement. */
 };
 
-/** Current configuration for a channel. */
-struct main_menu_config_channel {
-	unsigned gain;     /**< Channel gain. */
+/** Current configuration for a channel channel. */
+struct main_menu_config_channel_chan {
 	unsigned offset;   /**< Offset for 16-bit sample mode. */
 	unsigned shift;    /**< Shift for 16-bit sample mode. */
 	bool     sample32; /**< Whether 16-bit sample mode is enabled. */
@@ -95,10 +94,18 @@ struct main_menu_config_channel {
 	struct sdl_tk_widget *widget_offset; /**< Widget for channel offset. */
 };
 
+/** Current configuration for a channel source. */
+struct main_menu_config_channel_src {
+	unsigned sw_oversample; /**< Software oversample count. */
+	unsigned opamp_gain;    /**< Source sample gain. */
+	unsigned opamp_offset;  /**< Source sample offset. */
+	unsigned hw_oversample; /**< Source hardware oversample. */
+	unsigned hw_shift;      /**< Source hardware shift. */
+};
+
 /** Current acquisition configuration. */
 struct main_menu_config_acq_params {
 	unsigned frequency;                  /**< Sampling frequency in Hz. */
-	unsigned oversample;                 /**< Oversample count. */
 	uint8_t  sources[BL_ACQ__SRC_COUNT]; /**< Source enablement. */
 };
 
@@ -112,6 +119,12 @@ struct main_menu_config_filter {
 
 	struct sdl_tk_widget *widget_normalise;  /**< Normalisation widget. */
 	struct sdl_tk_widget *widget_ac_denoise; /**< Denoising widget. */
+};
+
+/** Config for channels == sources acquisitions. */
+struct main_menu_config_channel {
+	struct main_menu_config_channel_chan channel; /**< Channel config. */
+	struct main_menu_config_channel_src  source;  /**< Source config. */
 };
 
 /** Main menu configuration entries. */
@@ -215,7 +228,7 @@ enum {
 /**
  * Filter setup menu.
  */
-static const struct main_menu_widget_desc bl_menu_config_filter_entries[] = {
+static const struct main_menu_widget_desc bl_menu_conf_filter_entries[] = {
 	[FILTER_VALUE_NORMALISE] = {
 		.type  = WIDGET_TYPE_INPUT,
 		.title = "Normalisation frequency (Hz)",
@@ -251,7 +264,7 @@ static const struct main_menu_widget_desc bl_menu_config_filter_entries[] = {
 /**
  * LED selection menu.
  */
-static const struct main_menu_widget_desc bl_menu_config_led_entries[BL_LED_COUNT] = {
+static const struct main_menu_widget_desc bl_menu_conf_led_entries[BL_LED_COUNT] = {
 	{
 		.type   = WIDGET_TYPE_TOGGLE,
 		.title  = "Blue (470nm)",
@@ -323,109 +336,183 @@ static const struct main_menu_widget_desc bl_menu_config_led_entries[BL_LED_COUN
 
 /** Channel config menu entries. */
 enum {
-	CHAN_GAIN,
-	CHAN_OFFSET,
-	CHAN_SHIFT,
-	CHAN_32BIT,
-	CHAN_INVERT,
+	CHAN_CHAN_SW_OFFSET,
+	CHAN_CHAN_SW_SHIFT,
+	CHAN_CHAN_32BIT,
+	CHAN_CHAN_INVERT,
 };
 
 /**
  * Channel configuration menu.
  */
-static const struct main_menu_widget_desc bl_menu_config_chan_c_entries[] = {
-	[CHAN_GAIN] = {
+static const struct main_menu_widget_desc bl_menu_conf_chan_c_entries[] = {
+	[CHAN_CHAN_SW_OFFSET] = {
 		.type  = WIDGET_TYPE_INPUT,
-		.title = "Gain",
+		.title = "Software Offset",
+		.input = {
+			.initial = "0",
+			.cb = main_menu_numerical_input_cb,
+		},
+	},
+	[CHAN_CHAN_SW_SHIFT] = {
+		.type  = WIDGET_TYPE_INPUT,
+		.title = "Software Shift",
+		.input = {
+			.initial = "0",
+			.cb = main_menu_numerical_input_cb,
+		},
+	},
+	[CHAN_CHAN_32BIT] = {
+		.type   = WIDGET_TYPE_TOGGLE,
+		.title  = "32-bit samples",
+	},
+	[CHAN_CHAN_INVERT] = {
+		.type   = WIDGET_TYPE_TOGGLE,
+		.title  = "Invert data",
+	},
+};
+
+/** Channel config menu entries. */
+enum {
+	CHAN_SRC_SW_OVERSAMPLE,
+	CHAN_SRC_OPAMP_GAIN,
+	CHAN_SRC_OPAMP_OFFSET,
+	CHAN_SRC_HW_OVERSAMPLE,
+	CHAN_SRC_HW_SHIFT,
+};
+
+/**
+ * Channel source configuration menu.
+ */
+static const struct main_menu_widget_desc bl_menu_conf_chan_s_entries[] = {
+	[CHAN_SRC_SW_OVERSAMPLE] = {
+		.type  = WIDGET_TYPE_INPUT,
+		.title = "Software Oversample",
+		.input = {
+			.initial = "512",
+			.cb = main_menu_numerical_input_cb,
+		},
+	},
+	[CHAN_SRC_OPAMP_GAIN] = {
+		.type  = WIDGET_TYPE_INPUT,
+		.title = "Op-Amp Gain",
 		.input = {
 			.initial = "1",
 			.cb = main_menu_numerical_input_cb,
 		},
 	},
-	[CHAN_OFFSET] = {
+	[CHAN_SRC_OPAMP_OFFSET] = {
 		.type  = WIDGET_TYPE_INPUT,
-		.title = "Offset",
+		.title = "Op-Amp Offset",
 		.input = {
 			.initial = "0",
 			.cb = main_menu_numerical_input_cb,
 		},
 	},
-	[CHAN_SHIFT] = {
+	[CHAN_SRC_HW_OVERSAMPLE] = {
 		.type  = WIDGET_TYPE_INPUT,
-		.title = "Shift",
+		.title = "Hardware Oversample",
 		.input = {
 			.initial = "0",
 			.cb = main_menu_numerical_input_cb,
 		},
 	},
-	[CHAN_32BIT] = {
-		.type   = WIDGET_TYPE_TOGGLE,
-		.title  = "32-bit samples",
+	[CHAN_SRC_HW_SHIFT] = {
+		.type  = WIDGET_TYPE_INPUT,
+		.title = "Hardware Shift",
+		.input = {
+			.initial = "0",
+			.cb = main_menu_numerical_input_cb,
+		},
 	},
-	[CHAN_INVERT] = {
-		.type   = WIDGET_TYPE_TOGGLE,
-		.title  = "Invert data",
+};
+
+/** List of channel settings groupings. */
+enum {
+	BL_CHAN_SETUP_CHAN,
+	BL_CHAN_SETUP_SRC,
+};
+
+/**
+ * Channel configuration groups.
+ */
+static const struct main_menu_widget_desc bl_menu_conf_chan_setup_entries[] = {
+	[BL_CHAN_SETUP_CHAN] = {
+		.type  = WIDGET_TYPE_MENU,
+		.title = "Channel",
+		.menu  = {
+			.entries = bl_menu_conf_chan_c_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_c_entries),
+		},
+	},
+	[BL_CHAN_SETUP_SRC] = {
+		.type  = WIDGET_TYPE_MENU,
+		.title = "Source",
+		.menu  = {
+			.entries = bl_menu_conf_chan_s_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_s_entries),
+		},
 	},
 };
 
 /**
  * Channel configuration list.
  */
-static const struct main_menu_widget_desc bl_menu_config_chan_entries[] = {
+static const struct main_menu_widget_desc bl_menu_conf_chan_entries[] = {
 	[BL_ACQ_PD1] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Photodiode 1",
 		.menu  = {
-			.entries = bl_menu_config_chan_c_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_c_entries),
+			.entries = bl_menu_conf_chan_setup_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_setup_entries),
 		},
 	},
 	[BL_ACQ_PD2] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Photodiode 2",
 		.menu  = {
-			.entries = bl_menu_config_chan_c_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_c_entries),
+			.entries = bl_menu_conf_chan_setup_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_setup_entries),
 		},
 	},
 	[BL_ACQ_PD3] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Photodiode 3",
 		.menu  = {
-			.entries = bl_menu_config_chan_c_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_c_entries),
+			.entries = bl_menu_conf_chan_setup_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_setup_entries),
 		},
 	},
 	[BL_ACQ_PD4] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Photodiode 4",
 		.menu  = {
-			.entries = bl_menu_config_chan_c_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_c_entries),
+			.entries = bl_menu_conf_chan_setup_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_setup_entries),
 		},
 	},
 	[BL_ACQ_3V3] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "3.3 Volts",
 		.menu  = {
-			.entries = bl_menu_config_chan_c_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_c_entries),
+			.entries = bl_menu_conf_chan_setup_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_setup_entries),
 		},
 	},
 	[BL_ACQ_5V0] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "5.0 Volts",
 		.menu  = {
-			.entries = bl_menu_config_chan_c_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_c_entries),
+			.entries = bl_menu_conf_chan_setup_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_setup_entries),
 		},
 	},
 	[BL_ACQ_TMP] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Temperature",
 		.menu  = {
-			.entries = bl_menu_config_chan_c_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_c_entries),
+			.entries = bl_menu_conf_chan_setup_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_setup_entries),
 		},
 	},
 };
@@ -433,7 +520,7 @@ static const struct main_menu_widget_desc bl_menu_config_chan_entries[] = {
 /**
  * Channel selection menu.
  */
-static const struct main_menu_widget_desc bl_menu_config_acq_sources_entries[] = {
+static const struct main_menu_widget_desc bl_menu_conf_acq_sources_entries[] = {
 	[BL_ACQ_PD1] = {
 		.type   = WIDGET_TYPE_TOGGLE,
 		.title  = "Photodiode 1",
@@ -479,14 +566,13 @@ static const struct main_menu_widget_desc bl_menu_config_acq_sources_entries[] =
 /** Acquisition config menu entries. */
 enum {
 	ACQ_FREQ,
-	ACQ_OVER,
 	ACQ_SRC,
 };
 
 /**
  * Acquisition configuration menu.
  */
-static const struct main_menu_widget_desc bl_menu_config_acq_entries[] = {
+static const struct main_menu_widget_desc bl_menu_conf_acq_entries[] = {
 	[ACQ_FREQ] = {
 		.type  = WIDGET_TYPE_INPUT,
 		.title = "Frequency (Hz)",
@@ -495,20 +581,12 @@ static const struct main_menu_widget_desc bl_menu_config_acq_entries[] = {
 			.cb = main_menu_numerical_input_cb,
 		},
 	},
-	[ACQ_OVER] = {
-		.type  = WIDGET_TYPE_INPUT,
-		.title = "Oversample",
-		.input = {
-			.initial = "512",
-			.cb = main_menu_numerical_input_cb,
-		},
-	},
 	[ACQ_SRC]  = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Sources",
 		.menu  = {
-			.entries = bl_menu_config_acq_sources_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_acq_sources_entries),
+			.entries = bl_menu_conf_acq_sources_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_acq_sources_entries),
 		},
 	},
 };
@@ -516,37 +594,37 @@ static const struct main_menu_widget_desc bl_menu_config_acq_entries[] = {
 /**
  * Configuration menu.
  */
-static const struct main_menu_widget_desc bl_menu_config_entries[] = {
+static const struct main_menu_widget_desc bl_menu_conf_entries[] = {
 	{
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Acquisition",
 		.menu  = {
-			.entries = bl_menu_config_acq_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_acq_entries),
+			.entries = bl_menu_conf_acq_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_acq_entries),
 		},
 	},
 	{
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Channels",
 		.menu  = {
-			.entries = bl_menu_config_chan_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_chan_entries),
+			.entries = bl_menu_conf_chan_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_chan_entries),
 		},
 	},
 	{
 		.type  = WIDGET_TYPE_MENU,
 		.title = "LEDs",
 		.menu  = {
-			.entries = bl_menu_config_led_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_led_entries),
+			.entries = bl_menu_conf_led_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_led_entries),
 		},
 	},
 	{
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Filtering",
 		.menu  = {
-			.entries = bl_menu_config_filter_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_filter_entries),
+			.entries = bl_menu_conf_filter_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_filter_entries),
 		},
 	},
 };
@@ -588,8 +666,8 @@ static const struct main_menu_widget_desc bl_menu_main_entries[] = {
 		.type  = WIDGET_TYPE_MENU,
 		.title = "Config",
 		.menu  = {
-			.entries = bl_menu_config_entries,
-			.count   = BL_ARRAY_LEN(bl_menu_config_entries),
+			.entries = bl_menu_conf_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_entries),
 		},
 	},
 	[MAIN_QUIT]   = {
@@ -627,30 +705,37 @@ static void *get_config_pw_for_entry(
 	static unsigned chan_entry;
 	const struct main_menu_widget_desc *entries = desc->menu.entries;
 
-	if (entries == bl_menu_config_acq_entries) {
+	if (entries == bl_menu_conf_acq_entries) {
 		switch (entry) {
 		case ACQ_FREQ: return &config.acq.frequency;
-		case ACQ_OVER: return &config.acq.oversample;
 		}
 
-	} else if (entries == bl_menu_config_acq_sources_entries) {
+	} else if (entries == bl_menu_conf_acq_sources_entries) {
 		return &config.acq.sources[entry];
 
-	} else if (entries == bl_menu_config_chan_entries) {
+	} else if (entries == bl_menu_conf_chan_entries) {
 		chan_entry = entry;
 
-	} else if (entries == bl_menu_config_chan_c_entries) {
+	} else if (entries == bl_menu_conf_chan_c_entries) {
 		switch (entry) {
-		case CHAN_GAIN:   return &config.channel[chan_entry].gain;
-		case CHAN_OFFSET: return &config.channel[chan_entry].offset;
-		case CHAN_SHIFT:  return &config.channel[chan_entry].shift;
-		case CHAN_32BIT:  return &config.channel[chan_entry].sample32;
-		case CHAN_INVERT: return &config.channel[chan_entry].inverted;
+		case CHAN_CHAN_SW_OFFSET: return &config.channel[chan_entry].channel.offset;
+		case CHAN_CHAN_SW_SHIFT:  return &config.channel[chan_entry].channel.shift;
+		case CHAN_CHAN_32BIT:     return &config.channel[chan_entry].channel.sample32;
+		case CHAN_CHAN_INVERT:    return &config.channel[chan_entry].channel.inverted;
 		}
 
-	} else if (entries == bl_menu_config_led_entries) {
+	} else if (entries == bl_menu_conf_chan_s_entries) {
+		switch (entry) {
+		case CHAN_SRC_SW_OVERSAMPLE: return &config.channel[chan_entry].source.sw_oversample;
+		case CHAN_SRC_OPAMP_GAIN:    return &config.channel[chan_entry].source.opamp_gain;
+		case CHAN_SRC_OPAMP_OFFSET:  return &config.channel[chan_entry].source.opamp_offset;
+		case CHAN_SRC_HW_OVERSAMPLE: return &config.channel[chan_entry].source.hw_oversample;
+		case CHAN_SRC_HW_SHIFT:      return &config.channel[chan_entry].source.hw_shift;
+		}
+
+	} else if (entries == bl_menu_conf_led_entries) {
 		return &config.led.leds[entry];
-	} else if (entries == bl_menu_config_filter_entries) {
+	} else if (entries == bl_menu_conf_filter_entries) {
 		switch (entry) {
 		case FILTER_VALUE_NORMALISE:   return &config.filter.normalise;
 		case FILTER_VALUE_AC_DENOISE:  return &config.filter.ac_denoise;
@@ -676,15 +761,15 @@ static struct sdl_tk_widget **main_menu_record_widget(
 	static unsigned chan_entry;
 	const struct main_menu_widget_desc *entries = desc->menu.entries;
 
-	if (entries == bl_menu_config_chan_entries) {
+	if (entries == bl_menu_conf_chan_entries) {
 		chan_entry = entry;
 
-	} else if (entries == bl_menu_config_chan_c_entries) {
+	} else if (entries == bl_menu_conf_chan_c_entries) {
 		switch (entry) {
-		case CHAN_OFFSET:
-			return &config.channel[chan_entry].widget_offset;
-		case CHAN_SHIFT:
-			return &config.channel[chan_entry].widget_shift;
+		case CHAN_CHAN_SW_OFFSET:
+			return &config.channel[chan_entry].channel.widget_offset;
+		case CHAN_CHAN_SW_SHIFT:
+			return &config.channel[chan_entry].channel.widget_shift;
 		default:
 			break;
 		}
@@ -695,7 +780,7 @@ static struct sdl_tk_widget **main_menu_record_widget(
 		case MAIN_STOP: return &config.widget_stop;
 		}
 
-	} else if (entries == bl_menu_config_filter_entries) {
+	} else if (entries == bl_menu_conf_filter_entries) {
 		switch (entry) {
 		case FILTER_VALUE_NORMALISE:  return &config.filter.widget_normalise;
 		case FILTER_VALUE_AC_DENOISE: return &config.filter.widget_ac_denoise;
@@ -823,7 +908,7 @@ uint16_t main_menu_conifg_get_led_mask(void)
 uint16_t main_menu_conifg_get_source_mask(void)
 {
 	const uint16_t src_count = BL_ARRAY_LEN(
-			bl_menu_config_acq_sources_entries);
+			bl_menu_conf_acq_sources_entries);
 	uint16_t src_mask = 0;
 
 	for (unsigned i = 0; i < src_count; i++) {
@@ -842,39 +927,57 @@ uint16_t main_menu_conifg_get_frequency(void)
 }
 
 /* Exported interface, documented in main-menu.h */
-uint32_t main_menu_conifg_get_oversample(void)
+uint32_t main_menu_conifg_get_source_sw_oversample(enum bl_acq_source source)
 {
-	return config.acq.oversample;
+	return config.channel[source].source.sw_oversample;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint8_t main_menu_conifg_get_channel_gain(uint8_t channel)
+uint32_t main_menu_conifg_get_source_opamp_gain(enum bl_acq_source source)
 {
-	return config.channel[channel].gain;
+	return config.channel[source].source.opamp_gain;
+}
+
+/* Exported interface, documented in main-menu.h */
+uint32_t main_menu_conifg_get_source_opamp_offset(enum bl_acq_source source)
+{
+	return config.channel[source].source.opamp_offset;
+}
+
+/* Exported interface, documented in main-menu.h */
+uint32_t main_menu_conifg_get_source_hw_oversample(enum bl_acq_source source)
+{
+	return config.channel[source].source.hw_oversample;
+}
+
+/* Exported interface, documented in main-menu.h */
+uint32_t main_menu_conifg_get_source_hw_shift(enum bl_acq_source source)
+{
+	return config.channel[source].source.hw_shift;
 }
 
 /* Exported interface, documented in main-menu.h */
 uint8_t main_menu_conifg_get_channel_shift(uint8_t channel)
 {
-	return config.channel[channel].shift;
+	return config.channel[channel].channel.shift;
 }
 
 /* Exported interface, documented in main-menu.h */
 uint32_t main_menu_conifg_get_channel_offset(uint8_t channel)
 {
-	return config.channel[channel].offset;
+	return config.channel[channel].channel.offset;
 }
 
 /* Exported interface, documented in main-menu.h */
 bool main_menu_conifg_get_channel_sample32(uint8_t channel)
 {
-	return config.channel[channel].sample32;
+	return config.channel[channel].channel.sample32;
 }
 
 /* Exported interface, documented in main-menu.h */
 bool main_menu_conifg_get_channel_inverted(uint8_t channel)
 {
-	return config.channel[channel].inverted;
+	return config.channel[channel].channel.inverted;
 }
 
 /* Exported interface, documented in main-menu.h */
@@ -1031,7 +1134,7 @@ bool main_menu_conifg_set_channel_shift(uint8_t channel, uint8_t shift)
 
 	return main_menu__push_update(
 			UPDATE_TYPE_SET_VALUE,
-			config.channel[channel].widget_shift,
+			config.channel[channel].channel.widget_shift,
 			&data);
 }
 
@@ -1047,7 +1150,7 @@ bool main_menu_conifg_set_channel_offset(uint8_t channel, uint32_t offset)
 
 	return main_menu__push_update(
 			UPDATE_TYPE_SET_VALUE,
-			config.channel[channel].widget_offset,
+			config.channel[channel].channel.widget_offset,
 			&data);
 }
 

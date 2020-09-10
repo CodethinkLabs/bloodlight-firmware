@@ -24,6 +24,8 @@
 #ifndef MAIN_MENU_H
 #define MAIN_MENU_H
 
+#include "../../src/acq.h"
+
 /**
  * Create the bloodlight main menu widget set.
  *
@@ -58,19 +60,44 @@ uint16_t main_menu_conifg_get_source_mask(void);
 uint16_t main_menu_conifg_get_frequency(void);
 
 /**
- * Get the oversample.
+ * Get the software oversample.
  *
- * \return the configured oversample.
+ * \param[in]  source  The source to read config from.
+ * \return the configured software oversample.
  */
-uint32_t main_menu_conifg_get_oversample(void);
+uint32_t main_menu_conifg_get_source_sw_oversample(enum bl_acq_source source);
 
 /**
- * Get the gain for a given channel.
+ * Get the opamp gain.
  *
- * \param[in]  channel  The channel to read config from.
- * \return the configured channel gain.
+ * \param[in]  source  The source to read config from.
+ * \return the configured opamp gain.
  */
-uint8_t main_menu_conifg_get_channel_gain(uint8_t channel);
+uint32_t main_menu_conifg_get_source_opamp_gain(enum bl_acq_source source);
+
+/**
+ * Get the opamp offset.
+ *
+ * \param[in]  source  The source to read config from.
+ * \return the configured opamp offset.
+ */
+uint32_t main_menu_conifg_get_source_opamp_offset(enum bl_acq_source source);
+
+/**
+ * Get the hardware oversample.
+ *
+ * \param[in]  source  The source to read config from.
+ * \return the configured hardware oversample.
+ */
+uint32_t main_menu_conifg_get_source_hw_oversample(enum bl_acq_source source);
+
+/**
+ * Get the hardware shift.
+ *
+ * \param[in]  source  The source to read config from.
+ * \return the configured hardware shift.
+ */
+uint32_t main_menu_conifg_get_source_hw_shift(enum bl_acq_source source);
 
 /**
  * Get the shift for a given channel.

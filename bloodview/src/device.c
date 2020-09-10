@@ -48,7 +48,7 @@
 #define MSG_START_SPECIAL_ACQ ((enum bl_msg_type) 254)
 
 /** Maximum number of messages that can be queued for sending. */
-#define MSG_FIFO_MAX 16
+#define MSG_FIFO_MAX 32
 
 /** Device module global context. */
 static struct {
@@ -498,10 +498,40 @@ static bool device__queue_msg_channel_conf(
 
 	msg->type = BL_MSG_CHANNEL_CONF;
 	msg->channel_conf.channel  = channel;
-	msg->channel_conf.gain     = main_menu_conifg_get_channel_gain(channel);
+	msg->channel_conf.source   = channel;
 	msg->channel_conf.shift    = main_menu_conifg_get_channel_shift(channel);
 	msg->channel_conf.offset   = main_menu_conifg_get_channel_offset(channel);
 	msg->channel_conf.sample32 = sample32;
+
+	device__msg_send(msg);
+	return true;
+}
+
+/**
+ * Configure a source on the device.
+ *
+ * The config is obtained from the main menu configuration.
+ *
+ * \param[in]  source  The source to configure.
+ * \return true if a message has been queued for sending to the device.
+ */
+static bool device__queue_msg_source_conf(
+		enum bl_acq_source source)
+{
+	union bl_msg_data *msg;
+
+	msg = device__msg_get_next_free();
+	if (msg == NULL) {
+		return false;
+	}
+
+	msg->type = BL_MSG_SOURCE_CONF;
+	msg->source_conf.source        = source;
+	msg->source_conf.opamp_gain    = main_menu_conifg_get_source_opamp_gain(source);
+	msg->source_conf.opamp_offset  = main_menu_conifg_get_source_opamp_offset(source);
+	msg->source_conf.sw_oversample = main_menu_conifg_get_source_sw_oversample(source);
+	msg->source_conf.hw_oversample = main_menu_conifg_get_source_hw_oversample(source);
+	msg->source_conf.hw_shift      = main_menu_conifg_get_source_hw_shift(source);
 
 	device__msg_send(msg);
 	return true;
@@ -524,9 +554,8 @@ static bool device__queue_msg_start(void)
 	}
 
 	msg->type = BL_MSG_START;
-	msg->start.frequency  = main_menu_conifg_get_frequency();
-	msg->start.oversample = main_menu_conifg_get_oversample();
-	msg->start.src_mask   = main_menu_conifg_get_source_mask();
+	msg->start.frequency = main_menu_conifg_get_frequency();
+	msg->start.src_mask  = main_menu_conifg_get_source_mask();
 
 	device__msg_send(msg);
 	return true;
@@ -567,6 +596,9 @@ static bool device__queue_channel_conf_messages(bool calibrate)
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		if (source_mask & (1U << i)) {
 			if (!device__queue_msg_channel_conf(i, calibrate)) {
+				return false;
+			}
+			if (!device__queue_msg_source_conf(i)) {
 				return false;
 			}
 		}
