@@ -89,6 +89,7 @@ static void device__msg_advance_ptr(unsigned *pos)
 static inline union bl_msg_data *device__msg_get_next_free(void)
 {
 	if (locked_uint_is_equal(&bv_device_g.msg_used, MSG_FIFO_MAX)) {
+		fprintf(stderr, "No free slots to message device.\n");
 		return NULL;
 	}
 
