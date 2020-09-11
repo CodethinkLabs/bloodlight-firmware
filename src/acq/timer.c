@@ -54,7 +54,7 @@ enum bl_error bl_acq_timer_configure(bl_acq_timer_t *timer, uint32_t frequency)
 	}
 
 	if ((frequency == 0) || (frequency > bl_acq_timer__bus_freq)) {
-		return BL_ERROR_OUT_OF_RANGE;
+		return BL_ERROR_TIMER_BAD_FREQUENCY;
 	}
 
 	uint32_t ticks_per_sample = DIV_NEAREST(

@@ -122,7 +122,7 @@ enum bl_error bl_acq_adc_group_configure(bl_acq_adc_group_t *adc_group,
 	}
 
 	if (frequency > max_freq) {
-		return BL_ERROR_OUT_OF_RANGE;
+		return BL_ERROR_ADC_FREQ_TOO_HIGH;
 	}
 
 	bl_acq_adc_group_config_t *config = &adc_group->config;
@@ -468,7 +468,7 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 	}
 
 	if ((sw_oversample * config->channel_count) > BL_ACQ_DMA_MAX) {
-		return BL_ERROR_OUT_OF_RANGE;
+		return BL_ERROR_ADC_DMA_BUFFER;
 	}
 
 #if (BL_REVISION == 1)

@@ -254,7 +254,7 @@ enum bl_error bl_acq_opamp_configure(bl_acq_opamp_t *opamp, uint8_t gain)
 #endif
 
 		default:
-			return BL_ERROR_OUT_OF_RANGE;
+			return BL_ERROR_OPAMP_BAD_GAIN;
 		}
 	} else {
 		switch (gain) {
@@ -285,7 +285,7 @@ enum bl_error bl_acq_opamp_configure(bl_acq_opamp_t *opamp, uint8_t gain)
 #endif
 
 		default:
-			return BL_ERROR_OUT_OF_RANGE;
+			return BL_ERROR_OPAMP_BAD_GAIN;
 		}
 	}
 

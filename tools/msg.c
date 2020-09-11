@@ -52,15 +52,21 @@ static const char *msg_types[] = {
 
 /** Message type to string mapping, */
 static const char *msg_errors[] = {
-	[BL_ERROR_NONE]               = "Success",
-	[BL_ERROR_OUT_OF_RANGE]       = "Value out of range",
-	[BL_ERROR_BAD_MESSAGE_TYPE]   = "Bad message type",
-	[BL_ERROR_BAD_MESSAGE_LENGTH] = "Bad message length",
-	[BL_ERROR_BAD_SOURCE_MASK]    = "Bad source mask",
-	[BL_ERROR_ACTIVE_ACQUISITION] = "In acquisition state",
-	[BL_ERROR_BAD_FREQUENCY]      = "Unsupported frequency combination",
-	[BL_ERROR_NOT_IMPLEMENTED]    = "Feature not implemented",
-	[BL_ERROR_HARDWARE_CONFLICT]  = "Hardware conflict",
+	[BL_ERROR_NONE]                = "Success",
+	[BL_ERROR_OUT_OF_RANGE]        = "Value out of range",
+	[BL_ERROR_BAD_MESSAGE_TYPE]    = "Bad message type",
+	[BL_ERROR_BAD_MESSAGE_LENGTH]  = "Bad message length",
+	[BL_ERROR_BAD_SOURCE_MASK]     = "Bad source mask",
+	[BL_ERROR_ACTIVE_ACQUISITION]  = "In acquisition state",
+	[BL_ERROR_BAD_FREQUENCY]       = "Unsupported frequency combination",
+	[BL_ERROR_NOT_IMPLEMENTED]     = "Feature not implemented",
+	[BL_ERROR_HARDWARE_CONFLICT]   = "Hardware conflict",
+	[BL_ERROR_ADC_FREQ_TOO_HIGH]   = "Frequency too high for ADC",
+	[BL_ERROR_ADC_DMA_BUFFER]      = "Config exceeds DMA buffer size",
+	[BL_ERROR_DAC_BAD_CHANNEL]     = "Bad DAC channel",
+	[BL_ERROR_DAC_BAD_OFFSET]      = "Bad DAC offset",
+	[BL_ERROR_OPAMP_BAD_GAIN]      = "Bad opamp gain",
+	[BL_ERROR_TIMER_BAD_FREQUENCY] = "Bad timer frequency",
 };
 
 static inline unsigned bl_msg_str_to_index(
