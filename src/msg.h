@@ -36,6 +36,7 @@
 enum bl_msg_type {
 	BL_MSG_RESPONSE,
 	BL_MSG_LED,
+	BL_MSG_SOURCE_CONF,
 	BL_MSG_CHANNEL_CONF,
 	BL_MSG_START,
 	BL_MSG_ABORT,
@@ -53,15 +54,15 @@ typedef struct {
 } bl_msg_response_t;
 
 /**
-	* Data for \ref BL_MSG_LED.
-	*
-	* This simply turns LEDs on and off.
-	*
-	* While the interface allows multiple LEDs to be on simultaniously,
-	* it may not be possible to achieve on the hardware, due to power
-	* limitations.  Setting a value of 0x00 turns all LEDs off.  The
-	* least significant bit is LD1.
-	*/
+ * Data for \ref BL_MSG_LED.
+ *
+ * This simply turns LEDs on and off.
+ *
+ * While the interface allows multiple LEDs to be on simultaniously,
+ * it may not be possible to achieve on the hardware, due to power
+ * limitations.  Setting a value of 0x00 turns all LEDs off.  The
+ * least significant bit is LD1.
+ */
 typedef struct {
 	uint8_t  type;     /**< Must be \ref BL_MSG_LED */
 	uint16_t led_mask; /**< One bit per LED. */
@@ -69,20 +70,29 @@ typedef struct {
 
 typedef struct {
 	uint8_t  type;
+	uint8_t  source;
+	uint8_t  opamp_gain;
+	uint16_t opamp_offset;
+	uint16_t sw_oversample;
+	uint8_t  hw_oversample;
+	uint8_t  hw_shift;
+} bl_msg_source_conf_t;
+
+typedef struct {
+	uint8_t  type;
 	uint8_t  channel;
-	uint8_t  gain;
+	uint8_t  source;
 	uint8_t  shift;
 	uint32_t offset;
 	uint8_t  sample32;
 } bl_msg_channel_conf_t;
 
 /**
-	* Data for \ref BL_MSG_SETUP.
-	*/
+ * Data for \ref BL_MSG_START.
+ */
 typedef struct {
-	uint8_t  type;       /**< Must be \ref BL_MSG_SETUP */
+	uint8_t  type;       /**< Must be \ref BL_MSG_START */
 	uint16_t frequency;  /**< Sampling rate in Hz. */
-	uint32_t oversample; /**< Numver of sample readings per sample */
 	uint16_t src_mask;   /**< Mask of sources to enable. */
 } bl_msg_start_t;
 
@@ -91,7 +101,7 @@ typedef struct {
 	uint8_t type; /**< Must be \ref BL_MSG_ABORT */
 } bl_msg_abort_t;
 
-/** Data for \ref BL_MSG_SAMPLE_DATA16. */
+/** Data for \ref BL_MSG_SAMPLE_DATA16 and \ref BL_MSG_SAMPLE_DATA32. */
 typedef struct {
 	uint8_t  type;     /**< Must be \ref BL_MSG_SAMPLE_DATA */
 	uint8_t  channel;  /**< Channel of sample data. */
@@ -111,6 +121,7 @@ union bl_msg_data {
 
 	bl_msg_response_t     response;
 	bl_msg_led_t          led;
+	bl_msg_source_conf_t  source_conf;
 	bl_msg_channel_conf_t channel_conf;
 	bl_msg_start_t        start;
 	bl_msg_abort_t        abort;
@@ -140,6 +151,7 @@ static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 	static const uint8_t len_table[BL_MSG__COUNT] = {
 		[BL_MSG_RESPONSE]      = BL_SIZEOF_MSG(response),
 		[BL_MSG_LED]           = BL_SIZEOF_MSG(led),
+		[BL_MSG_SOURCE_CONF]   = BL_SIZEOF_MSG(source_conf),
 		[BL_MSG_CHANNEL_CONF]  = BL_SIZEOF_MSG(channel_conf),
 		[BL_MSG_START]         = BL_SIZEOF_MSG(start),
 		[BL_MSG_ABORT]         = BL_SIZEOF_MSG(abort),

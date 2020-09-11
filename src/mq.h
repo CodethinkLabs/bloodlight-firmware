@@ -18,6 +18,7 @@
 #define BL_MQ_H
 
 #include "msg.h"
+#include "acq/channel.h"
 
 struct mq_ctx {
 	union bl_msg_data *msg;
@@ -27,8 +28,8 @@ struct mq_ctx {
 	volatile uint8_t write;
 };
 
-extern struct mq_ctx mq_ctx[BL_ACQ__SRC_COUNT];
-extern volatile unsigned mq_pending;
+extern struct mq_ctx mq_ctx[BL_ACQ_CHANNEL_COUNT];
+extern volatile uint32_t mq_pending;
 
 void bl_mq_init(void);
 

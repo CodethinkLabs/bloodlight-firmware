@@ -24,7 +24,7 @@
 #include "acq/timer.h"
 #include "acq/adc.h"
 #include "acq/opamp.h"
-#include "acq/channel.h"
+#include "acq/source.h"
 
 #if (BL_REVISION >= 2)
 #include "acq/dac.h"
@@ -67,12 +67,12 @@ void bl_acq_init(uint32_t clock)
 	bl_acq_adc_group_configure_all(bl_acq__adc_freq, async, false);
 
 	for (unsigned src = 0; src < BL_ACQ__SRC_COUNT; src++) {
-		bl_acq_channel_config_t *config
-			= bl_acq_channel_get_config(src);
+		bl_acq_source_config_t *config
+			= bl_acq_source_get_config(src);
 
 		config->enable = true;
 
-		bl_acq_channel_calibrate(src);
+		bl_acq_source_calibrate(src);
 
 		config->enable = false;
 	}
@@ -82,7 +82,6 @@ void bl_acq_init(uint32_t clock)
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
-		uint32_t oversample,
 		uint16_t src_mask)
 {
 	if (src_mask == 0x00) {
@@ -97,18 +96,32 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
+	/* For now, channels have a direct mapping to sources. */
+	uint16_t acq_chan_mask = src_mask;
+
+	/* Get source list from channels */
+	uint16_t acq_src_mask = 0;
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if ((acq_chan_mask & (1U << i)) != 0) {
+			acq_src_mask |= (1U << bl_acq_channel_get_source(i));
+		}
+	}
+
+	enum bl_acq_source src[BL_ACQ__SRC_COUNT];
+	unsigned           src_count = 0;
+
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
+		if ((acq_src_mask & (1U << i)) != 0) {
+			src[src_count++] = i;
+		}
+	}
+
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		/* Finalize Config. */
-		config->enable = ((src_mask & (1U << i)) != 0);
-		if (!config->enable) {
-			continue;
-		}
-
-		config->frequency     = frequency;
-		config->sw_oversample = oversample;
-		config->oversample    = 0;
+		config->frequency = frequency;
 
 		config->frequency_trigger = (config->frequency *
 				config->sw_oversample);
@@ -116,29 +129,30 @@ enum bl_error bl_acq_start(
 				config->oversample);
 
 		/* Finalize configuration. */
-		enum bl_error status = bl_acq_channel_configure(i);
+		enum bl_error status = bl_acq_source_configure(src[i]);
 		if (status != BL_ERROR_NONE) {
 			return status;
 		}
 	}
 
 	/* Configure timer(s). */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_timer_t *timer = bl_acq_channel_get_timer(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_timer_t *timer = bl_acq_source_get_timer(src[i]);
 		if (timer == NULL) {
 			continue;
 		}
 
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		/* Ensure same frequency for all users of the timer. */
-		for (unsigned j = (i + 1); j < BL_ACQ__SRC_COUNT; j++) {
-			if (bl_acq_channel_get_timer(j) != timer) {
+		for (unsigned j = (i + 1); j < src_count; j++) {
+			if (bl_acq_source_get_timer(src[j]) != timer) {
 				continue;
 			}
 
-			bl_acq_channel_config_t *config_b
-					= bl_acq_channel_get_config(i);
+			bl_acq_source_config_t *config_b =
+					bl_acq_source_get_config(src[j]);
 
 			if (config->frequency_trigger !=
 					config_b->frequency_trigger) {
@@ -155,24 +169,24 @@ enum bl_error bl_acq_start(
 
 #if (BL_REVISION >= 2)
 	/* Configure DACs. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		uint8_t dac_channel;
-		bl_acq_dac_t *dac = bl_acq_channel_get_dac(
-			i, &dac_channel);
+		bl_acq_dac_t *dac = bl_acq_source_get_dac(src[i], &dac_channel);
 		if (dac == NULL) {
 			continue;
 		}
 
 		/* Ensure same offsets for all users of same DAC channel. */
-		for (unsigned j = (i + 1); j < BL_ACQ__SRC_COUNT; j++) {
-			bl_acq_channel_config_t *config_b
-					= bl_acq_channel_get_config(j);
+		for (unsigned j = (i + 1); j < src_count; j++) {
+			bl_acq_source_config_t *config_b =
+					bl_acq_source_get_config(src[j]);
 
 			uint8_t dac_channel_b;
-			bl_acq_dac_t *dac_b = bl_acq_channel_get_dac(
-					j, &dac_channel_b);
+			bl_acq_dac_t *dac_b = bl_acq_source_get_dac(
+					src[j], &dac_channel_b);
 
 			if ((dac_b != dac) || (dac_channel_b != dac_channel)) {
 				continue;
@@ -193,10 +207,11 @@ enum bl_error bl_acq_start(
 #endif
 
 	/* Configure OPAMPs. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
-		bl_acq_opamp_t *opamp = bl_acq_channel_get_opamp(i);
+		bl_acq_opamp_t *opamp = bl_acq_source_get_opamp(src[i]);
 		if (opamp == NULL) {
 			continue;
 		}
@@ -215,8 +230,8 @@ enum bl_error bl_acq_start(
 
 	bool multi = false;
 	bl_acq_adc_t *first_adc = NULL;
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_adc_t *chan_adc = bl_acq_channel_get_adc(i, NULL);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_adc_t *chan_adc = bl_acq_source_get_adc(src[i], NULL);
 		if (chan_adc == NULL) {
 			continue;
 		}
@@ -228,8 +243,8 @@ enum bl_error bl_acq_start(
 		first_adc = chan_adc;
 	}
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_adc_t *adc = bl_acq_channel_get_adc(i, NULL);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_adc_t *adc = bl_acq_source_get_adc(src[i], NULL);
 		if (adc == NULL) {
 			continue;
 		}
@@ -247,24 +262,26 @@ enum bl_error bl_acq_start(
 	}
 
 	/* Configure ADC Channels. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		uint8_t adc_channel;
-		bl_acq_adc_t *adc = bl_acq_channel_get_adc(i, &adc_channel);
+		bl_acq_adc_t *adc = bl_acq_source_get_adc(src[i], &adc_channel);
 		if (adc == NULL) {
 			continue;
 		}
 
 		/* Ensure same ADC configs for all users of same ADC. */
-		for (unsigned j = (i + 1); j < BL_ACQ__SRC_COUNT; j++) {
-			bl_acq_adc_t *adc_b = bl_acq_channel_get_adc(j, NULL);
+		for (unsigned j = (i + 1); j < src_count; j++) {
+			bl_acq_adc_t *adc_b = bl_acq_source_get_adc(
+					src[j], NULL);
 			if (adc_b != adc) {
 				continue;
 			}
 
-			bl_acq_channel_config_t *config_b
-					= bl_acq_channel_get_config(j);
+			bl_acq_source_config_t *config_b =
+					bl_acq_source_get_config(src[j]);
 
 			if (config->oversample != config_b->oversample) {
 				return BL_ERROR_HARDWARE_CONFLICT;
@@ -276,18 +293,26 @@ enum bl_error bl_acq_start(
 		}
 
 		enum bl_error status = bl_acq_adc_channel_configure(
-				adc, adc_channel, i);
+				adc, adc_channel, src[i]);
 		if (status != BL_ERROR_NONE) {
 			return status;
 		}
 	}
 
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if (acq_chan_mask & (1U << i)) {
+			enum bl_acq_source source = bl_acq_channel_get_source(i);
+			bl_acq_source_assign_channel(source, i);
+		}
+	}
+
 	/* Configure ADCs. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
+	for (unsigned i = 0; i < src_count; i++) {
+		bl_acq_source_config_t *config =
+				bl_acq_source_get_config(src[i]);
 
 		uint8_t adc_channel;
-		bl_acq_adc_t *adc = bl_acq_channel_get_adc(i, &adc_channel);
+		bl_acq_adc_t *adc = bl_acq_source_get_adc(src[i], &adc_channel);
 		if (adc == NULL) {
 			continue;
 		}
@@ -303,10 +328,8 @@ enum bl_error bl_acq_start(
 	}
 
 	/* Enable all of the channels. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
-
-		if (config->enable) {
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if (acq_chan_mask & (1U << i)) {
 			bl_acq_channel_enable(i);
 		}
 	}
@@ -319,28 +342,54 @@ enum bl_error bl_acq_start(
 }
 
 /* Exported function, documented in acq.h */
+enum bl_error bl_acq_source_conf(
+		uint8_t  source,
+		uint8_t  opamp_gain,
+		uint16_t opamp_offset,
+		uint16_t sw_oversample,
+		uint8_t  hw_oversample,
+		uint8_t  hw_shift)
+{
+	enum bl_error err;
+
+	if (bl_acq_source_is_enabled(source)) {
+		return BL_ERROR_ACTIVE_ACQUISITION;
+	}
+
+	bl_acq_source_config_t *src_config = bl_acq_source_get_config(source);
+
+	/* Config setting is incomplete here so validation is done later. */
+
+	src_config->opamp_gain    = opamp_gain;
+	src_config->opamp_offset  = opamp_offset;
+	src_config->sw_oversample = sw_oversample;
+	src_config->oversample    = hw_oversample;
+	src_config->shift         = hw_shift;
+
+	return BL_ERROR_NONE;
+}
+
+/* Exported function, documented in acq.h */
 enum bl_error bl_acq_channel_conf(
-		uint8_t  index,
-		uint8_t  gain,
+		uint8_t  channel,
+		uint8_t  source,
 		uint8_t  shift,
 		uint32_t offset,
 		bool     sample32)
 {
-	if (bl_acq_channel_is_enabled(index)) {
+	enum bl_error err;
+
+	if (bl_acq_channel_is_enabled(channel)) {
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-
-	bl_acq_channel_config_t *config = bl_acq_channel_get_config(index);
-
 	/* Config setting is incomplete here so validation is done later. */
 
-	config->opamp_gain   = gain;
-	config->opamp_offset = 0;
-	config->shift        = 0;
-	config->sw_shift     = shift;
-	config->sw_offset    = offset;
-	config->sample32     = sample32;
+	err = bl_acq_channel_configure(channel, source, sample32,
+			offset, shift);
+	if (err != BL_ERROR_NONE) {
+		return err;
+	}
 
 	return BL_ERROR_NONE;
 }
@@ -353,15 +402,10 @@ enum bl_error bl_acq_abort(void)
 	bl_acq_is_active = false;
 
 	/* Disable all channels. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		bl_acq_channel_config_t *config = bl_acq_channel_get_config(i);
-		if (!config->enable) {
-			continue;
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if (bl_acq_channel_is_enabled(i)) {
+			bl_acq_channel_disable(i);
 		}
-
-		config->enable = false;
-
-		bl_acq_channel_disable(i);
 	}
 
 	return BL_ERROR_NONE;

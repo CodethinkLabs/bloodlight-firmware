@@ -34,6 +34,23 @@ static enum bl_error bl_msg_led(const union bl_msg_data *msg)
 }
 
 /**
+ * Handle the source config message.
+ *
+ * \param[in]  msg  Message to handle.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+static enum bl_error bl_msg_source_conf(const union bl_msg_data *msg)
+{
+	return bl_acq_source_conf(
+			msg->source_conf.source,
+			msg->source_conf.opamp_gain,
+			msg->source_conf.opamp_offset,
+			msg->source_conf.sw_oversample,
+			msg->source_conf.hw_oversample,
+			msg->source_conf.hw_shift);
+}
+
+/**
  * Handle the channel config message.
  *
  * \param[in]  msg  Message to handle.
@@ -43,7 +60,7 @@ static enum bl_error bl_msg_channel_conf(const union bl_msg_data *msg)
 {
 	return bl_acq_channel_conf(
 			msg->channel_conf.channel,
-			msg->channel_conf.gain,
+			msg->channel_conf.source,
 			msg->channel_conf.shift,
 			msg->channel_conf.offset,
 			(msg->channel_conf.sample32 != 0));
@@ -59,7 +76,6 @@ static enum bl_error bl_msg_start(const union bl_msg_data *msg)
 {
 	return bl_acq_start(
 			msg->start.frequency,
-			msg->start.oversample,
 			msg->start.src_mask);
 }
 
@@ -86,6 +102,7 @@ enum bl_error bl_msg_handle(const union bl_msg_data *msg)
 		[BL_MSG_LED]          = bl_msg_led,
 		[BL_MSG_START]        = bl_msg_start,
 		[BL_MSG_ABORT]        = bl_msg_abort,
+		[BL_MSG_SOURCE_CONF]  = bl_msg_source_conf,
 		[BL_MSG_CHANNEL_CONF] = bl_msg_channel_conf,
 	};
 

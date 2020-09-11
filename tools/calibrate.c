@@ -33,7 +33,7 @@
 struct channel_conf {
 	bool     enabled;
 
-	uint8_t  gain;
+	uint8_t  source;
 	uint8_t  shift;
 	uint32_t offset;
 
@@ -100,7 +100,7 @@ static void bl__handle_channel_conf(
 	/* Channel is only enabled if we receive sample32. */
 	conf[channel].enabled = false;
 
-	conf[channel].gain   = msg->channel_conf.gain;
+	conf[channel].source = msg->channel_conf.source;
 	conf[channel].shift  = msg->channel_conf.shift;
 	conf[channel].offset = msg->channel_conf.offset;
 
@@ -164,7 +164,7 @@ static int bl__calibrate(void)
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		if (conf[i].enabled) {
 			printf("./tools/bl chancfg \"$device\" %u %u %u %u\n", i,
-					(unsigned) conf[i].gain,
+					(unsigned) conf[i].source,
 					(unsigned) conf[i].offset,
 					(unsigned) conf[i].shift);
 		}

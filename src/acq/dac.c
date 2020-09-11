@@ -58,11 +58,11 @@ enum bl_error bl_acq_dac_channel_configure(bl_acq_dac_t *dac,
 	}
 
 	if (channel > DAC_CHANNEL2) {
-		return BL_ERROR_OUT_OF_RANGE;
+		return BL_ERROR_DAC_BAD_CHANNEL;
 	}
 
 	if (offset > 0xFFF) {
-		return BL_ERROR_OUT_OF_RANGE;
+		return BL_ERROR_DAC_BAD_OFFSET;
 	}
 
 	bl_acq_dac_config_t *config = &dac->config;
