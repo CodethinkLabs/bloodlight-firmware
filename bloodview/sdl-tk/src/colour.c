@@ -44,15 +44,8 @@ static inline uint32_t rescale_255(uint32_t val, uint32_t max)
 	return (val * 255 + max / 2) / max;
 }
 
-/**
- * Convert HSV values to an SDL_Colour.
- *
- * \param[in]  h  Hue: Range 0-360
- * \param[in]  s  Saturation: Range 0-100
- * \param[in]  v  Value: Range 0-100
- * \return An SDL_Color object.
- */
-static SDL_Color sdl_tk_colour__get_hsv(uint32_t h, uint32_t s, uint32_t v)
+/* Exported function, documented in colour.h */
+SDL_Color sdl_tk_colour_get_hsv(uint32_t h, uint32_t s, uint32_t v)
 {
 	uint8_t sector, remainder, p, q, t;
 
@@ -84,11 +77,11 @@ static SDL_Color sdl_tk_colour__get_hsv(uint32_t h, uint32_t s, uint32_t v)
 /* Exported function, documented in colour.h */
 bool sdl_tk_colour_init(void)
 {
-	sdl_tk_colours[SDL_TK_COLOUR_BACKGROUND] = sdl_tk_colour__get_hsv(  0,   0,   0);
-	sdl_tk_colours[SDL_TK_COLOUR_INTERFACE]  = sdl_tk_colour__get_hsv(225,  70, 100);
-	sdl_tk_colours[SDL_TK_COLOUR_SELECTION]  = sdl_tk_colour__get_hsv( 30,  65, 100);
-	sdl_tk_colours[SDL_TK_COLOUR_DISABLED]   = sdl_tk_colour__get_hsv(225,  70,  50);
-	sdl_tk_colours[SDL_TK_COLOUR_SEL_DIS]    = sdl_tk_colour__get_hsv( 30,  65,  50);
+	sdl_tk_colours[SDL_TK_COLOUR_BACKGROUND] = sdl_tk_colour_get_hsv(  0,   0,   0);
+	sdl_tk_colours[SDL_TK_COLOUR_INTERFACE]  = sdl_tk_colour_get_hsv(225,  70, 100);
+	sdl_tk_colours[SDL_TK_COLOUR_SELECTION]  = sdl_tk_colour_get_hsv( 30,  65, 100);
+	sdl_tk_colours[SDL_TK_COLOUR_DISABLED]   = sdl_tk_colour_get_hsv(225,  70,  50);
+	sdl_tk_colours[SDL_TK_COLOUR_SEL_DIS]    = sdl_tk_colour_get_hsv( 30,  65,  50);
 
 	return true;
 }

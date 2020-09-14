@@ -60,4 +60,14 @@ void sdl_tk_colour_fini(void);
  */
 SDL_Color sdl_tk_colour_get(enum sdl_tk_colour col);
 
+/**
+ * Convert HSV values to an SDL_Colour.
+ *
+ * \param[in]  h  Hue: Range 0-360
+ * \param[in]  s  Saturation: Range 0-100
+ * \param[in]  v  Value: Range 0-100
+ * \return An SDL_Color object.
+ */
+SDL_Color sdl_tk_colour_get_hsv(uint32_t h, uint32_t s, uint32_t v);
+
 #endif /* SDL_TK_COLOUR_H */
