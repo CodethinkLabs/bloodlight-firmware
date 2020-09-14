@@ -243,6 +243,7 @@ bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 	case BL_MSG_START:
 		msg->start.frequency  = bl_msg__yaml_read_unsigned(file, "Frequency",   &ok);
 		msg->start.src_mask   = bl_msg__yaml_read_hex(file,      "Source Mask", &ok);
+		msg->start.led_mask   = bl_msg__yaml_read_hex(file,      "LED Mask", &ok);
 		break;
 
 	case BL_MSG_SAMPLE_DATA16:
@@ -347,8 +348,10 @@ void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 	case BL_MSG_START:
 		fprintf(file, "    Frequency: %"PRIu8"\n",
 				msg->start.frequency);
-		fprintf(file, "    Source Mask: 0x%"PRIx8"\n",
+		fprintf(file, "    Source Mask: 0x%"PRIx16"\n",
 				msg->start.src_mask);
+		fprintf(file, "    LED Mask: 0x%"PRIx16"\n",
+				msg->start.led_mask);
 		break;
 
 	case BL_MSG_SAMPLE_DATA16:

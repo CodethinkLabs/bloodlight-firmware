@@ -54,11 +54,13 @@ void bl_acq_init(uint32_t clock);
  * Start an acquisition.
  *
  * \param[in]  frequency   Sampling frequency.
+ * \param[in]  led_mask    Mask of LEDs to enable.
  * \param[in]  src_mask    Mask of sources to enable.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_start(
 		uint16_t frequency,
+		uint16_t led_mask,
 		uint16_t src_mask);
 
 /**
