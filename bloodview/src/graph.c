@@ -30,6 +30,7 @@
 
 #include "util.h"
 #include "graph.h"
+#include "main-menu.h"
 
 /** Extra sample slots per graph */
 #define GRAPH_EXCESS 1024
@@ -57,6 +58,7 @@ struct graph {
 	bool invert;    /**< Whether to invert the magnitudes. */
 
 	uint8_t channel_idx; /**< The acquisition channel index. */
+	SDL_Color colour;    /**< Graph render colour. */
 };
 
 /** Graph global context. */
@@ -132,6 +134,7 @@ bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 		g->scale = Y_SCALE_DATUM / 8;
 
 		g->channel_idx = channel;
+		g->colour = main_menu_conifg_get_channel_colour(channel);
 	} else {
 		return false;
 	}
@@ -258,7 +261,11 @@ void graph__render(
 
 	step = g->step;
 
-	SDL_SetRenderDrawColor(ren, 255, 255, 255, SDL_ALPHA_OPAQUE);
+	SDL_SetRenderDrawColor(ren,
+			g->colour.r,
+			g->colour.g,
+			g->colour.b,
+			SDL_ALPHA_OPAQUE);
 
 	len = 0;
 	pos_next = graph_pos_decrement(g, g->pos);
