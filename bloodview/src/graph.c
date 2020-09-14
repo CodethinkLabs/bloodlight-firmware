@@ -134,7 +134,7 @@ bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 		g->scale = Y_SCALE_DATUM / 8;
 
 		g->channel_idx = channel;
-		g->colour = main_menu_conifg_get_channel_colour(channel);
+		g->colour = main_menu_config_get_channel_colour(channel);
 	} else {
 		return false;
 	}

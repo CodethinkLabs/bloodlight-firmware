@@ -948,7 +948,7 @@ struct sdl_tk_widget *main_menu_create(void)
 }
 
 /* Exported interface, documented in main-menu.h */
-uint16_t main_menu_conifg_get_led_mask(void)
+uint16_t main_menu_config_get_led_mask(void)
 {
 	const uint16_t led_count = BL_LED_COUNT;
 	static const uint8_t mapping[BL_LED_COUNT] = {
@@ -967,7 +967,7 @@ uint16_t main_menu_conifg_get_led_mask(void)
 }
 
 /* Exported interface, documented in main-menu.h */
-uint16_t main_menu_conifg_get_source_mask(void)
+uint16_t main_menu_config_get_source_mask(void)
 {
 	const uint16_t src_count = BL_ARRAY_LEN(
 			bl_menu_conf_acq_sources_entries);
@@ -983,67 +983,67 @@ uint16_t main_menu_conifg_get_source_mask(void)
 }
 
 /* Exported interface, documented in main-menu.h */
-uint16_t main_menu_conifg_get_frequency(void)
+uint16_t main_menu_config_get_frequency(void)
 {
 	return config.acq.frequency;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint32_t main_menu_conifg_get_source_sw_oversample(enum bl_acq_source source)
+uint32_t main_menu_config_get_source_sw_oversample(enum bl_acq_source source)
 {
 	return config.channel[source].source.sw_oversample;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint32_t main_menu_conifg_get_source_opamp_gain(enum bl_acq_source source)
+uint32_t main_menu_config_get_source_opamp_gain(enum bl_acq_source source)
 {
 	return config.channel[source].source.opamp_gain;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint32_t main_menu_conifg_get_source_opamp_offset(enum bl_acq_source source)
+uint32_t main_menu_config_get_source_opamp_offset(enum bl_acq_source source)
 {
 	return config.channel[source].source.opamp_offset;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint32_t main_menu_conifg_get_source_hw_oversample(enum bl_acq_source source)
+uint32_t main_menu_config_get_source_hw_oversample(enum bl_acq_source source)
 {
 	return config.channel[source].source.hw_oversample;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint32_t main_menu_conifg_get_source_hw_shift(enum bl_acq_source source)
+uint32_t main_menu_config_get_source_hw_shift(enum bl_acq_source source)
 {
 	return config.channel[source].source.hw_shift;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint8_t main_menu_conifg_get_channel_shift(uint8_t channel)
+uint8_t main_menu_config_get_channel_shift(uint8_t channel)
 {
 	return config.channel[channel].channel.shift;
 }
 
 /* Exported interface, documented in main-menu.h */
-uint32_t main_menu_conifg_get_channel_offset(uint8_t channel)
+uint32_t main_menu_config_get_channel_offset(uint8_t channel)
 {
 	return config.channel[channel].channel.offset;
 }
 
 /* Exported interface, documented in main-menu.h */
-bool main_menu_conifg_get_channel_sample32(uint8_t channel)
+bool main_menu_config_get_channel_sample32(uint8_t channel)
 {
 	return config.channel[channel].channel.sample32;
 }
 
 /* Exported interface, documented in main-menu.h */
-bool main_menu_conifg_get_channel_inverted(uint8_t channel)
+bool main_menu_config_get_channel_inverted(uint8_t channel)
 {
 	return config.channel[channel].channel.inverted;
 }
 
 /* Exported interface, documented in main-menu.h */
-SDL_Color main_menu_conifg_get_channel_colour(uint8_t channel)
+SDL_Color main_menu_config_get_channel_colour(uint8_t channel)
 {
 	return sdl_tk_colour_get_hsv(
 			config.channel[channel].channel.colour.hue,
@@ -1052,25 +1052,25 @@ SDL_Color main_menu_conifg_get_channel_colour(uint8_t channel)
 }
 
 /* Exported interface, documented in main-menu.h */
-bool main_menu_conifg_get_filter_normalise_enabled(void)
+bool main_menu_config_get_filter_normalise_enabled(void)
 {
 	return config.filter.normalise_enable;
 }
 
 /* Exported interface, documented in main-menu.h */
-bool main_menu_conifg_get_filter_ac_denoise_enabled(void)
+bool main_menu_config_get_filter_ac_denoise_enabled(void)
 {
 	return config.filter.ac_denoise_enable;
 }
 
 /* Exported interface, documented in main-menu.h */
-double main_menu_conifg_get_filter_normalise_frequency(void)
+double main_menu_config_get_filter_normalise_frequency(void)
 {
 	return config.filter.normalise;
 }
 
 /* Exported interface, documented in main-menu.h */
-double main_menu_conifg_get_filter_ac_denoise_frequency(void)
+double main_menu_config_get_filter_ac_denoise_frequency(void)
 {
 	return config.filter.ac_denoise;
 }
@@ -1194,7 +1194,7 @@ void main_menu_update(void)
 }
 
 /* Exported interface, documented in main-menu.h */
-bool main_menu_conifg_set_channel_shift(uint8_t channel, uint8_t shift)
+bool main_menu_config_set_channel_shift(uint8_t channel, uint8_t shift)
 {
 	union update_data data;
 
@@ -1210,7 +1210,7 @@ bool main_menu_conifg_set_channel_shift(uint8_t channel, uint8_t shift)
 }
 
 /* Exported interface, documented in main-menu.h */
-bool main_menu_conifg_set_channel_offset(uint8_t channel, uint32_t offset)
+bool main_menu_config_set_channel_offset(uint8_t channel, uint32_t offset)
 {
 	union update_data data;
 

@@ -244,7 +244,7 @@ static bool data__register_normalise(
 {
 	struct data_filter *filter;
 	struct data_avg_config config = {
-		.filter_freq = 1024 * main_menu_conifg_get_filter_normalise_frequency(),
+		.filter_freq = 1024 * main_menu_config_get_filter_normalise_frequency(),
 		.normalise   = true,
 	};
 
@@ -285,7 +285,7 @@ static bool data__register_invert(
 	struct data_invert_config config = { 0 };
 
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		config.invert[i] = main_menu_conifg_get_channel_inverted(i);
+		config.invert[i] = main_menu_config_get_channel_inverted(i);
 		if (config.invert[i]) {
 			enabled = true;
 		}
@@ -331,7 +331,7 @@ static bool data__register_ac_denoise(
 {
 	struct data_filter *filter;
 	struct data_avg_config config = {
-		.filter_freq = (frequency / main_menu_conifg_get_filter_ac_denoise_frequency()) * 1024,
+		.filter_freq = (frequency / main_menu_config_get_filter_ac_denoise_frequency()) * 1024,
 		.normalise   = false,
 	};
 
@@ -386,13 +386,13 @@ static bool data__register_filters(
 		return false;
 	}
 
-	if (main_menu_conifg_get_filter_normalise_enabled() &&
+	if (main_menu_config_get_filter_normalise_enabled() &&
 			!data__register_normalise(
 					frequency, channels, channel_mask)) {
 		return false;
 	}
 
-	if (main_menu_conifg_get_filter_ac_denoise_enabled() &&
+	if (main_menu_config_get_filter_ac_denoise_enabled() &&
 			!data__register_ac_denoise(
 					frequency, channels, channel_mask)) {
 		return false;

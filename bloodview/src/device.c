@@ -456,7 +456,7 @@ static bool device__queue_msg_led(bool enable_lights)
 	uint16_t led_mask = 0;
 
 	if (enable_lights) {
-		led_mask = main_menu_conifg_get_led_mask();
+		led_mask = main_menu_config_get_led_mask();
 	}
 
 	msg = device__msg_get_next_free();
@@ -485,7 +485,7 @@ static bool device__queue_msg_channel_conf(
 		bool    calibrate)
 {
 	union bl_msg_data *msg;
-	bool sample32 = main_menu_conifg_get_channel_sample32(channel);
+	bool sample32 = main_menu_config_get_channel_sample32(channel);
 
 	msg = device__msg_get_next_free();
 	if (msg == NULL) {
@@ -499,8 +499,8 @@ static bool device__queue_msg_channel_conf(
 	msg->type = BL_MSG_CHANNEL_CONF;
 	msg->channel_conf.channel  = channel;
 	msg->channel_conf.source   = channel;
-	msg->channel_conf.shift    = main_menu_conifg_get_channel_shift(channel);
-	msg->channel_conf.offset   = main_menu_conifg_get_channel_offset(channel);
+	msg->channel_conf.shift    = main_menu_config_get_channel_shift(channel);
+	msg->channel_conf.offset   = main_menu_config_get_channel_offset(channel);
 	msg->channel_conf.sample32 = sample32;
 
 	device__msg_send(msg);
@@ -527,11 +527,11 @@ static bool device__queue_msg_source_conf(
 
 	msg->type = BL_MSG_SOURCE_CONF;
 	msg->source_conf.source        = source;
-	msg->source_conf.opamp_gain    = main_menu_conifg_get_source_opamp_gain(source);
-	msg->source_conf.opamp_offset  = main_menu_conifg_get_source_opamp_offset(source);
-	msg->source_conf.sw_oversample = main_menu_conifg_get_source_sw_oversample(source);
-	msg->source_conf.hw_oversample = main_menu_conifg_get_source_hw_oversample(source);
-	msg->source_conf.hw_shift      = main_menu_conifg_get_source_hw_shift(source);
+	msg->source_conf.opamp_gain    = main_menu_config_get_source_opamp_gain(source);
+	msg->source_conf.opamp_offset  = main_menu_config_get_source_opamp_offset(source);
+	msg->source_conf.sw_oversample = main_menu_config_get_source_sw_oversample(source);
+	msg->source_conf.hw_oversample = main_menu_config_get_source_hw_oversample(source);
+	msg->source_conf.hw_shift      = main_menu_config_get_source_hw_shift(source);
 
 	device__msg_send(msg);
 	return true;
@@ -554,8 +554,8 @@ static bool device__queue_msg_start(void)
 	}
 
 	msg->type = BL_MSG_START;
-	msg->start.frequency = main_menu_conifg_get_frequency();
-	msg->start.src_mask  = main_menu_conifg_get_source_mask();
+	msg->start.frequency = main_menu_config_get_frequency();
+	msg->start.src_mask  = main_menu_config_get_source_mask();
 
 	device__msg_send(msg);
 	return true;
@@ -591,7 +591,7 @@ static bool device__queue_msg_abort(void)
  */
 static bool device__queue_channel_conf_messages(bool calibrate)
 {
-	unsigned source_mask = main_menu_conifg_get_source_mask();
+	unsigned source_mask = main_menu_config_get_source_mask();
 
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		if (source_mask & (1U << i)) {
