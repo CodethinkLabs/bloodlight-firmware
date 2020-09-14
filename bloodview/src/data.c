@@ -428,8 +428,11 @@ bool data_start(bool calibrate, unsigned frequency, unsigned channel_mask)
 		return false;
 	}
 
-	for (unsigned i = 0; i < channels; i++) {
-		if (!graph_create(i, frequency)) {
+	for (unsigned i = 0; i < sizeof(channel_mask) * CHAR_BIT; i++) {
+		if (data_g.mapping[i] == UINT_MAX) {
+			continue;
+		}
+		if (!graph_create(data_g.mapping[i], frequency, i)) {
 			data_finish();
 			return false;
 		}

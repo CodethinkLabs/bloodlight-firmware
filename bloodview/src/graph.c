@@ -55,6 +55,8 @@ struct graph {
 	unsigned step;  /**< Rendering scale in time dimension. */
 	uint64_t scale; /**< The vertical scale. */
 	bool invert;    /**< Whether to invert the magnitudes. */
+
+	uint8_t channel_idx; /**< The acquisition channel index. */
 };
 
 /** Graph global context. */
@@ -95,7 +97,7 @@ bool graph_init(void)
 }
 
 /* Exported function, documented in graph.h */
-bool graph_create(unsigned idx, unsigned freq)
+bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 {
 	struct graph *g;
 
@@ -128,6 +130,8 @@ bool graph_create(unsigned idx, unsigned freq)
 
 		g->step = freq / 500 + 1;
 		g->scale = Y_SCALE_DATUM / 8;
+
+		g->channel_idx = channel;
 	} else {
 		return false;
 	}

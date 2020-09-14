@@ -41,11 +41,12 @@ void graph_fini(void);
 /**
  * Create a graph at given index.
  *
- * \param[in]  idx   Graph index to create.
- * \param[in]  freq  The sampling frequency used for the graph.
+ * \param[in]  idx      Graph index to create.
+ * \param[in]  freq     The sampling frequency used for the graph.
+ * \param[in]  channel  The graph's acquisition channel.
  * \return true on success, or false on errer.
  */
-bool graph_create(unsigned idx, unsigned freq);
+bool graph_create(unsigned idx, unsigned freq, uint8_t channel);
 
 /**
  * Add a sample to a graph.
