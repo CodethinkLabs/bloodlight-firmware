@@ -32,12 +32,12 @@ void data_finish(void);
 /**
  * Start a data processing session.
  *
- * \param[in]  calibrate  Whether this is a calibration acquisition.
- * \param[in]  frequency  The sampling frequency.
- * \param[in]  src_mask   The source mask.
+ * \param[in]  calibrate     Whether this is a calibration acquisition.
+ * \param[in]  frequency     The sampling frequency.
+ * \param[in]  channel_mask  The channel mask.
  * \return true on success, false on error.
  */
-bool data_start(bool calibrate, unsigned frequency, unsigned src_mask);
+bool data_start(bool calibrate, unsigned frequency, unsigned channel_mask);
 
 /**
  * Handle a BL_MSG_SAMPLE_DATA16 message.
