@@ -78,6 +78,13 @@ struct main_menu_widget_desc {
 	};
 };
 
+/** An HSV colour. */
+struct main_menu_colour {
+	unsigned hue;        /**< Hue in HSV colour space. */
+	unsigned saturation; /**< Saturation in HSV colour space. */
+	unsigned value;      /**< Value in HSV colour space. */
+};
+
 /** Current configuration for LEDs. */
 struct main_menu_config_leds {
 	uint8_t leds[BL_LED_COUNT]; /**< Array of LED enablement. */
@@ -89,6 +96,8 @@ struct main_menu_config_channel_chan {
 	unsigned shift;    /**< Shift for 16-bit sample mode. */
 	bool     sample32; /**< Whether 16-bit sample mode is enabled. */
 	bool     inverted; /**< Whether the data should be inverted. */
+
+	struct main_menu_colour colour; /**< The channel rendering colour. */
 
 	struct sdl_tk_widget *widget_shift;  /**< Widget for channel shift. */
 	struct sdl_tk_widget *widget_offset; /**< Widget for channel offset. */
@@ -334,12 +343,50 @@ static const struct main_menu_widget_desc bl_menu_conf_led_entries[BL_LED_COUNT]
 	},
 };
 
+/** Colour picker menu entry list */
+enum {
+	COLOUR_HUE,
+	COLOUR_SAT,
+	COLOUR_VAL,
+};
+
+/**
+ * Colour picker menu.
+ */
+static const struct main_menu_widget_desc bl_menu_conf_colour_entries[] = {
+	[COLOUR_HUE] = {
+		.type  = WIDGET_TYPE_INPUT,
+		.title = "Hue",
+		.input = {
+			.initial = "0",
+			.cb = main_menu_numerical_input_cb,
+		},
+	},
+	[COLOUR_SAT] = {
+		.type  = WIDGET_TYPE_INPUT,
+		.title = "Saturation",
+		.input = {
+			.initial = "0",
+			.cb = main_menu_numerical_input_cb,
+		},
+	},
+	[COLOUR_VAL] = {
+		.type   = WIDGET_TYPE_INPUT,
+		.title  = "Value",
+		.input = {
+			.initial = "100",
+			.cb = main_menu_numerical_input_cb,
+		},
+	},
+};
+
 /** Channel config menu entries. */
 enum {
 	CHAN_CHAN_SW_OFFSET,
 	CHAN_CHAN_SW_SHIFT,
 	CHAN_CHAN_32BIT,
 	CHAN_CHAN_INVERT,
+	CHAN_CHAN_COLOUR,
 };
 
 /**
@@ -369,6 +416,14 @@ static const struct main_menu_widget_desc bl_menu_conf_chan_c_entries[] = {
 	[CHAN_CHAN_INVERT] = {
 		.type   = WIDGET_TYPE_TOGGLE,
 		.title  = "Invert data",
+	},
+	[CHAN_CHAN_COLOUR] = {
+		.type  = WIDGET_TYPE_MENU,
+		.title = "Colour",
+		.menu  = {
+			.entries = bl_menu_conf_colour_entries,
+			.count   = BL_ARRAY_LEN(bl_menu_conf_colour_entries),
+		},
 	},
 };
 
@@ -724,6 +779,13 @@ static void *get_config_pw_for_entry(
 		case CHAN_CHAN_INVERT:    return &config.channel[chan_entry].channel.inverted;
 		}
 
+	} else if (entries == bl_menu_conf_colour_entries) {
+		switch (entry) {
+		case COLOUR_HUE: return &config.channel[chan_entry].channel.colour.hue;
+		case COLOUR_SAT: return &config.channel[chan_entry].channel.colour.saturation;
+		case COLOUR_VAL: return &config.channel[chan_entry].channel.colour.value;
+		}
+
 	} else if (entries == bl_menu_conf_chan_s_entries) {
 		switch (entry) {
 		case CHAN_SRC_SW_OVERSAMPLE: return &config.channel[chan_entry].source.sw_oversample;
@@ -978,6 +1040,15 @@ bool main_menu_conifg_get_channel_sample32(uint8_t channel)
 bool main_menu_conifg_get_channel_inverted(uint8_t channel)
 {
 	return config.channel[channel].channel.inverted;
+}
+
+/* Exported interface, documented in main-menu.h */
+SDL_Color main_menu_conifg_get_channel_colour(uint8_t channel)
+{
+	return sdl_tk_colour_get_hsv(
+			config.channel[channel].channel.colour.hue,
+			config.channel[channel].channel.colour.saturation,
+			config.channel[channel].channel.colour.value);
 }
 
 /* Exported interface, documented in main-menu.h */

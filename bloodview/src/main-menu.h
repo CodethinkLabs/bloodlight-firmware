@@ -24,6 +24,8 @@
 #ifndef MAIN_MENU_H
 #define MAIN_MENU_H
 
+#include "sdl-tk/colour.h"
+
 #include "../../src/acq.h"
 
 /**
@@ -130,6 +132,14 @@ bool main_menu_conifg_get_channel_sample32(uint8_t channel);
  * \return the configured channel sample value size.
  */
 bool main_menu_conifg_get_channel_inverted(uint8_t channel);
+
+/**
+ * Get channel render colour.
+ *
+ * \param[in]  channel  The channel to read config from.
+ * \return the configured channel colour.
+ */
+SDL_Color main_menu_conifg_get_channel_colour(uint8_t channel);
 
 /**
  * Get whether the normalisation filter is enabled.
