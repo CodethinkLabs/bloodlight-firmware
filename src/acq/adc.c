@@ -193,7 +193,7 @@ static void bl_acq_adc_group_disable(bl_acq_adc_group_t *adc_group)
 
 
 #ifndef ADC_CHANNEL_COUNT
-#define ADC_CHANNEL_COUNT 19
+#define ADC_CHANNEL_COUNT BL_ACQ__SRC_COUNT
 #endif
 
 typedef struct
