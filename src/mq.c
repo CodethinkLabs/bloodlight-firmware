@@ -4,7 +4,7 @@
 #include "mq.h"
 #include "util.h"
 
-#define BL_MSG_QUEUE_COUNT 64
+#define BL_MSG_QUEUE_COUNT 76
 
 #if (BL_MSG_QUEUE_COUNT % BL_ACQ_CHANNEL_COUNT)
 #warning "Message queue size should be a multiple of channel count"

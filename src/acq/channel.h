@@ -7,7 +7,7 @@
 #include "../error.h"
 #include "../acq.h"
 
-#define BL_ACQ_CHANNEL_COUNT 16
+#define BL_ACQ_CHANNEL_COUNT 19
 
 enum bl_error bl_acq_channel_configure(unsigned channel,
 		enum bl_acq_source source,
