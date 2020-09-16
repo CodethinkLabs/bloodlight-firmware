@@ -96,8 +96,8 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-	/* For now, channels have a direct mapping to sources. */
-	uint16_t acq_chan_mask = src_mask;
+	/* Channels are combined by the LED channels and 3 non-LED sources */
+	uint32_t acq_chan_mask = led_mask | (src_mask & 0xF0) << 16;
 
 	/* Get source list from channels */
 	uint16_t acq_src_mask = 0;
