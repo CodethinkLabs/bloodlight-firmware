@@ -96,7 +96,7 @@ configured with `--enable-stlink`.
 
 To simply flash the board, run:
 ```bash
-sudo make OOCD_FILE=board/st_nucleo_f3.cfg flash
+sudo make flash
 ```
 
 Note: If you can't find this file, it's available in the
