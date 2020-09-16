@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "../src/msg.h"
+#include "../src/acq/channel.h"
 
 #include "msg.h"
 #include "sig.h"
@@ -111,13 +112,15 @@ void init_channel(struct channel_data *channel,
 
 void destroy_channel(struct channel_data *channel)
 {
-	fifo_destroy(channel->samples);
+	if (channel->samples != NULL) {
+		fifo_destroy(channel->samples);
+	}
 }
 
 int read_stream(FILE *stream, long average_width)
 {
 	union bl_msg_data msg; // message for reading into
-	struct channel_data channels[BL_ACQ__SRC_COUNT]; //One per possible channel
+	struct channel_data channels[BL_ACQ_CHANNEL_COUNT] = {0};
 	struct channel_data *channel;
 	long average_width_samples = 0; // Average width measured in samples
 	while (!bl_sig_killed && bl_msg_yaml_parse(stream, &msg)) {
@@ -134,7 +137,7 @@ int read_stream(FILE *stream, long average_width)
 				/ 1000; // Magical 1000 from being measured in milliseconds.
 
 			// Create all the channels' fifos now
-			for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+			for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
 				channels[i].samples = fifo_create(average_width_samples);
 				if (channels[i].samples == NULL) {
 					return -errno;
@@ -172,8 +175,8 @@ int read_stream(FILE *stream, long average_width)
 			bl_msg_yaml_print(stdout, &msg);
 		}
 	}
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		fifo_destroy(channels[i].samples);
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		destroy_channel(channels + i);
 	}
 	return 0;
 }
