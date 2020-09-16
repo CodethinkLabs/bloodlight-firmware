@@ -81,6 +81,7 @@ void bl_acq_init(uint32_t clock)
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
+		enum bl_acq_mode mode,
 		uint16_t frequency,
 		uint16_t led_mask,
 		uint16_t src_mask)
@@ -97,13 +98,19 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
+	if (mode == BL_ACQ_MODE_FLASH) {
+		if ((led_mask & (led_mask - 1)) == 0) {
+			return BL_ERROR_MODE_MISMATCH;
+		}
+
+		enum bl_error status = bl_led_setup(led_mask);
+		if (status != BL_ERROR_NONE) {
+			return status;
+		}
+	}
+
 	/* Channels are combined by the LED channels and 3 non-LED sources */
 	uint32_t acq_chan_mask = led_mask | (src_mask & 0xF0) << 16;
-
-	enum bl_error status = bl_led_setup(led_mask);
-	if (status != BL_ERROR_NONE) {
-		return status;
-	}
 
 	/* Get source list from channels */
 	uint16_t acq_src_mask = 0;

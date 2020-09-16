@@ -25,6 +25,7 @@
 #include "../src/error.h"
 #include "../src/util.h"
 #include "../src/msg.h"
+#include "../src/acq.h"
 
 #include "device.h"
 #include "msg.h"
@@ -377,6 +378,7 @@ static int bl_cmd_start_stream(
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
+		ARG_MODE,
 		ARG_FREQUENCY,
 		ARG_SRC_MASK,
 		ARG_LED_MASK,
@@ -387,6 +389,7 @@ static int bl_cmd_start_stream(
 		fprintf(stderr, "Usage:\n");
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH|--auto|-a> \\\n"
+				"  \t<--flash|-f|--continous|-c> \\\n"
 				"  \t<FREQUENCY> \\\n"
 				"  \t<SRC_MASK>\\\n",
 				"  \t<LED_MASK>\n",
@@ -405,6 +408,13 @@ static int bl_cmd_start_stream(
 			&frequency, sizeof(msg.start.frequency)) == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
+	}
+
+	if (!strncmp(argv[ARG_MODE], "--flash", 8) ||
+		  !strncmp(argv[ARG_MODE], "-f", 3)) {
+		msg.start.mode  = BL_ACQ_MODE_FLASH;
+	} else {
+		msg.start.mode  = BL_ACQ_MODE_CONTINUOUS;
 	}
 
 	msg.start.frequency  = frequency;
