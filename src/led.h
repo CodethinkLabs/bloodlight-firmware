@@ -67,4 +67,5 @@ enum bl_error bl_led_setup(uint16_t led_mask);
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_led_loop(void);
+
 #endif

@@ -200,6 +200,7 @@ static void bl_acq_adc_group_disable(bl_acq_adc_group_t *adc_group)
 typedef struct
 {
 	unsigned channel_count;
+	uint8_t  src_mask[ADC_CHANNEL_COUNT];
 	uint8_t  channel_adc[ADC_CHANNEL_COUNT];
 	uint8_t  channel_source[ADC_CHANNEL_COUNT];
 	uint8_t  smp[ADC_CHANNEL_COUNT];
@@ -409,6 +410,7 @@ enum bl_error bl_acq_adc_channel_configure(bl_acq_adc_t *adc,
 
 	config->channel_adc[config->channel_count] = channel;
 	config->channel_source[config->channel_count] = source;
+	config->src_mask[config->channel_count] = 1U << source;
 	config->channel_count++;
 
 	return BL_ERROR_NONE;
@@ -644,12 +646,6 @@ bl_acq_dma_t *bl_acq_adc_get_dma(const bl_acq_adc_t *adc)
 	return *(adc->dma);
 }
 
-static inline bool active_channel(void)
-{
-	return true;
-}
-
-
 static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 {
 	volatile uint16_t *p = &adc->dma_buffer[adc->samples_per_dma * buffer];
@@ -667,7 +663,8 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 
 	if (adc->flash_enable) {
 		for (unsigned c = 0; c < adc->config.channel_count; c++) {
-			if (active_channel()) {
+			if (bl_led_channel[adc->flash_index].src_mask &
+				adc->config.src_mask[c]) {
 				unsigned channel = bl_acq_source_get_channel(
 						adc->config.channel_source[c]);
 				bl_acq_channel_commit_sample(channel, sample[c]);
