@@ -217,6 +217,10 @@ struct bl_acq_adc_s
 	const uint16_t      irq;
 	unsigned            enable;
 
+	bool    flash_enable;
+	bool    flash_master;
+	uint8_t flash_index;
+
 	bool     calibrated;
 	uint32_t calfact;
 
@@ -531,6 +535,13 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 	return BL_ERROR_NONE;
 }
 
+void bl_acq_adc_flash_init(bl_acq_adc_t *adc, bool enable, bool master)
+{
+	adc->flash_enable = enable;
+	adc->flash_master = master;
+	adc->flash_index  = 0;
+}
+
 void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag)
 {
 	adc->enable++;
@@ -654,12 +665,28 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 		}
 	}
 
-	for (unsigned c = 0; c < adc->config.channel_count; c++) {
-		if (active_channel()) {
+	if (adc->flash_enable) {
+		for (unsigned c = 0; c < adc->config.channel_count; c++) {
+			if (active_channel()) {
+				unsigned channel = bl_acq_source_get_channel(
+						adc->config.channel_source[c]);
+				bl_acq_channel_commit_sample(channel, sample[c]);
+			}
+		}
+
+		adc->flash_index++;
+		if (adc->flash_index >= bl_led_count) {
+			adc->flash_index = 0;
+		}
+
+		if (adc->flash_master) {
+			bl_led_loop();
+		}
+	} else {
+		for (unsigned c = 0; c < adc->config.channel_count; c++) {
 			unsigned channel = bl_acq_source_get_channel(
 					adc->config.channel_source[c]);
 			bl_acq_channel_commit_sample(channel, sample[c]);
-			bl_led_loop();
 		}
 	}
 }

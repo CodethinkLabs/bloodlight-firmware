@@ -321,6 +321,7 @@ enum bl_error bl_acq_start(
 	}
 
 	/* Configure ADCs. */
+	bool is_first = true;
 	for (unsigned i = 0; i < src_count; i++) {
 		bl_acq_source_config_t *config =
 				bl_acq_source_get_config(src[i]);
@@ -339,6 +340,9 @@ enum bl_error bl_acq_start(
 		if (status != BL_ERROR_NONE) {
 			return status;
 		}
+
+		bl_acq_adc_flash_init(adc, mode, is_first);
+		is_first = false;
 	}
 
 	/* Enable all of the channels. */
