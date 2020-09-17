@@ -3,6 +3,8 @@
 # Try to find the device automatically.  Override with `DEVICE=`.
 declare DEFAULT_DEVICE="--auto"
 
+# Default to use flash mode for acquisition
+declare DEFAULT_MODE="flash"
 # By default, turn on:
 # - the green LED    (1 << 14)
 # - an infra-red LED (1 <<  2)
@@ -27,6 +29,7 @@ usage()
 run_cal()
 {
 	declare device="${DEVICE:-$DEFAULT_DEVICE}"
+	declare mode="--${MODE:-$DEFAULT_MODE}"
 	declare led_mask="${LED_MASK:-$DEFAULT_LED_MASK}"
 	declare src_mask="${SRC_MASK:-$DEFAULT_SRC_MASK}"
 	declare frequency="${FREQUENCY:-$DEFAULT_FREQUENCY}"
@@ -67,7 +70,7 @@ run_cal()
 	./tools/bl chancfg "$device" 18 6  0  0  1 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
+	./tools/bl start   "$device" "$mode" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Run an acquisition.
