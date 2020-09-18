@@ -5,6 +5,7 @@
 
 #include "../util.h"
 #include "../delay.h"
+#include "../led.h"
 
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/dma.h>
@@ -193,12 +194,13 @@ static void bl_acq_adc_group_disable(bl_acq_adc_group_t *adc_group)
 
 
 #ifndef ADC_CHANNEL_COUNT
-#define ADC_CHANNEL_COUNT 19
+#define ADC_CHANNEL_COUNT BL_ACQ__SRC_COUNT
 #endif
 
 typedef struct
 {
 	unsigned channel_count;
+	uint8_t  src_mask[ADC_CHANNEL_COUNT];
 	uint8_t  channel_adc[ADC_CHANNEL_COUNT];
 	uint8_t  channel_source[ADC_CHANNEL_COUNT];
 	uint8_t  smp[ADC_CHANNEL_COUNT];
@@ -215,6 +217,10 @@ struct bl_acq_adc_s
 	const uint8_t       dmamux_req;
 	const uint16_t      irq;
 	unsigned            enable;
+
+	bool    flash_enable;
+	bool    flash_master;
+	uint8_t flash_index;
 
 	bool     calibrated;
 	uint32_t calfact;
@@ -404,6 +410,7 @@ enum bl_error bl_acq_adc_channel_configure(bl_acq_adc_t *adc,
 
 	config->channel_adc[config->channel_count] = channel;
 	config->channel_source[config->channel_count] = source;
+	config->src_mask[config->channel_count] = 1U << source;
 	config->channel_count++;
 
 	return BL_ERROR_NONE;
@@ -530,6 +537,13 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 	return BL_ERROR_NONE;
 }
 
+void bl_acq_adc_flash_init(bl_acq_adc_t *adc, bool enable, bool master)
+{
+	adc->flash_enable = enable;
+	adc->flash_master = master;
+	adc->flash_index  = 0;
+}
+
 void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag)
 {
 	adc->enable++;
@@ -632,7 +646,6 @@ bl_acq_dma_t *bl_acq_adc_get_dma(const bl_acq_adc_t *adc)
 	return *(adc->dma);
 }
 
-
 static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 {
 	volatile uint16_t *p = &adc->dma_buffer[adc->samples_per_dma * buffer];
@@ -648,10 +661,30 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 		}
 	}
 
-	for (unsigned c = 0; c < adc->config.channel_count; c++) {
-		unsigned channel = bl_acq_source_get_channel(
-				adc->config.channel_source[c]);
-		bl_acq_channel_commit_sample(channel, sample[c]);
+	if (adc->flash_enable) {
+		for (unsigned c = 0; c < adc->config.channel_count; c++) {
+			if (bl_led_channel[adc->flash_index].src_mask &
+				adc->config.src_mask[c]) {
+				unsigned channel = bl_acq_source_get_channel(
+						adc->config.channel_source[c]);
+				bl_acq_channel_commit_sample(channel, sample[c]);
+			}
+		}
+
+		adc->flash_index++;
+		if (adc->flash_index >= bl_led_count) {
+			adc->flash_index = 0;
+		}
+
+		if (adc->flash_master) {
+			bl_led_loop();
+		}
+	} else {
+		for (unsigned c = 0; c < adc->config.channel_count; c++) {
+			unsigned channel = bl_acq_source_get_channel(
+					adc->config.channel_source[c]);
+			bl_acq_channel_commit_sample(channel, sample[c]);
+		}
 	}
 }
 

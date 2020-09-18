@@ -35,6 +35,8 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 		uint32_t frequency, uint32_t sw_oversample,
 		uint8_t oversample, uint8_t shift);
 
+void bl_acq_adc_flash_init(bl_acq_adc_t *adc, bool enable, bool master);
+
 void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag);
 void bl_acq_adc_disable(bl_acq_adc_t *adc, uint32_t ccr_flag);
 

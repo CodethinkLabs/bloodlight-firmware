@@ -25,6 +25,27 @@
 #include "util.h"
 #include "led.h"
 #include "msg.h"
+#include "acq/channel.h"
+
+#if (BL_REVISION == 1)
+#define NON_LED_MASKS (1 << BL_ACQ_3V3 | \
+                       1 << BL_ACQ_5V0 | \
+                       1 << BL_ACQ_TMP)
+#else
+#define NON_LED_MASKS (1 << BL_ACQ_3V3 | \
+                       1 << BL_ACQ_5V0 | \
+                       1 << BL_ACQ_TMP | \
+                       1 << BL_ACQ_EXT)
+#endif
+
+#define LED_SRC(pd)    (1U << (pd) | NON_LED_MASKS)
+#define LED_BS(pin)    (1U << (pin))
+#define LED_BR(pin)    (LED_BS(pin) << 16)
+#define LED_BSRR(port) ((port) + 0x18)
+
+unsigned bl_led_count;
+volatile unsigned bl_led_active;
+bl_led_channel_t bl_led_channel[BL_LED_COUNT];
 
 /** GPIO ports used for LEDs */
 enum led_port {
@@ -155,4 +176,66 @@ void bl_led_status_set(bool enable)
 #else
 	BL_UNUSED(enable);
 #endif
+}
+
+/* Exported function, documented in led.h */
+enum bl_error bl_led_setup(uint16_t led_mask)
+{
+	if (!led_mask) {
+		return BL_ERROR_BAD_SOURCE_MASK;
+	}
+
+	bl_led_active = 0;
+	bl_led_count = 0;
+
+	while (led_mask)
+	{
+		unsigned i = __builtin_ffs(led_mask) - 1;
+		bl_led_channel_t *active = &bl_led_channel[bl_led_active];
+
+		active->led = i;
+		active->src_mask = LED_SRC(bl_acq_channel_get_source(i));
+		active->gpios = LED_BS(led_table[i].pin);
+		active->gpior = LED_BR(led_table[i].pin);
+		active->gpio_bsrr = LED_BSRR(led_port[led_table[i].port_idx]);
+
+		led_mask &= ~(1U << i);
+
+		bl_led_active++;
+		bl_led_count++;
+	}
+
+	bl_led_active = 0;
+
+	return BL_ERROR_NONE;
+}
+
+/* These 2 inline functions replaces the libopencm3 gpio_clear/set
+   APIs to avoid function call overhead in IRQ handler */
+static inline void bl_led__gpio_clear(unsigned led)
+{
+	*(volatile uint32_t *)bl_led_channel[led].gpio_bsrr = bl_led_channel[led].gpior;
+}
+
+static inline void bl_led__gpio_set(unsigned led)
+{
+	*(volatile uint32_t *)bl_led_channel[led].gpio_bsrr = bl_led_channel[led].gpios;
+}
+
+/* Exported function, documented in led.h
+ *
+ * set/clear bsrr register can be further optimised by change the active
+ * LED order to be grouped by GPIO ports, but we will try this first.
+ */
+enum bl_error bl_led_loop(void)
+{
+	bl_led__gpio_clear(bl_led_active);
+
+	bl_led_active++;
+	if (bl_led_active >= bl_led_count)
+		bl_led_active = 0;
+
+	bl_led__gpio_set(bl_led_active);
+
+	return BL_ERROR_NONE;
 }

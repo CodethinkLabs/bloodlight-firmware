@@ -92,7 +92,9 @@ typedef struct {
  */
 typedef struct {
 	uint8_t  type;       /**< Must be \ref BL_MSG_START */
+	uint8_t  mode;       /**< See \ref enum bl_acq_mode */
 	uint16_t frequency;  /**< Sampling rate in Hz. */
+	uint16_t led_mask;   /**< Mask of LEDs to use. */
 	uint16_t src_mask;   /**< Mask of sources to enable. */
 } bl_msg_start_t;
 

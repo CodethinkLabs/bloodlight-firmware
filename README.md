@@ -268,11 +268,22 @@ This will show the messages being sent and received to run an acquisition,
 and also the sample data. See the comments in the [run.sh](run.sh) script
 for further details on how to configure an acquisition.
 
-Overridding the default acquistion parameters is possible too, for example:
+Overridding the default acquisition parameters is possible too, for example:
 
 ```
 sudo FREQUENCY=1000 OVERSAMPLE=128 SRC_MASK=0x5 ./run.sh acq
 ```
+
+# Acquisition mode
+
+The device can work in 2 different modes:
+
+- flash mode, it will flash the LEDs enabled in a fixed sequence, and the
+photodiodes only samples a single LED at a time. This is the default mode.
+
+- continuous mode, the enabled LEDs will be always on, and the photodiodes
+will sense the lights from all LEDs. This is mainly for experimental purpose.
+
 
 Device info
 -----------

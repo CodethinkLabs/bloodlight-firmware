@@ -3,11 +3,13 @@
 # Try to find the device automatically.  Override with `DEVICE=`.
 declare DEFAULT_DEVICE="--auto"
 
+# Default to use flash mode for acquisition
+declare DEFAULT_MODE="flash"
 # By default, turn on:
 # - the green LED    (1 << 14)
 # - an infra-red LED (1 <<  2)
 # Override with `LED_MASK=`.
-declare DEFAULT_LED_MASK=0x4004
+declare DEFAULT_LED_MASK=0xF000
 
 # Default to enabling all channels. Override with `SRC_MASK=`.
 declare DEFAULT_SRC_MASK=0x7f
@@ -27,6 +29,7 @@ usage()
 run_cal()
 {
 	declare device="${DEVICE:-$DEFAULT_DEVICE}"
+	declare mode="--${MODE:-$DEFAULT_MODE}"
 	declare led_mask="${LED_MASK:-$DEFAULT_LED_MASK}"
 	declare src_mask="${SRC_MASK:-$DEFAULT_SRC_MASK}"
 	declare frequency="${FREQUENCY:-$DEFAULT_FREQUENCY}"
@@ -44,17 +47,30 @@ run_cal()
 	./tools/bl srccfg "$device" 5  1 0 "$oversample" 0 0 # 5.0V
 	./tools/bl srccfg "$device" 6  1 0 "$oversample" 0 0 # Temperature
 
+	# There are 19 channels including 16 LEDs plus 3.3V, 5.0V and Temperature
 	# chancfg <channel> <source> [offset] [shift] [sample32]
-	./tools/bl chancfg "$device" 0 0  0  0  1 # Photodiode 1
-	./tools/bl chancfg "$device" 1 1  0  0  1 # Photodiode 2
-	./tools/bl chancfg "$device" 2 2  0  0  1 # Photodiode 3
-	./tools/bl chancfg "$device" 3 3  0  0  1 # Photodiode 4
-	./tools/bl chancfg "$device" 4 4  0  0  1 # 3.3V
-	./tools/bl chancfg "$device" 5 5  0  0  1 # 5.0V
-	./tools/bl chancfg "$device" 6 6  0  0  1 # Temperature
+	./tools/bl chancfg "$device" 0  2  0  0  1 # Photodiode 3
+	./tools/bl chancfg "$device" 1  2  0  0  1 # Photodiode 3
+	./tools/bl chancfg "$device" 2  2  0  0  1 # Photodiode 3
+	./tools/bl chancfg "$device" 3  2  0  0  1 # Photodiode 3
+	./tools/bl chancfg "$device" 4  3  0  0  1 # Photodiode 4
+	./tools/bl chancfg "$device" 5  3  0  0  1 # Photodiode 4
+	./tools/bl chancfg "$device" 6  3  0  0  1 # Photodiode 4
+	./tools/bl chancfg "$device" 7  3  0  0  1 # Photodiode 4
+	./tools/bl chancfg "$device" 8  1  0  0  1 # Photodiode 2
+	./tools/bl chancfg "$device" 9  1  0  0  1 # Photodiode 2
+	./tools/bl chancfg "$device" 10 1  0  0  1 # Photodiode 2
+	./tools/bl chancfg "$device" 11 1  0  0  1 # Photodiode 2
+	./tools/bl chancfg "$device" 12 0  0  0  1 # Photodiode 1
+	./tools/bl chancfg "$device" 13 0  0  0  1 # Photodiode 1
+	./tools/bl chancfg "$device" 14 0  0  0  1 # Photodiode 1
+	./tools/bl chancfg "$device" 15 0  0  0  1 # Photodiode 1
+	./tools/bl chancfg "$device" 16 4  0  0  1 # 3.3V
+	./tools/bl chancfg "$device" 17 5  0  0  1 # 5.0V
+	./tools/bl chancfg "$device" 18 6  0  0  1 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask"
+	./tools/bl start   "$device" "$mode" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Run an acquisition.
@@ -78,6 +94,9 @@ run_acq()
 	./tools/bl srccfg "$device" 5  1 0 "$oversample" 0 0 # 5.0V
 	./tools/bl srccfg "$device" 6  1 0 "$oversample" 0 0 # Temperature
 
+	# TODO: this chancfg table has to change to be similar to the one
+	# in run_cal, but I've no idea where do those shift values come
+	# from, so leave it for now.
 	# chancfg <channel> <source> [offset] [shift] [sample32]
 	./tools/bl chancfg "$device" 0 0 1264480 0 # Photodiode 1
 	./tools/bl chancfg "$device" 1 1   54879 0 # Photodiode 2
@@ -88,7 +107,7 @@ run_acq()
 	./tools/bl chancfg "$device" 6 6  860701 0 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask"
+	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Turn off the lights and stop any acquisition.
@@ -133,7 +152,7 @@ run_cal_acq()
 	rm "$TMP_CFG"
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask"
+	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
 }
 
 if [ $# -lt 1 ]; then

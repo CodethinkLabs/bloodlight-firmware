@@ -81,7 +81,9 @@ void bl_acq_init(uint32_t clock)
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
+		enum bl_acq_mode mode,
 		uint16_t frequency,
+		uint16_t led_mask,
 		uint16_t src_mask)
 {
 	if (src_mask == 0x00) {
@@ -96,8 +98,19 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-	/* For now, channels have a direct mapping to sources. */
-	uint16_t acq_chan_mask = src_mask;
+	if (mode == BL_ACQ_MODE_FLASH) {
+		if ((led_mask & (led_mask - 1)) == 0) {
+			return BL_ERROR_MODE_MISMATCH;
+		}
+
+		enum bl_error status = bl_led_setup(led_mask);
+		if (status != BL_ERROR_NONE) {
+			return status;
+		}
+	}
+
+	/* Channels are combined by the LED channels and 3 non-LED sources */
+	uint32_t acq_chan_mask = led_mask | (src_mask & 0xF0) << 16;
 
 	/* Get source list from channels */
 	uint16_t acq_src_mask = 0;
@@ -123,8 +136,9 @@ enum bl_error bl_acq_start(
 		/* Finalize Config. */
 		config->frequency = frequency;
 
+		unsigned multiplex = mode ? bl_led_count : 1;
 		config->frequency_trigger = (config->frequency *
-				config->sw_oversample);
+				config->sw_oversample * multiplex);
 		config->frequency_sample = (config->frequency_trigger <<
 				config->oversample);
 
@@ -307,6 +321,7 @@ enum bl_error bl_acq_start(
 	}
 
 	/* Configure ADCs. */
+	bool is_first = true;
 	for (unsigned i = 0; i < src_count; i++) {
 		bl_acq_source_config_t *config =
 				bl_acq_source_get_config(src[i]);
@@ -325,6 +340,9 @@ enum bl_error bl_acq_start(
 		if (status != BL_ERROR_NONE) {
 			return status;
 		}
+
+		bl_acq_adc_flash_init(adc, mode, is_first);
+		is_first = false;
 	}
 
 	/* Enable all of the channels. */
