@@ -36,6 +36,7 @@
 #include "msg.h"
 #include "mq.h"
 #include "usb.h"
+#include "spi.h"
 
 
 static uint32_t bl_acq__ahb_freq = 0;
@@ -117,6 +118,18 @@ enum bl_error bl_acq_start(
 	} else {
 		/* Channels map to sources. */
 		acq_chan_mask = src_mask;
+	}
+
+	/* Detection mode casting to SPI mode:
+	 * reflective   -> none SPI
+	 * transmissive -> SPI mother mode
+	 * As USB is connected, SPI daughter mode is not valid
+	 */
+	if (bl_spi_mode != (enum bl_acq_spi_mode)detection_mode) {
+		bl_spi_mode = detection_mode;
+		if (bl_spi_mode != BL_ACQ_SPI_NONE) {
+			bl_spi_init();
+		}
 	}
 
 	/* Get source list from channels */

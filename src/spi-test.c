@@ -19,6 +19,7 @@
 #include "bl.h"
 #include "spi.h"
 #include "led.h"
+#include "acq.h"
 
 static void bl_spi_simply_test(void)
 {
@@ -82,6 +83,7 @@ static void bl_spi_dma_test(void)
 
 int main(void)
 {
+	bl_spi_mode = BL_ACQ_SPI_MOTHER;
 	bl_init();
 #ifdef BL_SPI_DMA_TEST
 	bl_spi_dma_test();

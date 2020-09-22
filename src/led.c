@@ -25,6 +25,8 @@
 #include "led.h"
 #include "msg.h"
 #include "acq/channel.h"
+#include "spi.h"
+#include "acq.h"
 
 #if (BL_REVISION == 1)
 #define NON_LED_MASKS (1 << BL_ACQ_3V3 | \
@@ -228,13 +230,19 @@ static inline void bl_led__gpio_set(unsigned led)
  */
 enum bl_error bl_led_loop(void)
 {
-	bl_led__gpio_clear(bl_led_active);
+	if (bl_spi_mode == BL_ACQ_SPI_NONE) {
+		bl_led__gpio_clear(bl_led_active);
+	}
 
 	bl_led_active++;
 	if (bl_led_active >= bl_led_count)
 		bl_led_active = 0;
 
-	bl_led__gpio_set(bl_led_active);
+	if (bl_spi_mode == BL_ACQ_SPI_MOTHER) {
+		bl_spi_send(bl_led_channel[bl_led_active].led);
+	} else if (bl_spi_mode == BL_ACQ_SPI_NONE) {
+		bl_led__gpio_set(bl_led_active);
+	}
 
 	return BL_ERROR_NONE;
 }

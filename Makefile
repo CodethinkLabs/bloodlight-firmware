@@ -33,12 +33,12 @@ else
 	CFILES += src/acq/dac.c
 endif
 
-ifdef SPI-TEST
+ifeq ($(SPI),TEST)
 	CFILES += src/spi-test.c
 	CFLAGS += -DBL_SPI_TEST
-endif
-
-ifdef SPI-DMA-TEST
+else ifeq ($(SPI),DMA-TEST)
+	CFILES += src/spi-test.c
+	CFLAGS += -DBL_SPI_TEST
 	CFLAGS += -DBL_SPI_DMA_TEST
 endif
 

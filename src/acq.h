@@ -23,6 +23,13 @@
 
 union bl_msg_data;
 
+/** SPI mode**/
+extern enum bl_acq_spi_mode {
+	BL_ACQ_SPI_NONE,
+	BL_ACQ_SPI_MOTHER,
+	BL_ACQ_SPI_DAUGHTER,
+} bl_spi_mode;
+
 /** Acquisition detection mode **/
 enum bl_acq_detection_mode {
 	BL_ACQ_REFLECTIVE,

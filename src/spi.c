@@ -26,6 +26,7 @@
 
 #include "spi.h"
 #include "led.h"
+#include "acq.h"
 
 #if (BL_REVISION == 1)
 static bl_spi_dma_t bl_spi_dma__rx =
@@ -105,8 +106,15 @@ static void bl_spi__setup(void)
 			GPIO13 | GPIO14 | GPIO15);
 	gpio_set_af(GPIOB, GPIO_AF5, GPIO13 | GPIO14 | GPIO15);
 
+	/* Disable SPI before reset it
+	 * We omitted the procedure of verifying tx/rx buffer
+	 * are empty while resetting the SPI, as in our use case
+	 * resetting SPI will only happen at beginning of each
+	 * acquisition.
+	 */
+	spi_disable(SPI2);
+
 	/* SPI initialization */
-	spi_set_master_mode(SPI2);
 	spi_set_baudrate_prescaler(SPI2, SPI_CR1_BR_FPCLK_DIV_64);
 	spi_set_clock_polarity_0(SPI2);
 	spi_set_clock_phase_0(SPI2);
@@ -115,10 +123,17 @@ static void bl_spi__setup(void)
 	spi_set_data_size(SPI2, SPI_CR2_DS_8BIT);
 	spi_enable_software_slave_management(SPI2);
 	spi_send_lsb_first(SPI2);
-	spi_set_nss_high(SPI2);
 	spi_fifo_reception_threshold_8bit(SPI2);
 	SPI_I2SCFGR(SPI2) &= ~SPI_I2SCFGR_I2SMOD;
-	spi_enable(SPI2);
+	if (bl_spi_mode == BL_ACQ_SPI_DAUGHTER) {
+		spi_set_nss_low(SPI2);
+		spi_set_slave_mode(SPI2);
+		spi_enable(SPI2);
+	} else if (bl_spi_mode == BL_ACQ_SPI_MOTHER) {
+		spi_set_nss_high(SPI2);
+		spi_set_master_mode(SPI2);
+		spi_enable(SPI2);
+	}
 }
 
 /* Exported function, documented in spi.h */
