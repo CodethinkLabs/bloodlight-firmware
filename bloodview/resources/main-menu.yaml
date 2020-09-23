@@ -1,0 +1,197 @@
+sub-menus:
+  - &menu-sources
+    - toggle:
+        title: Photodiode 1
+        value: on
+    - toggle:
+        title: Photodiode 2
+        value: on
+    - toggle:
+        title: Photodiode 3
+        value: on
+    - toggle:
+        title: Photodiode 4
+        value: on
+    - toggle:
+        title: 3.3 Volts
+    - toggle:
+        title: 5.0 Volts
+    - toggle:
+        title: Temperature
+
+  - &menu-acquisition
+    - input:
+        title: Frequency (Hz)
+        value:
+          unsigned: 250
+    - menu:
+        title: Sources
+        entries: *menu-sources
+
+  - &menu-colour
+    - input:
+        title: Hue
+        value:
+          unsigned: 0
+    - input:
+        title: Saturation
+        value:
+          unsigned: 0
+    - input:
+        title: Value
+        value:
+          unsigned: 100
+
+  - &menu-channel
+    - input:
+        title: Software Offset
+        value:
+          unsigned: 0
+    - input:
+        title: Software Shift
+        value:
+          unsigned: 0
+    - toggle:
+        title: 32-bit samples
+    - toggle:
+        title: Invert data
+    - menu:
+        title: Colour
+        entries: *menu-colour
+
+  - &menu-source
+    - input:
+        title: Software Oversample
+        value:
+          unsigned: 512
+    - input:
+        title: Op-Amp Gain
+        value:
+          unsigned: 1
+    - input:
+        title: Op-Amp Offset
+        value:
+          unsigned: 0
+    - input:
+        title: Hardware Oversample
+        value:
+          unsigned: 0
+    - input:
+        title: Hardware Shift
+        value:
+          unsigned: 0
+
+  - &menu-channel-setup
+    - menu:
+        title: Channel
+        entries: *menu-channel
+    - menu:
+        title: Source
+        entries: *menu-source
+
+  - &menu-channels
+    - menu:
+        title: Photodiode 1
+        entries: *menu-channel-setup
+    - menu:
+        title: Photodiode 2
+        entries: *menu-channel-setup
+    - menu:
+        title: Photodiode 3
+        entries: *menu-channel-setup
+    - menu:
+        title: Photodiode 4
+        entries: *menu-channel-setup
+    - menu:
+        title: 3.3 Volts
+        entries: *menu-channel-setup
+    - menu:
+        title: 5.0 Volts
+        entries: *menu-channel-setup
+    - menu:
+        title: Temperature
+        entries: *menu-channel-setup
+
+  - &menu-leds
+    - toggle:
+        title: Blue (470nm)
+    - toggle:
+        title: Green (528nm)
+        value: on
+    - toggle:
+        title: Yellow (570nm)
+    - toggle:
+        title: Orange (590nm)
+    - toggle:
+        title: Orange (612nm)
+    - toggle:
+        title: Red (638nm)
+    - toggle:
+        title: Red (660nm)
+    - toggle:
+        title: Red (740nm)
+    - toggle:
+        title: Infrared (850nm)
+    - toggle:
+        title: Infrared (880nm)
+    - toggle:
+        title: Infrared (940nm)
+    - toggle:
+        title: Infrared (1040nm)
+    - toggle:
+        title: Infrared (1200nm)
+    - toggle:
+        title: Infrared (1450nm)
+    - toggle:
+        title: Infrared (1550nm)
+    - toggle:
+        title: Infrared (1650nm)
+
+  - &menu-filtering
+    - input:
+        title: Normalisation frequency (Hz)
+        value:
+          double: 0.5
+    - input:
+        title: AC denoise frequency (Hz)
+        value:
+          double: 50
+    - toggle:
+        title: Normalisation
+        value: on
+    - toggle:
+        title: AC denoise
+        value: on
+
+  - &menu-config
+    - menu:
+        title: Acquisition
+        entries: *menu-acquisition
+    - menu:
+        title: Channels
+        entries: *menu-channels
+    - menu:
+        title: LEDs
+        entries: *menu-leds
+    - menu:
+        title: Filtering
+        entries: *menu-filtering
+
+menu:
+  title: Bloodlight viewer
+  entries:
+  - action:
+      title: Calibrate
+      cb: bv_action_cal
+  - action:
+      title: Acquisition
+      cb: bv_action_acq
+  - action:
+      title: Stop
+      cb: bv_action_stop
+  - menu:
+      title: Config
+      entries: *menu-config
+  - action:
+      title: Quit
+      cb: bv_action_quit
