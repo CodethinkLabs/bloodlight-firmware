@@ -36,6 +36,13 @@
 struct sdl_tk_widget *main_menu_create(void);
 
 /**
+ * Destroy the bloodlight main menu widget set.
+ *
+ * \param[in]  main_menu  The main menu root widget.
+ */
+void main_menu_destroy(struct sdl_tk_widget *main_menu);
+
+/**
  * Update the main menu state.
  */
 void main_menu_update(void);

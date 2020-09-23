@@ -54,7 +54,7 @@ static struct sdl_ctx
 /* Exported interface, documented in sdl.h */
 void sdl_fini(void)
 {
-	sdl_tk_widget_destroy(ctx.main_menu);
+	main_menu_destroy(ctx.main_menu);
 	sdl_tk_text_fini();
 	sdl_tk_colour_fini();
 
