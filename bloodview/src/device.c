@@ -704,10 +704,27 @@ bool device_init(
 	bv_device_g.cb = cb;
 	bv_device_g.pw = pw;
 
+	if (!locked_uint_init(&bv_device_g.state)) {
+		memset(&bv_device_g.thread_id, 0,
+				sizeof(bv_device_g.thread_id));
+		bl_device_close(bv_device_g.dev_fd);
+		return false;
+	}
+
+	if (!locked_uint_fini(&bv_device_g.msg_used)) {
+		memset(&bv_device_g.thread_id, 0,
+				sizeof(bv_device_g.thread_id));
+		bl_device_close(bv_device_g.dev_fd);
+		locked_uint_fini(&bv_device_g.state);
+		return false;
+	}
+
 	if (!device__set_state(DEVICE_STATE_IDLE)) {
 		memset(&bv_device_g.thread_id, 0,
 				sizeof(bv_device_g.thread_id));
 		bl_device_close(bv_device_g.dev_fd);
+		locked_uint_fini(&bv_device_g.state);
+		locked_uint_fini(&bv_device_g.msg_used);
 		return false;
 	}
 
@@ -718,6 +735,8 @@ bool device_init(
 		memset(&bv_device_g.thread_id, 0,
 				sizeof(bv_device_g.thread_id));
 		bl_device_close(bv_device_g.dev_fd);
+		locked_uint_fini(&bv_device_g.state);
+		locked_uint_fini(&bv_device_g.msg_used);
 		return false;
 	}
 
@@ -749,6 +768,9 @@ void device_fini(void)
 				ret);
 	}
 	device__set_state(DEVICE_STATE_NONE);
+
+	locked_uint_fini(&bv_device_g.state);
+	locked_uint_fini(&bv_device_g.msg_used);
 
 	memset(&bv_device_g.thread_id, 0,
 			sizeof(bv_device_g.thread_id));
