@@ -88,13 +88,19 @@ void graph_fini(void)
 
 	graph_g.channel = NULL;
 	graph_g.count   = 0;
+	graph_g.single  = false;
 
 	pthread_mutex_unlock(&graph_g.lock);
+	pthread_mutex_destroy(&graph_g.lock);
 }
 
 /* Exported function, documented in graph.h */
 bool graph_init(void)
 {
+	if (pthread_mutex_init(&graph_g.lock, NULL) != 0) {
+		return false;
+	}
+
 	return true;
 }
 
