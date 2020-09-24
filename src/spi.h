@@ -40,6 +40,18 @@ extern bl_spi_dma_t *bl_spi_dma_tx;
 void bl_spi_init(void);
 
 /**
+ * Send 8bits data through SPI
+ * \param[in]  let 8bits data to be transferred
+ */
+void bl_spi_send(uint8_t led);
+
+/**
+ * Read 8bits data from SPI
+ * \return \ref read 8bits data from SPI
+ */
+uint8_t bl_spi_receive(void);
+
+/**
  * Initialise the DMA IRQs to be used by SPI module.
  */
 void bl_spi_dma_init(void);
@@ -51,5 +63,10 @@ void bl_spi_dma_init(void);
  * \return \ref 0 on success
  */
 int bl_spi_dma_transceive(uint8_t *tx_buf, uint8_t *rx_buf, int len);
+
+/**
+ * On the daughter board, keep polling SPI.
+ */
+void bl_spi_daughter_poll(void);
 
 #endif

@@ -172,3 +172,24 @@ void bl_spi_init(void)
 {
 	bl_spi__setup();
 }
+
+/* Exported function, documented in spi.h */
+void bl_spi_send(uint8_t led)
+{
+	spi_send8(SPI2, led);
+}
+
+/* Exported function, documented in spi.h */
+uint8_t bl_spi_receive(void)
+{
+	return spi_read8(SPI2);
+}
+
+/* Exported function, documented in spi.h */
+void bl_spi_daughter_poll(void)
+{
+	if (SPI_SR(SPI2) & SPI_SR_RXNE) {
+		uint8_t led = bl_spi_receive();
+		bl_led_set(1U << led);
+	}
+}
