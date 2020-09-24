@@ -296,7 +296,11 @@ sudo FREQUENCY=1000 OVERSAMPLE=128 SRC_MASK=0x5 ./run.sh acq
 
 # Acquisition mode
 
-The device can work in 2 different modes:
+There are 2 settings for the acquisition mode.
+
+## Flash pattern
+
+The LEDs can work in 2 different modes:
 
 - flash mode, it will flash the LEDs enabled in a fixed sequence, and the
 photodiodes only samples a single LED at a time. This is the default mode.
@@ -304,6 +308,28 @@ photodiodes only samples a single LED at a time. This is the default mode.
 - continuous mode, the enabled LEDs will be always on, and the photodiodes
 will sense the lights from all LEDs. This is mainly for experimental purpose.
 
+## Reflection/transmissive detection mode
+
+With a single board, it can only work in reflection mode where the
+LEDs and photodiodes located on the same board, and photodiodes pick
+up the reflected lights from the LEDs.
+
+With 2 boards connected through SPI interface, it's possible to flash
+the LEDs on one board and receive the signals from the photodiodes on
+the other board. This makes penetrate data collection possible, and
+it can be used for Blood Oxygen detection for example.
+
+The same firmware has to be flashed onto the 2 boards, and the board
+triggers acquisition through USB is automatically chosen as SPI master,
+and the other board which is powered through the SPI headers will be
+SPI slave.
+
+The mother board will do all the ordinary jobs except flashing LED when
+it send the LED index to be flashed through SPI instead of light its own,
+and the daughter board will poll the SPI bus and flash LED when it
+received data.
+
+**NOTE: This feature is under experiment at moment**
 
 Device info
 -----------
