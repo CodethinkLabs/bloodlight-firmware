@@ -33,6 +33,30 @@ typedef struct locked_uint {
 } locked_uint_t;
 
 /**
+ * Initialise a locked uint.
+ *
+ * \param[in]  lu  Locked unsigned to initialise.
+ * \return true if initialisation succeded.
+ */
+static inline bool locked_uint_init(
+		locked_uint_t *lu)
+{
+	return pthread_mutex_init(&lu->lock, NULL) == 0;
+}
+
+/**
+ * Finalise a locked uint.
+ *
+ * \param[in]  lu  Locked unsigned to finalise.
+ * \return true if finalisation succeded.
+ */
+static inline bool locked_uint_fini(
+		locked_uint_t *lu)
+{
+	return pthread_mutex_destroy(&lu->lock) == 0;
+}
+
+/**
  * Claim a locked uint.
  *
  * \param[in]  lu  Locked unsigned to lock.
