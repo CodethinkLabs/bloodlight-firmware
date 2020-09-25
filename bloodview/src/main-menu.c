@@ -803,6 +803,43 @@ static char *main_menu__create_path(
 	return str;
 }
 
+/**
+ * Save the current config to given filename.
+ *
+ * \param[in] filename  The filename to save the current config as.
+ * \return true on success, or false on failure.
+ */
+static bool main_menu_save_config(
+		const char *filename)
+{
+	cyaml_err_t err;
+	char *path;
+	bool ret = false;
+	const struct desc_widget *desc;
+
+	path = main_menu__create_path("config", filename);
+	if (path == NULL) {
+		goto error;
+	}
+
+	desc = main_menu__get_desc_fmt(bl_main_menu, "Config");
+	if (desc == NULL) {
+		goto error;
+	}
+
+	err = cyaml_save_file(path, &config, &schema_main_menu, desc, 0);
+	if (err != CYAML_OK) {
+		fprintf(stderr, "ERROR: %s\n", cyaml_strerror(err));
+		goto error;
+	}
+
+	ret = true;
+
+error:
+	free(path);
+	return ret;
+}
+
 /* Exported function, documented in main-menu.h */
 struct sdl_tk_widget *main_menu_create(void)
 {
@@ -856,6 +893,10 @@ void main_menu_destroy(struct sdl_tk_widget *main_menu)
 {
 	assert(main_menu == bl_main_menu->widget);
 	BV_UNUSED(main_menu);
+
+	/* Always save the current config as "previous" so you can get it
+	 * back if you forgot to save before quitting. */
+	main_menu_save_config("previous.yaml");
 
 	sdl_tk_widget_destroy(bl_main_menu->widget);
 	bl_main_menu->widget = NULL;
