@@ -1,3 +1,6 @@
 [submodule "libopencm3"]
 	path = libopencm3
 	url = https://github.com/ben-brewer-codethink/libopencm3.git
+[submodule "bloodview/libcyaml"]
+	path = bloodview/libcyaml
+	url = https://github.com/tlsa/libcyaml.git
