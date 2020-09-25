@@ -72,7 +72,10 @@ void sdl_fini(void)
 }
 
 /* Exported interface, documented in sdl.h */
-bool sdl_init(const char *font_path)
+bool sdl_init(const char *resources_dir_path,
+		const char *config_dir_path,
+		const char *config_file,
+		const char *font_path)
 {
 	if (SDL_Init(BL_SDL_INIT_MASK) != 0) {
 		fprintf(stderr, "SDL_Init Error: %s\n",
@@ -111,7 +114,10 @@ bool sdl_init(const char *font_path)
 		goto error;
 	}
 
-	ctx.main_menu = main_menu_create();
+	ctx.main_menu = main_menu_create(
+			resources_dir_path,
+			config_dir_path,
+			config_file);
 	if (ctx.main_menu == NULL) {
 		goto error;
 	}

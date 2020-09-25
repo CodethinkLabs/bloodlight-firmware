@@ -34,10 +34,16 @@ void sdl_fini(void);
 /**
  * Initialise the SDL module.
  *
- * \param[in]  font_path  Path to font to use for the interface, or NULL.
+ * \param[in]  resources_dir_path  Path to resources directory.
+ * \param[in]  config_dir_path     Path to config directory.
+ * \param[in]  config_file         Config filename in config_dir_path or NULL.
+ * \param[in]  font_path           Font path to use for the interface, or NULL.
  * \return true on success or false on failure.
  */
-bool sdl_init(const char *font_path);
+bool sdl_init(const char *resources_dir_path,
+		const char *config_dir_path,
+		const char *config_file,
+		const char *font_path);
 
 /**
  * Handle any SDL events.

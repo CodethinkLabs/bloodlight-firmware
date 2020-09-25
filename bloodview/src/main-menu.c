@@ -43,6 +43,9 @@
 #include "bloodview.h"
 #include "main-menu.h"
 
+/** Directory to load/save config files to/from. */
+static const char *bv_config_dir_path;
+
 /** Bloodview actions. */
 enum bv_action {
 	BV_ACTION_CAL,
@@ -817,7 +820,7 @@ static bool main_menu_save_config(
 	bool ret = false;
 	const struct desc_widget *desc;
 
-	path = main_menu__create_path("config", filename);
+	path = main_menu__create_path(bv_config_dir_path, filename);
 	if (path == NULL) {
 		goto error;
 	}
@@ -833,6 +836,7 @@ static bool main_menu_save_config(
 		goto error;
 	}
 
+	fprintf(stderr, "Saved config to '%s'.\n", path);
 	ret = true;
 
 error:
@@ -840,13 +844,150 @@ error:
 	return ret;
 }
 
+/**
+ * Recursively copy loaded config data into current state.
+ *
+ * \param[in]  current  Current state to update.
+ * \param[in]  load     Loaded content to set as current state.
+ * \return true on success, or false on error.
+ */
+static bool main_menu__load_config_helper(
+		struct desc_widget *current,
+		struct desc_widget *load)
+{
+	const char *value;
+
+	if (current == NULL || load == NULL) {
+		return false;
+	}
+
+	if (strcmp(main_menu__desc_get_title(load),
+	           main_menu__desc_get_title(current)) != 0) {
+		fprintf(stderr, "Error: Config load: Unexpected entry: %s, "
+				"expecting: %s\n",
+				main_menu__desc_get_title(load),
+				main_menu__desc_get_title(current));
+		return false;
+	}
+
+	if (current->type != load->type) {
+		fprintf(stderr, "Error: Config load: Type mismatch for %s\n",
+				main_menu__desc_get_title(current));
+		return false;
+	}
+
+	switch (load->type) {
+	case WIDGET_TYPE_MENU:
+		if (load->menu.entry_count > current->menu.entry_count) {
+			fprintf(stderr, "Error: Config load: "
+					"Too many entries for %s\n",
+					main_menu__desc_get_title(load));
+			return false;
+		}
+		for (unsigned i = 0; i < load->menu.entry_count; i++) {
+			if (!main_menu__load_config_helper(
+					current->menu.entry[i],
+					load->menu.entry[i])) {
+				return false;
+			}
+		}
+		break;
+
+	case WIDGET_TYPE_INPUT:
+		value = main_menu__get_input_value_string(&load->input.value);
+		if (value == NULL) {
+			fprintf(stderr, "Error: No input value for %s\n",
+					main_menu__desc_get_title(load));
+			return false;
+		}
+		if (!sdl_tk_widget_input_set_value(current->widget, value)) {
+			fprintf(stderr, "Error: "
+					"Failed to set input value %s for %s\n",
+					value,
+					main_menu__desc_get_title(current));
+			return false;
+		}
+		break;
+
+	case WIDGET_TYPE_TOGGLE:
+		if (!sdl_tk_widget_toggle_set_value(current->widget,
+				load->toggle.value)) {
+			fprintf(stderr, "Error: "
+					"Failed to set toggle value for %s\n",
+					main_menu__desc_get_title(current));
+			return false;
+		}
+		break;
+
+	default:
+		fprintf(stderr, "Error: Config load: "
+				"Unexpected widget type for '%s'\n",
+				main_menu__desc_get_title(load));
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Load a config file.
+ *
+ * \param[in]  config_file  The config file to load.
+ * \return true on success, or false on error.
+ */
+static bool main_menu__load_config(
+		const char *config_file)
+{
+	struct desc_widget *current = NULL;
+	struct desc_widget *load = NULL;
+	bool ret = false;
+	cyaml_err_t err;
+	char *path;
+
+	path = main_menu__create_path(bv_config_dir_path, config_file);
+	if (path == NULL) {
+		goto cleanup;
+	}
+
+	err = cyaml_load_file(path, &config, &schema_main_menu,
+			(void **) &load, 0);
+	if (err != CYAML_OK) {
+		fprintf(stderr, "ERROR: %s\n", cyaml_strerror(err));
+		goto cleanup;
+	}
+
+	current = main_menu__get_desc_fmt(bl_main_menu, "Config");
+	if (current == NULL) {
+		goto cleanup;
+	}
+
+	if (!main_menu__load_config_helper(current, load)) {
+		goto cleanup;
+	}
+
+	fprintf(stderr, "Loaded config file: %s\n", path);
+	ret = true;
+
+cleanup:
+	free(path);
+	if (load != NULL) {
+		cyaml_free(&config, &schema_main_menu, load, 0);
+	}
+	return ret;
+}
+
 /* Exported function, documented in main-menu.h */
-struct sdl_tk_widget *main_menu_create(void)
+struct sdl_tk_widget *main_menu_create(
+		const char *resources_dir_path,
+		const char *config_dir_path,
+		const char *config_file)
 {
 	cyaml_err_t err;
 	char *path;
 
-	path = main_menu__create_path("resources", "main-menu.yaml");
+	bv_config_dir_path = config_dir_path;
+
+	path = main_menu__create_path(resources_dir_path, "main-menu.yaml");
 	if (path == NULL) {
 		goto error;
 	}
@@ -868,6 +1009,14 @@ struct sdl_tk_widget *main_menu_create(void)
 	if (!main_menu__create_from_desc(bl_main_menu, NULL)) {
 		fprintf(stderr, "Error: Failed to create main menu.\n");
 		goto error;
+	}
+
+	if (config_file != NULL) {
+		if (!main_menu__load_config(config_file)) {
+			fprintf(stderr, "Error: Failed to load config '%s'.\n",
+					config_file);
+			goto error;
+		}
 	}
 
 	if (!locked_uint_init(&update_ctx.count)) {

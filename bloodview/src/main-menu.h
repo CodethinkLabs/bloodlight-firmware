@@ -31,9 +31,15 @@
 /**
  * Create the bloodlight main menu widget set.
  *
+ * \param[in]  resources_dir_path  Path to resources directory.
+ * \param[in]  config_dir_path     Path to config directory.
+ * \param[in]  config_file         Config filename in config_dir_path or NULL.
  * \return the main menu root widget or NULL on error.
  */
-struct sdl_tk_widget *main_menu_create(void);
+struct sdl_tk_widget *main_menu_create(
+		const char *resources_dir_path,
+		const char *config_dir_path,
+		const char *config_file);
 
 /**
  * Destroy the bloodlight main menu widget set.
