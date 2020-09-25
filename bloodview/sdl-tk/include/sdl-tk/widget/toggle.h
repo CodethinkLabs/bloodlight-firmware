@@ -53,4 +53,15 @@ struct sdl_tk_widget *sdl_tk_widget_toggle_create(
 		const sdl_tk_widget_toggle_cb  cb,
 		void                          *pw);
 
+/**
+ * Update a toggle widget's value.
+ *
+ * \param[in]  widget  The input widget to update the value of.
+ * \param[in]  value   The new value to set.
+ * \return true if the widget's value was updated, false otherwise.
+ */
+bool sdl_tk_widget_toggle_set_value(
+		struct sdl_tk_widget *widget,
+		bool                  value);
+
 #endif /* SDL_TK_WIDGET_TOGGLE_H */
