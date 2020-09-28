@@ -67,7 +67,7 @@ $(BV_OBJ): $(BUILDDIR)/%.o : %.c
 
 # We need to run with sudo to open the device.
 run: bloodview
-	@sudo $(BLOODVIEW_ENV) ./bloodview
+	@sudo $(BLOODVIEW_ENV) ./bloodview $(BV_ARGS)
 
 docs:
 	$(MKDIR) build/docs
