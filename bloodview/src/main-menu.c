@@ -36,6 +36,7 @@
 #include "sdl-tk/widget/menu.h"
 #include "sdl-tk/widget/input.h"
 #include "sdl-tk/widget/action.h"
+#include "sdl-tk/widget/select.h"
 #include "sdl-tk/widget/toggle.h"
 
 #include "util.h"
@@ -71,15 +72,23 @@ struct desc_widget_value {
 	enum {
 		INPUT_TYPE_DOUBLE,
 		INPUT_TYPE_UNSIGNED,
+		INPUT_TYPE_ACQ_MODE,
 	} type; /**< The input value type. */
 	union {
 		double           type_double;   /**< Data for double values */
 		unsigned         type_unsigned; /**< Data for unsigned values */
+		enum bl_acq_mode type_acq_mode; /**< Data for acquisition modes */
 	};
 };
 
 /** Input widget data. */
 struct desc_widget_input {
+	char *title;                    /**< Widget title. */
+	struct desc_widget_value value; /**< Widget value. */
+};
+
+/** Select widget data. */
+struct desc_widget_select {
 	char *title;                    /**< Widget title. */
 	struct desc_widget_value value; /**< Widget value. */
 };
@@ -99,12 +108,14 @@ struct desc_widget {
 		WIDGET_TYPE_MENU,
 		WIDGET_TYPE_INPUT,
 		WIDGET_TYPE_ACTION,
+		WIDGET_TYPE_SELECT,
 		WIDGET_TYPE_TOGGLE,
 	} type; /**< Widget type. */
 	union {
 		struct desc_widget_menu menu;     /**< Menu widget data. */
 		struct desc_widget_input input;   /**< Input widget data. */
 		struct desc_widget_action action; /**< Action widget data. */
+		struct desc_widget_select select; /**< Select widget data. */
 		struct desc_widget_toggle toggle; /**< Toggle widget data. */
 	};
 	struct sdl_tk_widget *widget; /**< SDL-TK widget. */
@@ -162,6 +173,9 @@ const char *main_menu__desc_get_title(
 		break;
 	case WIDGET_TYPE_ACTION:
 		title = desc->action.title;
+		break;
+	case WIDGET_TYPE_SELECT:
+		title = desc->select.title;
 		break;
 	case WIDGET_TYPE_TOGGLE:
 		title = desc->toggle.title;
@@ -394,6 +408,7 @@ static struct desc_widget *bl_main_menu;
 static const cyaml_strval_t widget_input_type[] = {
 	{ .val = INPUT_TYPE_DOUBLE,   .str = "double" },
 	{ .val = INPUT_TYPE_UNSIGNED, .str = "unsigned" },
+	{ .val = INPUT_TYPE_ACQ_MODE, .str = "acq-mode" },
 };
 
 /** CYAML schema: Valid widget type mapping. */
@@ -401,6 +416,7 @@ static const cyaml_strval_t widget_type[] = {
 	{ .val = WIDGET_TYPE_MENU,   .str = "menu" },
 	{ .val = WIDGET_TYPE_INPUT,  .str = "input" },
 	{ .val = WIDGET_TYPE_ACTION, .str = "action" },
+	{ .val = WIDGET_TYPE_SELECT, .str = "select" },
 	{ .val = WIDGET_TYPE_TOGGLE, .str = "toggle" },
 };
 
@@ -410,6 +426,12 @@ static const cyaml_strval_t bv_action_type[] = {
 	{ .val = BV_ACTION_ACQ,  .str = "bv_action_acq" },
 	{ .val = BV_ACTION_STOP, .str = "bv_action_stop" },
 	{ .val = BV_ACTION_QUIT, .str = "bv_action_quit" },
+};
+
+/** CYAML schema: Valid acquisition mode mapping. */
+static const cyaml_strval_t bv_acq_mode[] = {
+	{ .val = BL_ACQ_MODE_CONTINUOUS, .str = "Continuous" },
+	{ .val = BL_ACQ_MODE_FLASH,      .str = "Flash" },
 };
 
 static const cyaml_schema_value_t schema_main_menu;
@@ -461,6 +483,29 @@ static const cyaml_schema_field_t schema_main_menu_widget_action_mapping[] = {
 	CYAML_FIELD_END
 };
 
+/** CYAML schema: Input widget value mapping fields. */
+static const cyaml_schema_field_t schema_main_menu_widget_select_value_mapping[] = {
+	CYAML_FIELD_ENUM("kind", CYAML_FLAG_OPTIONAL,
+			struct desc_widget_value, type,
+			widget_input_type, CYAML_ARRAY_LEN(widget_input_type)),
+	CYAML_FIELD_ENUM("acq-mode", CYAML_FLAG_DEFAULT,
+			struct desc_widget_value, type_acq_mode,
+			bv_acq_mode, CYAML_ARRAY_LEN(bv_acq_mode)),
+	CYAML_FIELD_END
+};
+
+/** CYAML schema: Select widget mapping fields. */
+static const cyaml_schema_field_t schema_main_menu_widget_select_mapping[] = {
+	CYAML_FIELD_STRING_PTR("title", CYAML_FLAG_POINTER,
+			struct desc_widget_action, title,
+			0, CYAML_UNLIMITED),
+	CYAML_FIELD_UNION("value", CYAML_FLAG_DEFAULT,
+			struct desc_widget_input, value,
+			schema_main_menu_widget_select_value_mapping,
+			"kind"),
+	CYAML_FIELD_END
+};
+
 /** CYAML schema: Toggle widget mapping fields. */
 static const cyaml_schema_field_t schema_main_menu_widget_toggle_mapping[] = {
 	CYAML_FIELD_STRING_PTR("title", CYAML_FLAG_POINTER,
@@ -486,6 +531,9 @@ static const cyaml_schema_field_t schema_main_menu_widget_mapping[] = {
 	CYAML_FIELD_MAPPING("action", CYAML_FLAG_DEFAULT,
 			struct desc_widget, action,
 			schema_main_menu_widget_action_mapping),
+	CYAML_FIELD_MAPPING("select", CYAML_FLAG_DEFAULT,
+			struct desc_widget, select,
+			schema_main_menu_widget_select_mapping),
 	CYAML_FIELD_MAPPING("toggle", CYAML_FLAG_FLOW,
 			struct desc_widget, toggle,
 			schema_main_menu_widget_toggle_mapping),
@@ -550,6 +598,29 @@ static void main_menu_toggle_cb(
 	}
 
 	value->toggle.value = new_value;
+}
+
+/**
+ * Callback for the select widgets.
+ *
+ * \param[in]  pw         Client private context data.
+ * \param[in]  new_value  New select widget value.
+ */
+static void main_menu_select_cb(
+		void     *pw,
+		unsigned  new_value)
+{
+	struct desc_widget *value = pw;
+
+	assert(value->type == WIDGET_TYPE_SELECT);
+
+	switch (value->select.value.type) {
+	case INPUT_TYPE_ACQ_MODE:
+		value->select.value.type_acq_mode = new_value;
+		break;
+	default:
+		break;
+	}
 }
 
 /**
@@ -622,6 +693,9 @@ static bool main_menu__input_cb(
 		ret = main_menu_unsigned_input_cb(
 				&val->type_unsigned, new_value);
 		break;
+
+	default:
+		break;
 	}
 
 	return ret;
@@ -659,6 +733,9 @@ static const char *main_menu__get_input_value_string(
 		ret = snprintf(scratch, sizeof(scratch), "%u",
 				val->type_unsigned);
 		break;
+
+	default:
+		break;
 	}
 
 	if (ret < 0) {
@@ -668,6 +745,99 @@ static const char *main_menu__get_input_value_string(
 	}
 
 	return scratch;
+}
+
+/**
+ * Get a select widget's value.
+ *
+ * \param[in]  val  Value to get.
+ * \return select widget value.
+ */
+static unsigned main_menu__select_value(
+		const struct desc_widget_value *val)
+{
+	unsigned value = 0;
+
+	switch (val->type) {
+	case INPUT_TYPE_ACQ_MODE:
+		value = val->type_acq_mode;
+		break;
+
+	default:
+		break;
+	}
+
+	return value;
+}
+
+/**
+ * Free a string vector.
+ *
+ * \param[in]  strings  String array to free.
+ * \param[in]  count    Number of entries in `strings`.
+ */
+static void main_menu__free_string_vector(
+		char **strings,
+		unsigned count)
+{
+	if (strings != NULL) {
+		for (unsigned i = 0; i < count; i++) {
+			free(strings[i]);
+		}
+		free(strings);
+	}
+}
+
+/**
+ * Get select options.
+ *
+ * \param[in]  val            Value to get select options for.
+ * \param[out] options        Returns select widget options on success.
+ * \param[out] options_count  Returns number of options entries on success.
+ * \return true on success, false on error.
+ */
+static bool main_menu__get_select_options(
+		struct desc_widget_value *val,
+		char ***options,
+		unsigned *options_count)
+{
+	unsigned count = 0;
+	char **strings = NULL;
+	const cyaml_strval_t *strval = NULL;
+
+	switch (val->type) {
+	case INPUT_TYPE_ACQ_MODE:
+		strval = bv_acq_mode;
+		count = CYAML_ARRAY_LEN(bv_acq_mode);
+		break;
+
+	default:
+		break;
+	}
+
+	if (strval == NULL) {
+		goto error;
+	}
+
+	strings = calloc(count, sizeof(*strings));
+	if (strings == NULL) {
+		goto error;
+	}
+
+	for (unsigned i = 0; i < count; i++) {
+		strings[i] = strdup(strval[i].str);
+		if (strings[i] == NULL) {
+			goto error;
+		}
+	}
+
+	*options = strings;
+	*options_count = count;
+	return true;
+
+error:
+	main_menu__free_string_vector(strings, count);
+	return false;
 }
 
 /**
@@ -739,6 +909,31 @@ static struct sdl_tk_widget *main_menu__create_from_desc(
 		}
 		desc->widget = widget;
 		break;
+
+	case WIDGET_TYPE_SELECT: {
+		char **options;
+		unsigned options_count;
+		if (!main_menu__get_select_options(&desc->select.value,
+				&options, &options_count)) {
+			fprintf(stderr, "Failed to get select options\n");
+			return NULL;
+		}
+		widget = sdl_tk_widget_select_create(
+				parent,
+				desc->select.title,
+				(const char * const *) options,
+				options_count,
+				main_menu__select_value(&desc->select.value),
+				main_menu_select_cb,
+				desc);
+		main_menu__free_string_vector(options, options_count);
+		if (widget == NULL) {
+			fprintf(stderr, "Failed to create select widget\n");
+			return NULL;
+		}
+		desc->widget = widget;
+		break;
+	}
 
 	case WIDGET_TYPE_TOGGLE:
 		widget = sdl_tk_widget_toggle_create(
@@ -904,6 +1099,16 @@ static bool main_menu__load_config_helper(
 			fprintf(stderr, "Error: "
 					"Failed to set input value %s for %s\n",
 					value,
+					main_menu__desc_get_title(current));
+			return false;
+		}
+		break;
+
+	case WIDGET_TYPE_SELECT:
+		if (!sdl_tk_widget_select_set_value(current->widget,
+				main_menu__select_value(&load->select.value))) {
+			fprintf(stderr, "Error: "
+					"Failed to set select value for %s\n",
 					main_menu__desc_get_title(current));
 			return false;
 		}
