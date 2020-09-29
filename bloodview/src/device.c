@@ -31,6 +31,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <unistd.h>
+
 #include "../../src/msg.h"
 #include "../../tools/msg.h"
 #include "../../tools/device.h"
@@ -412,6 +414,10 @@ static void *device__thread(void *ctx)
 			/* Awaiting response to sent message,
 			 * or running an acquisition. */
 			device__thread_receive_msg(&sent_type);
+		} else {
+			/* When we're not waiting for messages, don't
+			 * thrash the device thread main loop. */
+			usleep(10 * 1000);
 		}
 	}
 
