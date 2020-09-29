@@ -391,7 +391,7 @@ static int bl_cmd_start_stream(
 				"  \t<DEVICE_PATH|--auto|-a> \\\n"
 				"  \t<--flash|-f|--continous|-c> \\\n"
 				"  \t<FREQUENCY> \\\n"
-				"  \t<SRC_MASK>\\\n",
+				"  \t<SRC_MASK>\\\n"
 				"  \t<LED_MASK>\n",
 				argv[ARG_PROG],
 				argv[ARG_CMD]);
