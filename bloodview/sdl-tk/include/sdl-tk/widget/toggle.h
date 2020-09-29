@@ -56,7 +56,7 @@ struct sdl_tk_widget *sdl_tk_widget_toggle_create(
 /**
  * Update a toggle widget's value.
  *
- * \param[in]  widget  The input widget to update the value of.
+ * \param[in]  widget  The toggle widget to update the value of.
  * \param[in]  value   The new value to set.
  * \return true if the widget's value was updated, false otherwise.
  */
