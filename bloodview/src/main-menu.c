@@ -67,21 +67,21 @@ struct desc_widget_action {
 };
 
 /** Input widget value data. */
-struct desc_widget_input_value {
+struct desc_widget_value {
 	enum {
 		INPUT_TYPE_DOUBLE,
 		INPUT_TYPE_UNSIGNED,
 	} type; /**< The input value type. */
 	union {
-		double   type_double;   /**< Data for double values. */
-		unsigned type_unsigned; /**< Data for unsigned values. */
+		double           type_double;   /**< Data for double values */
+		unsigned         type_unsigned; /**< Data for unsigned values */
 	};
 };
 
 /** Input widget data. */
 struct desc_widget_input {
-	char *title;                          /**< Widget title. */
-	struct desc_widget_input_value value; /**< Widget value. */
+	char *title;                    /**< Widget title. */
+	struct desc_widget_value value; /**< Widget value. */
 };
 
 struct desc_widget;
@@ -429,12 +429,12 @@ static const cyaml_schema_field_t schema_main_menu_widget_menu_mapping[] = {
 /** CYAML schema: Input widget value mapping fields. */
 static const cyaml_schema_field_t schema_main_menu_widget_input_value_mapping[] = {
 	CYAML_FIELD_ENUM("kind", CYAML_FLAG_OPTIONAL,
-			struct desc_widget_input_value, type,
+			struct desc_widget_value, type,
 			widget_input_type, CYAML_ARRAY_LEN(widget_input_type)),
 	CYAML_FIELD_FLOAT("double", CYAML_FLAG_DEFAULT,
-			struct desc_widget_input_value, type_double),
+			struct desc_widget_value, type_double),
 	CYAML_FIELD_UINT("unsigned", CYAML_FLAG_DEFAULT,
-			struct desc_widget_input_value, type_unsigned),
+			struct desc_widget_value, type_unsigned),
 	CYAML_FIELD_END
 };
 
@@ -610,7 +610,7 @@ static bool main_menu__input_cb(
 		const char *new_value)
 {
 	bool ret = false;
-	struct desc_widget_input_value *val = pw;
+	struct desc_widget_value *val = pw;
 
 	switch (val->type) {
 	case INPUT_TYPE_DOUBLE:
@@ -643,7 +643,7 @@ static const sdl_tk_widget_action_cb action_cb[] = {
  *         or NULL on error.
  */
 static const char *main_menu__get_input_value_string(
-		const struct desc_widget_input_value *val)
+		const struct desc_widget_value *val)
 {
 	static char scratch[64];
 	int ret = 0;
