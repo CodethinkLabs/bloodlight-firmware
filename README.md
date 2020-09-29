@@ -14,6 +14,15 @@ The open-source hardware is available in the
 [bloodlight-hardware](https://github.com/CodethinkLabs/bloodlight-hardware)
 repository.
 
+Dependencies
+------------
+
+The tools depend on libfftw3, on ubuntu or debian, install as follows:
+
+```
+sudo apt install libfftw3-dev
+```
+
 Building
 --------
 
