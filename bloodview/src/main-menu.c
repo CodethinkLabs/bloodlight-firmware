@@ -1261,8 +1261,14 @@ void main_menu_destroy(struct sdl_tk_widget *main_menu)
 	locked_uint_fini(&update_ctx.count);
 }
 
-/* Exported interface, documented in main-menu.h */
-uint16_t main_menu_config_get_led_mask(void)
+/**
+ * Get the LED mask from an LED menu.
+ *
+ * \param[in]  led_desc  Menu descriptor for LEDs.
+ * \return the LED mask.
+ */
+static uint16_t main_menu__config_get_led_mask_helper(
+		struct desc_widget *led_desc)
 {
 	static const uint8_t mapping[BL_LED_COUNT] = {
 		15, 14, 13, 12, 11, 10,  9,  8,
@@ -1270,16 +1276,30 @@ uint16_t main_menu_config_get_led_mask(void)
 	};
 	uint16_t led_mask = 0;
 
-	for (unsigned i = 0; i < BL_LED_COUNT; i++) {
-		struct desc_widget *desc = main_menu__get_desc_fmt(bl_main_menu,
-				"Config/LEDs/[%u]", i);
+	assert(led_desc != NULL);
+	assert(led_desc->type != WIDGET_TYPE_MENU);
+	assert(led_desc->menu.entry_count <= BL_LED_COUNT);
+
+	for (unsigned i = 0; i < led_desc->menu.entry_count; i++) {
+		struct desc_widget *desc = led_desc->menu.entry[i];
 		assert(desc != NULL);
+		assert(desc->type != WIDGET_TYPE_TOGGLE);
 		if (desc->toggle.value) {
 			led_mask |= 1U << mapping[i];
 		}
 	}
 
 	return led_mask;
+}
+
+/* Exported interface, documented in main-menu.h */
+uint16_t main_menu_config_get_led_mask(void)
+{
+	struct desc_widget *desc = main_menu__get_desc_fmt(
+			bl_main_menu, "Config/LEDs");
+	assert(desc != NULL);
+
+	return main_menu__config_get_led_mask_helper(desc);
 }
 
 /* Exported interface, documented in main-menu.h */
