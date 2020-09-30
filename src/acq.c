@@ -86,6 +86,8 @@ enum bl_error bl_acq_start(
 		uint16_t led_mask,
 		uint16_t src_mask)
 {
+	uint32_t acq_chan_mask;
+
 	if (src_mask == 0x00) {
 		return BL_ERROR_BAD_SOURCE_MASK;
 	}
@@ -107,10 +109,14 @@ enum bl_error bl_acq_start(
 		if (status != BL_ERROR_NONE) {
 			return status;
 		}
-	}
 
-	/* Channels are combined by the LED channels and 3 non-LED sources */
-	uint32_t acq_chan_mask = led_mask | (src_mask & 0xF0) << 16;
+		/* Channels correspond to LEDs, and the 3 non-LED sources */
+		acq_chan_mask = led_mask | (src_mask & 0xF0) << 16;
+
+	} else {
+		/* Channels map to sources. */
+		acq_chan_mask = src_mask;
+	}
 
 	/* Get source list from channels */
 	uint16_t acq_src_mask = 0;
