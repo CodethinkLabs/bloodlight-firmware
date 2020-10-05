@@ -324,8 +324,19 @@ bl_acq_adc_t *bl_acq_source_get_adc(enum bl_acq_source source,
 	return *(src->adc);
 }
 
+static inline uint8_t bl_acq_source__current_idx(bl_acq_source_t *src)
+{
+	uint8_t current = src->channel_current++;
+
+	if (src->channel_current == src->channel_count) {
+		src->channel_current = 0;
+	}
+
+	return current;
+}
+
 uint8_t bl_acq_source_get_channel(enum bl_acq_source source)
 {
 	bl_acq_source_t *src = &bl_acq_source[source];
-	return src->channel[src->channel_current];
+	return src->channel[bl_acq_source__current_idx(src)];
 }
