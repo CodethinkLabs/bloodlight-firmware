@@ -193,6 +193,9 @@ enum bl_error bl_acq_source_configure(enum bl_acq_source source)
 		return BL_ERROR_HARDWARE_CONFLICT;
 	}
 
+	src->channel_count = 0;
+	src->channel_current = 0;
+
 	src->opamp_used = opamp_needed || (src->adc == NULL);
 	return BL_ERROR_NONE;
 }
