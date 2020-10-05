@@ -1245,18 +1245,18 @@ error:
 /* Exported interface, documented in main-menu.h */
 void main_menu_destroy(struct sdl_tk_widget *main_menu)
 {
-	assert(main_menu == bl_main_menu->widget);
-	BV_UNUSED(main_menu);
-
 	/* Always save the current config as "previous" so you can get it
 	 * back if you forgot to save before quitting. */
 	main_menu_save_config("previous.yaml");
 
-	sdl_tk_widget_destroy(bl_main_menu->widget);
-	bl_main_menu->widget = NULL;
+	sdl_tk_widget_destroy(main_menu);
 
-	cyaml_free(&config, &schema_main_menu, bl_main_menu, 0);
-	bl_main_menu = NULL;
+	if (bl_main_menu != NULL) {
+		bl_main_menu->widget = NULL;
+
+		cyaml_free(&config, &schema_main_menu, bl_main_menu, 0);
+		bl_main_menu = NULL;
+	}
 
 	locked_uint_fini(&update_ctx.count);
 }
