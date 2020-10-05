@@ -34,6 +34,8 @@
 #include <unistd.h>
 
 #include "../../src/msg.h"
+#include "../../src/acq/channel.h"
+
 #include "../../tools/msg.h"
 #include "../../tools/device.h"
 
@@ -242,6 +244,31 @@ static FILE *device__open_recording(bool calibrate)
 }
 
 /**
+ * Get the channel mask, according to the acquisition mode.
+ *
+ * \param[in]  src_mask  The source mask to get channel mask for.
+ * \return the channel mask.
+ */
+static unsigned device__get_channel_mask(uint16_t src_mask)
+{
+	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	unsigned mask = 0;
+
+	switch (mode) {
+	case BL_ACQ_MODE_FLASH:
+		mask = main_menu_config_get_led_mask();
+		mask |= (src_mask & 0xF0) << BL_LED_COUNT;
+		break;
+
+	case BL_ACQ_MODE_CONTINUOUS:
+		mask =  src_mask;
+		break;
+	}
+
+	return mask;
+}
+
+/**
  * Send a queued message, if any.
  *
  * \param[out]  sent_type  Returns the type of any sent message.
@@ -273,9 +300,11 @@ static bool device__thread_send_msg(
 	if (bl_msg_write(bv_device_g.dev_fd, "Discovered device", send_msg)) {
 		*sent_type = send_msg->type;
 		if (send_msg->type == BL_MSG_START) {
+			unsigned channel_mask = device__get_channel_mask(
+					send_msg->start.src_mask);
 			if (!data_start(calibrating,
 					send_msg->start.frequency,
-					send_msg->start.src_mask)) {
+					channel_mask)) {
 				/* TODO: If this fails, we'll block on
 				 * never clearing this message. */
 				return false;
@@ -478,6 +507,50 @@ static bool device__queue_msg_led(bool enable_lights)
 }
 
 /**
+ * Get the appropriate source for a given channel, according to acq mode.
+ *
+ * \param[in]  channel  The channel to find the source for.
+ * \return source for the channel.
+ */
+static enum bl_acq_source device__get_channel_source(uint8_t channel)
+{
+	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+
+	switch (mode) {
+	case BL_ACQ_MODE_CONTINUOUS:
+		/* Channels map to sources. */
+		return channel;
+
+	case BL_ACQ_MODE_FLASH:
+		if (channel < BL_LED_COUNT) {
+			enum bl_acq_source led_source_affinity[] = {
+				[ 0] = BL_ACQ_PD3,
+				[ 1] = BL_ACQ_PD3,
+				[ 2] = BL_ACQ_PD3,
+				[ 3] = BL_ACQ_PD3,
+				[ 4] = BL_ACQ_PD4,
+				[ 5] = BL_ACQ_PD4,
+				[ 6] = BL_ACQ_PD4,
+				[ 7] = BL_ACQ_PD4,
+				[ 8] = BL_ACQ_PD2,
+				[ 9] = BL_ACQ_PD2,
+				[10] = BL_ACQ_PD2,
+				[11] = BL_ACQ_PD2,
+				[12] = BL_ACQ_PD1,
+				[13] = BL_ACQ_PD1,
+				[14] = BL_ACQ_PD1,
+				[15] = BL_ACQ_PD1,
+			};
+			return led_source_affinity[channel];
+		} else {
+			return channel - BL_LED_COUNT;
+		}
+	}
+
+	return BL_ACQ__SRC_COUNT;
+}
+
+/**
  * Configure a channel on the device.
  *
  * The config is obtained from the main menu configuration.
@@ -504,7 +577,7 @@ static bool device__queue_msg_channel_conf(
 
 	msg->type = BL_MSG_CHANNEL_CONF;
 	msg->channel_conf.channel  = channel;
-	msg->channel_conf.source   = channel;
+	msg->channel_conf.source   = device__get_channel_source(channel);
 	msg->channel_conf.shift    = main_menu_config_get_channel_shift(channel);
 	msg->channel_conf.offset   = main_menu_config_get_channel_offset(channel);
 	msg->channel_conf.sample32 = sample32;
@@ -560,7 +633,9 @@ static bool device__queue_msg_start(void)
 	}
 
 	msg->type = BL_MSG_START;
+	msg->start.mode      = main_menu_config_get_acq_mode();
 	msg->start.frequency = main_menu_config_get_frequency();
+	msg->start.led_mask  = main_menu_config_get_led_mask();
 	msg->start.src_mask  = main_menu_config_get_source_mask();
 
 	device__msg_send(msg);
@@ -598,13 +673,41 @@ static bool device__queue_msg_abort(void)
 static bool device__queue_channel_conf_messages(bool calibrate)
 {
 	unsigned source_mask = main_menu_config_get_source_mask();
+	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	unsigned led_mask = main_menu_config_get_led_mask();
+	unsigned channel_mask = 0;
+
+	switch (mode) {
+	case BL_ACQ_MODE_CONTINUOUS:
+		channel_mask = source_mask;
+		break;
+
+	case BL_ACQ_MODE_FLASH:
+		source_mask &= ~(BL_ACQ_PD1 |
+				 BL_ACQ_PD2 |
+				 BL_ACQ_PD3 |
+				 BL_ACQ_PD4);
+		for (unsigned i = 0; i < BL_LED_COUNT; i++) {
+			if (led_mask & (1U << i)) {
+				source_mask |= 1U <<
+						device__get_channel_source(i);
+			}
+		}
+		channel_mask = led_mask | (source_mask & 0xF0) << 16;
+		break;
+	}
 
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
 		if (source_mask & (1U << i)) {
-			if (!device__queue_msg_channel_conf(i, calibrate)) {
+			if (!device__queue_msg_source_conf(i)) {
 				return false;
 			}
-			if (!device__queue_msg_source_conf(i)) {
+		}
+	}
+
+	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+		if (channel_mask & (1U << i)) {
+			if (!device__queue_msg_channel_conf(i, calibrate)) {
 				return false;
 			}
 		}
