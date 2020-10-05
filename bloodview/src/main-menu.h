@@ -54,6 +54,13 @@ void main_menu_destroy(struct sdl_tk_widget *main_menu);
 void main_menu_update(void);
 
 /**
+ * Get the Acquisition Mode.
+ *
+ * \return the configured acquisition mode.
+ */
+enum bl_acq_mode main_menu_config_get_acq_mode(void);
+
+/**
  * Get the LED mask.
  *
  * \return the led mask to use.
@@ -63,7 +70,7 @@ uint16_t main_menu_config_get_led_mask(void);
 /**
  * Get the source mask.
  *
- * \return the configured led mask.
+ * \return the configured source mask.
  */
 uint16_t main_menu_config_get_source_mask(void);
 

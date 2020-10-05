@@ -1277,13 +1277,13 @@ static uint16_t main_menu__config_get_led_mask_helper(
 	uint16_t led_mask = 0;
 
 	assert(led_desc != NULL);
-	assert(led_desc->type != WIDGET_TYPE_MENU);
+	assert(led_desc->type == WIDGET_TYPE_MENU);
 	assert(led_desc->menu.entry_count <= BL_LED_COUNT);
 
 	for (unsigned i = 0; i < led_desc->menu.entry_count; i++) {
 		struct desc_widget *desc = led_desc->menu.entry[i];
 		assert(desc != NULL);
-		assert(desc->type != WIDGET_TYPE_TOGGLE);
+		assert(desc->type == WIDGET_TYPE_TOGGLE);
 		if (desc->toggle.value) {
 			led_mask |= 1U << mapping[i];
 		}
@@ -1293,10 +1293,42 @@ static uint16_t main_menu__config_get_led_mask_helper(
 }
 
 /* Exported interface, documented in main-menu.h */
-uint16_t main_menu_config_get_led_mask(void)
+enum bl_acq_mode main_menu_config_get_acq_mode(void)
 {
 	struct desc_widget *desc = main_menu__get_desc_fmt(
-			bl_main_menu, "Config/LEDs");
+			bl_main_menu, "Config/Acquisition/Mode");
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_SELECT);
+
+	return main_menu__select_value(&desc->select.value);
+}
+
+/**
+ * Get the Acquisition Mode.
+ *
+ * \return the configured acquisition mode.
+ */
+static const char *main_menu_config_get_acq_mode_string(void)
+{
+	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+
+	for (unsigned i = 0; i < BV_ARRAY_LEN(bv_acq_mode); i++) {
+		if (bv_acq_mode[i].val == mode) {
+			return bv_acq_mode[i].str;
+		}
+	}
+
+	return NULL;
+}
+
+/* Exported interface, documented in main-menu.h */
+uint16_t main_menu_config_get_led_mask(void)
+{
+	struct desc_widget *desc = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/%s/LEDs",
+			main_menu_config_get_acq_mode_string());
+
 	assert(desc != NULL);
 
 	return main_menu__config_get_led_mask_helper(desc);
@@ -1305,8 +1337,9 @@ uint16_t main_menu_config_get_led_mask(void)
 /* Exported interface, documented in main-menu.h */
 uint16_t main_menu_config_get_source_mask(void)
 {
-	struct desc_widget *sources = main_menu__get_desc(bl_main_menu,
-			"Config/Acquisition/Sources");
+	struct desc_widget *sources = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/%s/Sources",
+			main_menu_config_get_acq_mode_string());
 	uint16_t src_mask = 0;
 	uint16_t src_count;
 
@@ -1332,83 +1365,191 @@ uint16_t main_menu_config_get_frequency(void)
 			"Config/Acquisition/Frequency (Hz)");
 }
 
+/**
+ * Get the descriptor for a source setup.
+ *
+ * \param[in]  source  The source to look up.
+ * \return the source descriptor.
+ */
+struct desc_widget *main_menu__get_source_desc(enum bl_acq_source source)
+{
+	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	struct desc_widget *desc = NULL;
+
+	switch (mode) {
+	case BL_ACQ_MODE_CONTINUOUS:
+		desc = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/Continuous/Channels/[%u]/Source",
+			source);
+		break;
+
+	case BL_ACQ_MODE_FLASH:
+		desc = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/Flash/Source setup/[%u]", source);
+		break;
+	}
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_MENU);
+
+	return desc;
+}
+
 /* Exported interface, documented in main-menu.h */
 uint32_t main_menu_config_get_source_sw_oversample(enum bl_acq_source source)
 {
-	return main_menu__get_desc_input_unsigned(bl_main_menu,
-			"Config/Channels/[%u]/Source/Software Oversample",
-			source);
+	struct desc_widget *desc = main_menu__get_source_desc(source);
+	return main_menu__get_desc_input_unsigned(desc, "Software Oversample");
 }
 
 /* Exported interface, documented in main-menu.h */
 uint32_t main_menu_config_get_source_opamp_gain(enum bl_acq_source source)
 {
-	return main_menu__get_desc_input_unsigned(bl_main_menu,
-			"Config/Channels/[%u]/Source/Op-Amp Gain",
-			source);
+	struct desc_widget *desc = main_menu__get_source_desc(source);
+	return main_menu__get_desc_input_unsigned(desc, "Op-Amp Gain");
 }
 
 /* Exported interface, documented in main-menu.h */
 uint32_t main_menu_config_get_source_opamp_offset(enum bl_acq_source source)
 {
-	return main_menu__get_desc_input_unsigned(bl_main_menu,
-			"Config/Channels/[%u]/Source/Op-Amp Offset",
-			source);
+	struct desc_widget *desc = main_menu__get_source_desc(source);
+	return main_menu__get_desc_input_unsigned(desc, "Op-Amp Offset");
 }
 
 /* Exported interface, documented in main-menu.h */
 uint32_t main_menu_config_get_source_hw_oversample(enum bl_acq_source source)
 {
-	return main_menu__get_desc_input_unsigned(bl_main_menu,
-			"Config/Channels/[%u]/Source/Hardware Oversample",
-			source);
+	struct desc_widget *desc = main_menu__get_source_desc(source);
+	return main_menu__get_desc_input_unsigned(desc, "Hardware Oversample");
 }
 
 /* Exported interface, documented in main-menu.h */
 uint32_t main_menu_config_get_source_hw_shift(enum bl_acq_source source)
 {
-	return main_menu__get_desc_input_unsigned(bl_main_menu,
-			"Config/Channels/[%u]/Source/Hardware Shift",
-			source);
+	struct desc_widget *desc = main_menu__get_source_desc(source);
+	return main_menu__get_desc_input_unsigned(desc, "Hardware Shift");
+}
+
+/**
+ * Channel conversion types.
+ */
+enum channel_conv {
+	CHANNEL_CONV_NONE,     /**< No channel conversion. */
+	CHANNEL_CONV_HW_TO_MM, /**< Hardware order to main menu order. */
+	CHANNEL_CONV_MM_TO_HW, /**< Main menu to hardware order. */
+};
+
+/**
+ * Convert channel index between types.
+ *
+ * The main menu presents LEDs in wavelength sort order, but the hardware
+ * has its own order.
+ *
+ * \param[in]  channel     The channel to look up.
+ * \param[in]  input_type  The input channel index type.
+ * \return converted channel index.
+ */
+static inline uint8_t main_menu__convert_led_index(
+		uint8_t channel,
+		enum channel_conv input_type)
+{
+	static const uint8_t mapping_mm_to_hw[BL_LED_COUNT] = {
+		15, 14, 13, 12, 11, 10,  9,  8,
+		 0,  1,  2,  3,  4,  5,  6,  7,
+	};
+	static const uint8_t mapping_hw_to_mm[BL_LED_COUNT] = {
+		 8,  9, 10, 11, 12, 13, 14, 15,
+		 7,  6,  5,  4,  3,  2,  1,  0,
+	};
+	const uint8_t *mapping = NULL;
+
+	switch (input_type) {
+	case CHANNEL_CONV_HW_TO_MM: mapping = mapping_hw_to_mm; break;
+	case CHANNEL_CONV_MM_TO_HW: mapping = mapping_mm_to_hw; break;
+	default:
+		assert(input_type == CHANNEL_CONV_NONE);
+		break;
+	}
+
+	if (mapping != NULL && channel < BL_LED_COUNT) {
+		channel = mapping[channel];
+	}
+
+	return channel;
+}
+
+/**
+ * Get the descriptor for a channel setup.
+ *
+ * \param[in]  channel     The channel to look up.
+ * \param[in]  input_type  The input channel index type.
+ * \return the channel descriptor.
+ */
+static struct desc_widget *main_menu__get_channel_desc(
+		uint8_t channel,
+		enum channel_conv input_type)
+{
+	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	struct desc_widget *desc = NULL;
+
+	switch (mode) {
+	case BL_ACQ_MODE_CONTINUOUS:
+		desc = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/Continuous/Channels/[%u]/Channel",
+			channel);
+		break;
+
+	case BL_ACQ_MODE_FLASH:
+		channel = main_menu__convert_led_index(channel, input_type);
+		desc = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/Flash/Channels/[%u]", channel);
+		break;
+	}
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_MENU);
+
+	return desc;
 }
 
 /* Exported interface, documented in main-menu.h */
 uint8_t main_menu_config_get_channel_shift(uint8_t channel)
 {
-	return main_menu__get_desc_input_unsigned(bl_main_menu,
-			"Config/Channels/[%u]/Channel/Software Shift",
-			channel);
+	struct desc_widget *desc = main_menu__get_channel_desc(
+			channel, CHANNEL_CONV_HW_TO_MM);
+	return main_menu__get_desc_input_unsigned(desc, "Software Shift");
 }
 
 /* Exported interface, documented in main-menu.h */
 uint32_t main_menu_config_get_channel_offset(uint8_t channel)
 {
-	return main_menu__get_desc_input_unsigned(bl_main_menu,
-			"Config/Channels/[%u]/Channel/Software Offset",
-			channel);
+	struct desc_widget *desc = main_menu__get_channel_desc(
+			channel, CHANNEL_CONV_HW_TO_MM);
+	return main_menu__get_desc_input_unsigned(desc, "Software Offset");
 }
 
 /* Exported interface, documented in main-menu.h */
 bool main_menu_config_get_channel_sample32(uint8_t channel)
 {
-	return main_menu__get_desc_toggle_value(bl_main_menu,
-			"Config/Channels/[%u]/Channel/32-bit samples",
-			channel);
+	struct desc_widget *desc = main_menu__get_channel_desc(
+			channel, CHANNEL_CONV_HW_TO_MM);
+	return main_menu__get_desc_toggle_value(desc, "32-bit samples");
 }
 
 /* Exported interface, documented in main-menu.h */
 bool main_menu_config_get_channel_inverted(uint8_t channel)
 {
-	return main_menu__get_desc_toggle_value(bl_main_menu,
-			"Config/Channels/[%u]/Channel/Invert data",
-			channel);
+	struct desc_widget *desc = main_menu__get_channel_desc(
+			channel, CHANNEL_CONV_HW_TO_MM);
+	return main_menu__get_desc_toggle_value(desc, "Invert data");
 }
 
 /* Exported interface, documented in main-menu.h */
 SDL_Color main_menu_config_get_channel_colour(uint8_t channel)
 {
-	struct desc_widget *col = main_menu__get_desc_fmt(bl_main_menu,
-			"Config/Channels/[%u]/Channel/Colour", channel);
+	struct desc_widget *desc = main_menu__get_channel_desc(
+			channel, CHANNEL_CONV_HW_TO_MM);
+	struct desc_widget *col = main_menu__get_desc_fmt(desc, "Colour");
 
 	assert(col != NULL);
 	assert(col->type == WIDGET_TYPE_MENU);
@@ -1537,9 +1678,10 @@ void main_menu_update(void)
 bool main_menu_config_set_channel_shift(uint8_t channel, uint8_t shift)
 {
 	union update_data data;
-	struct desc_widget *shift_desc = main_menu__get_desc_fmt(bl_main_menu,
-			"Config/Channels/[%u]/Channel/Software Shift",
-			channel);
+	struct desc_widget *desc = main_menu__get_channel_desc(
+			channel, CHANNEL_CONV_HW_TO_MM);
+	struct desc_widget *shift_desc = main_menu__get_desc_fmt(desc,
+			"Software Shift");
 
 	assert(shift_desc != NULL);
 	assert(shift_desc->type == WIDGET_TYPE_INPUT);
@@ -1558,9 +1700,10 @@ bool main_menu_config_set_channel_shift(uint8_t channel, uint8_t shift)
 bool main_menu_config_set_channel_offset(uint8_t channel, uint32_t offset)
 {
 	union update_data data;
-	struct desc_widget *offset_desc = main_menu__get_desc_fmt(bl_main_menu,
-			"Config/Channels/[%u]/Channel/Software Offset",
-			channel);
+	struct desc_widget *desc = main_menu__get_channel_desc(
+			channel, CHANNEL_CONV_HW_TO_MM);
+	struct desc_widget *offset_desc = main_menu__get_desc_fmt(desc,
+			"Software Offset");
 
 	assert(offset_desc != NULL);
 	assert(offset_desc->type == WIDGET_TYPE_INPUT);
