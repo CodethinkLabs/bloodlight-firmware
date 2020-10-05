@@ -17,6 +17,8 @@ LDFLAGS += $(shell pkg-config yaml-0.1 --libs)
 CFLAGS += -Ilibcyaml/include
 LDFLAGS += -Llibcyaml/$(BUILDDIR)/ -lcyaml
 
+BLOODVIEW_ENV += XDG_RUNTIME_DIR=$(XDG_RUNTIME_DIR)
+
 ifeq ($(VARIANT), release)
 	CFLAGS += -O2 -DNDEBUG
 else
