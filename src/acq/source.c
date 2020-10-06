@@ -193,9 +193,6 @@ enum bl_error bl_acq_source_configure(enum bl_acq_source source)
 		return BL_ERROR_HARDWARE_CONFLICT;
 	}
 
-	src->channel_count = 0;
-	src->channel_current = 0;
-
 	src->opamp_used = opamp_needed || (src->adc == NULL);
 	return BL_ERROR_NONE;
 }
@@ -255,6 +252,10 @@ void bl_acq_source_disable(enum bl_acq_source source)
 	} else if (src->opamp != NULL) {
 		bl_acq_opamp_disable(*(src->opamp));
 	}
+
+	/* Clear configuration so we're ready for re-configuring. */
+	src->channel_count = 0;
+	src->channel_current = 0;
 
 	/* Don't need to do anything here to disable GPIO (it is floating). */
 }
