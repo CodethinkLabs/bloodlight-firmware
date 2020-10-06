@@ -610,13 +610,32 @@ static void main_menu_select_cb(
 		void     *pw,
 		unsigned  new_value)
 {
+	struct desc_widget *desc_continuous;
+	struct desc_widget *desc_flash;
 	struct desc_widget *value = pw;
 
 	assert(value->type == WIDGET_TYPE_SELECT);
 
+	/* TODO: We could store the path to anything that gets enabled and
+	 *       and disabled in the YAML menu definition for the toggle,
+	 *       and avoid encoding this behavior here. */
+	desc_continuous = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/Continuous");
+
+	desc_flash = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Acquisition/Flash");
+
+	assert(desc_continuous != NULL);
+	assert(desc_flash != NULL);
+
 	switch (value->select.value.type) {
 	case INPUT_TYPE_ACQ_MODE:
 		value->select.value.type_acq_mode = new_value;
+
+		sdl_tk_widget_enable(desc_continuous->widget,
+				new_value == BL_ACQ_MODE_CONTINUOUS);
+		sdl_tk_widget_enable(desc_flash->widget,
+				new_value == BL_ACQ_MODE_FLASH);
 		break;
 	default:
 		break;
