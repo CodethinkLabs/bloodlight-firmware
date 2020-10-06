@@ -34,6 +34,12 @@ the config saved last time Bloodview was run with:
 
     make run BV_ARGS="-c previous.yaml"
 
+Some [default configs](config/) are provided for each of the hardware revisions,
+for example:
+
+    make run BV_ARGS="-c rev1-default.yaml"
+    make run BV_ARGS="-c rev2-default.yaml"
+
 The main menu
 -------------
 
