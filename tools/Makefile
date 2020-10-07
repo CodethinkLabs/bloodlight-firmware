@@ -1,9 +1,9 @@
 CFLAGS=-g -O2 -Wall -Wextra -pedantic --std=gnu11
 LDFLAGS=-g -ludev
 
-all: bl convert calibrate normalize fft
+all: bl bpm convert calibrate fft normalize
 clean:
-	rm -f bl convert calibrate normalize fft *.o
+	rm -f bl bpm convert calibrate fft normalize *.o
 
 bl: bl.c msg.o device.o sig.o util.o
 	$(CC) -o $@ $^ $(LDFLAGS)
@@ -19,3 +19,6 @@ normalize: normalize.c msg.o sig.o fifo.o util.o
 
 fft: fft.c msg.o sig.o util.o fifo.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) -lfftw3 -lm
+
+bpm: bpm.c msg.o sig.o util.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
