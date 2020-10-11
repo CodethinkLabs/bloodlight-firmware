@@ -23,10 +23,16 @@
 
 union bl_msg_data;
 
-/** Acquisition mode */
-enum bl_acq_mode {
-	BL_ACQ_MODE_CONTINUOUS,
-	BL_ACQ_MODE_FLASH,
+/** Acquisition detection mode **/
+enum bl_acq_detection_mode {
+	BL_ACQ_REFLECTIVE,
+	BL_ACQ_TRANSMISSIVE,
+};
+
+/** Acquisition flash mode */
+enum bl_acq_flash_mode {
+	BL_ACQ_CONTINUOUS,
+	BL_ACQ_FLASH,
 };
 
 /**
@@ -59,14 +65,16 @@ void bl_acq_init(uint32_t clock);
 /**
  * Start an acquisition.
  *
- * \param[in]  mode        Acquisition mode.
- * \param[in]  frequency   Sampling frequency.
- * \param[in]  led_mask    Mask of LEDs to enable.
- * \param[in]  src_mask    Mask of sources to enable.
+ * \param[in]  detection_mode Acquisition detection mode.
+ * \param[in]  flash_mode     Acquisition flash mode.
+ * \param[in]  frequency      Sampling frequency.
+ * \param[in]  led_mask       Mask of LEDs to enable.
+ * \param[in]  src_mask       Mask of sources to enable.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_acq_start(
-		enum bl_acq_mode mode,
+		enum bl_acq_detection_mode detection_mode,
+		enum bl_acq_flash_mode flash_mode,
 		uint16_t frequency,
 		uint16_t led_mask,
 		uint16_t src_mask);
