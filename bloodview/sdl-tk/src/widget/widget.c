@@ -144,9 +144,11 @@ void sdl_tk_widget_enable(
 		struct sdl_tk_widget *widget,
 		bool                  enable)
 {
-	widget->disabled = !enable;
+	if (widget != NULL) {
+		widget->disabled = !enable;
 
-	if (widget->parent != NULL) {
-		sdl_tk_widget_layout(widget->parent);
+		if (widget->parent != NULL) {
+			sdl_tk_widget_layout(widget->parent);
+		}
 	}
 }

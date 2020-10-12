@@ -11,6 +11,14 @@ LDFLAGS += $(shell pkg-config sdl2 SDL2_ttf --libs)
 CFLAGS += $(shell pkg-config libudev --cflags)
 LDFLAGS += $(shell pkg-config libudev --libs)
 
+CFLAGS += $(shell pkg-config yaml-0.1 --cflags)
+LDFLAGS += $(shell pkg-config yaml-0.1 --libs)
+
+CFLAGS += -Ilibcyaml/include
+LDFLAGS += -Llibcyaml/$(BUILDDIR)/ -lcyaml
+
+BLOODVIEW_ENV += XDG_RUNTIME_DIR=$(XDG_RUNTIME_DIR)
+
 ifeq ($(VARIANT), release)
 	CFLAGS += -O2 -DNDEBUG
 else
@@ -44,11 +52,15 @@ all: bloodview
 clean:
 	rm -rf build bloodview
 	make -C sdl-tk clean
+	make -C libcyaml clean
 
 sdl-tk/sdl-tk.a:
 	make -BC sdl-tk VARIANT=$(VARIANT)
 
-bloodview: $(BV_OBJ) $(TOOL_OBJ) sdl-tk/sdl-tk.a
+libcyaml/$(BUILDDIR)/libcyaml.a:
+	make -BC libcyaml VARIANT=$(VARIANT)
+
+bloodview: $(BV_OBJ) $(TOOL_OBJ) sdl-tk/sdl-tk.a libcyaml/$(BUILDDIR)/libcyaml.a
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(BV_OBJ): $(BUILDDIR)/%.o : %.c
@@ -57,7 +69,7 @@ $(BV_OBJ): $(BUILDDIR)/%.o : %.c
 
 # We need to run with sudo to open the device.
 run: bloodview
-	@sudo $(BLOODVIEW_ENV) ./bloodview
+	@sudo $(BLOODVIEW_ENV) ./bloodview $(BV_ARGS)
 
 docs:
 	$(MKDIR) build/docs

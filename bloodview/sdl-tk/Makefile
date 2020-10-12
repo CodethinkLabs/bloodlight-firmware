@@ -24,6 +24,7 @@ LIB_SRC = \
 	src/widget/input.c \
 	src/widget/action.c \
 	src/widget/widget.c \
+	src/widget/select.c \
 	src/widget/toggle.c
 
 LIB_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(LIB_SRC)))

@@ -30,6 +30,7 @@
 
 #include "util.h"
 #include "graph.h"
+#include "main-menu.h"
 
 /** Extra sample slots per graph */
 #define GRAPH_EXCESS 1024
@@ -55,6 +56,9 @@ struct graph {
 	unsigned step;  /**< Rendering scale in time dimension. */
 	uint64_t scale; /**< The vertical scale. */
 	bool invert;    /**< Whether to invert the magnitudes. */
+
+	uint8_t channel_idx; /**< The acquisition channel index. */
+	SDL_Color colour;    /**< Graph render colour. */
 };
 
 /** Graph global context. */
@@ -84,18 +88,24 @@ void graph_fini(void)
 
 	graph_g.channel = NULL;
 	graph_g.count   = 0;
+	graph_g.single  = false;
 
 	pthread_mutex_unlock(&graph_g.lock);
+	pthread_mutex_destroy(&graph_g.lock);
 }
 
 /* Exported function, documented in graph.h */
 bool graph_init(void)
 {
+	if (pthread_mutex_init(&graph_g.lock, NULL) != 0) {
+		return false;
+	}
+
 	return true;
 }
 
 /* Exported function, documented in graph.h */
-bool graph_create(unsigned idx, unsigned freq)
+bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 {
 	struct graph *g;
 
@@ -128,6 +138,9 @@ bool graph_create(unsigned idx, unsigned freq)
 
 		g->step = freq / 500 + 1;
 		g->scale = Y_SCALE_DATUM / 8;
+
+		g->channel_idx = channel;
+		g->colour = main_menu_config_get_channel_colour(channel);
 	} else {
 		return false;
 	}
@@ -254,7 +267,11 @@ void graph__render(
 
 	step = g->step;
 
-	SDL_SetRenderDrawColor(ren, 255, 255, 255, SDL_ALPHA_OPAQUE);
+	SDL_SetRenderDrawColor(ren,
+			g->colour.r,
+			g->colour.g,
+			g->colour.b,
+			SDL_ALPHA_OPAQUE);
 
 	len = 0;
 	pos_next = graph_pos_decrement(g, g->pos);

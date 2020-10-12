@@ -123,8 +123,8 @@ void data_cal_fini(void *pw)
 			continue;
 		}
 
-		main_menu_conifg_set_channel_shift(i, shift);
-		main_menu_conifg_set_channel_offset(i, offset);
+		main_menu_config_set_channel_shift(i, shift);
+		main_menu_config_set_channel_offset(i, offset);
 	}
 
 	free(ctx->channel);

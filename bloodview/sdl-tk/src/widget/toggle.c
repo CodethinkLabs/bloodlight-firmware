@@ -88,6 +88,10 @@ static void set_value(
 	if (toggle->cb != NULL) {
 		toggle->cb(toggle->pw, value);
 	}
+
+	if (toggle->base.parent != NULL) {
+		sdl_tk_widget_layout(toggle->base.parent);
+	}
 }
 
 /**
@@ -101,10 +105,6 @@ static void sdl_tk_widget_toggle_action(
 	struct sdl_tk_widget_toggle *toggle = (struct sdl_tk_widget_toggle *) widget;
 
 	set_value(toggle, !toggle->value);
-
-	if (widget->parent != NULL) {
-		sdl_tk_widget_layout(widget->parent);
-	}
 }
 
 /**
@@ -185,4 +185,23 @@ struct sdl_tk_widget *sdl_tk_widget_toggle_create(
 error:
 	sdl_tk_widget_destroy(&toggle->base);
 	return NULL;
+}
+
+/* Exported function, documented in include/sdl-tk/widget/toggle.h */
+bool sdl_tk_widget_toggle_set_value(
+		struct sdl_tk_widget *widget,
+		bool value)
+{
+	struct sdl_tk_widget_toggle *toggle;
+
+	if (widget->t != &sdl_tk_widget_toggle_vt) {
+		fprintf(stderr, "Error: Called %s with non toggle widget",
+				__func__);
+		return false;
+	}
+
+	toggle = (struct sdl_tk_widget_toggle *) widget;
+	set_value(toggle, value);
+
+	return true;
 }

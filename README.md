@@ -63,6 +63,15 @@ To make the [Bloodview](bloodview/) live-view and control application, run:
 make -BC bloodview/ run
 ```
 
+Or to run with with a default config for a paticular hardware revision:
+
+```bash
+make -BC bloodview/ run BV_ARGS="-c rev1-default.yaml"
+make -BC bloodview/ run BV_ARGS="-c rev2-default.yaml"
+```
+
+More information can be found in the [Bloodview](bloodview/) documentation.
+
 Installation
 ------------
 
@@ -197,9 +206,10 @@ It is controlled by sending messages to it over a USB serial connection.
 
 The message protocol is defined in [src/msg.h](src/msg.h).
 
-To control the device, use the `bl` host helper tool, at `tools/bl`.
+To control the device, either use [Bloodview](bloodview/) or the `bl` host
+helper tool, at `tools/bl`.
 
-Running it without any parameters will list the commands it supports:
+Running `bl` without any parameters will list the commands it supports:
 
 ```
 ./tools/bl
@@ -209,6 +219,7 @@ Usage:
 
 Available CMDs:
   led       Turn LEDs on/off
+  srccfg    Set configuration for a given source
   chancfg   Set configuration for a given channel
   start     Start an acquisition
   abort     Abort an acquisition

@@ -26,37 +26,33 @@
 
 #include "sdl-tk/widget.h"
 
-/**
- * Callback for acquiring widgets for the menu entries during menu creation.
- *
- * \param[in]  parent  The widget currently being created.
- * \param[in]  entry   The entry index to create a widget for.
- * \param[in]  pw      Client private context data.
- * \return the created sdl-tk widget for the menu entry or NULL on error.
- */
-typedef struct sdl_tk_widget *(* sdl_tk_widget_menu_entry_cb)(
-		struct sdl_tk_widget *parent,
-		unsigned entry,
-		void *pw);
+/** Position at end of menu. */
+#define SDL_TK_WIDGET_POS_END (UINT_MAX)
 
 /**
  * Create a menu-type widget.
  *
- * The given `cb` is only called during the execution of this function,
- * while the menu widget is being constructed.
- *
- * \param[in]  parent       Parent widget, or NULL.
- * \param[in]  title        The widget's title.
- * \param[in]  entry_count  Number of entries in the menu.
- * \param[in]  cb           Callback for acquiring widgets for the menu entries.
- * \param[in]  pw           Client private context data passed back in cb.
+ * \param[in]  parent  Parent widget, or NULL.
+ * \param[in]  title   The widget's title.
  * \return a menu-type widget or NULL on error.
  */
 struct sdl_tk_widget *sdl_tk_widget_menu_create(
-		struct sdl_tk_widget        *parent,
-		const char                  *title,
-		unsigned                     entry_count,
-		sdl_tk_widget_menu_entry_cb  cb,
-		void                        *pw);
+		struct sdl_tk_widget *parent,
+		const char           *title);
+
+/**
+ * Add a widget to a menu.
+ *
+ * \param[in]  widget     The menu widget to add an entry to.
+ * \param[in]  new_entry  The new widget to add to the menu.
+ * \param[in]  position   Entry position to add new menu entry at.
+ *                        Note, to place at the end, use
+ *                        \ref SDL_TK_WIDGET_POS_END.
+ * \return true on success, or false on error.
+ */
+bool sdl_tk_widget_menu_add_entry(
+		struct sdl_tk_widget *widget,
+		struct sdl_tk_widget *new_entry,
+		unsigned position);
 
 #endif /* SDL_TK_WIDGET_MENU_H */

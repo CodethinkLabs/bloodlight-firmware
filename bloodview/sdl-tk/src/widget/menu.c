@@ -57,6 +57,22 @@ struct sdl_tk_widget_menu {
 };
 
 /**
+ * Free the contents of a menu entry.
+ *
+ * \param[in]  entry  The menu entry to free the contents of.
+ */
+static void sdl_tk_widget_menu_free_entry_contents(
+		struct sdl_tk_widget_menu_entry *entry)
+{
+	if (entry != NULL) {
+		sdl_tk_text_destroy(entry->title[SDL_TK_WIDGET_DISABLED]);
+		sdl_tk_text_destroy(entry->title[SDL_TK_WIDGET_SELECTED]);
+		sdl_tk_text_destroy(entry->title[SDL_TK_WIDGET_NORMAL]);
+		sdl_tk_widget_destroy(entry->widget);
+	}
+}
+
+/**
  * Destroy an sdl-tk menu widget.
  *
  * \param[in]  widget  The widget to destroy.
@@ -67,12 +83,7 @@ static void sdl_tk_widget_menu_destroy(
 	struct sdl_tk_widget_menu *menu = (struct sdl_tk_widget_menu *) widget;
 
 	for (unsigned i = 0; i < menu->count; i++) {
-		struct sdl_tk_widget_menu_entry *entry = &menu->entries[i];
-
-		sdl_tk_text_destroy(entry->title[SDL_TK_WIDGET_DISABLED]);
-		sdl_tk_text_destroy(entry->title[SDL_TK_WIDGET_SELECTED]);
-		sdl_tk_text_destroy(entry->title[SDL_TK_WIDGET_NORMAL]);
-		sdl_tk_widget_destroy(entry->widget);
+		sdl_tk_widget_menu_free_entry_contents(&menu->entries[i]);
 	}
 
 	sdl_tk_text_destroy(menu->title);
@@ -284,8 +295,10 @@ static void sdl_tk_widget_menu__layout(
 	max_width = menu->title->w;
 	height = menu->title->h;
 
-	if (menu->entries[menu->current].widget->disabled) {
-		menu__nav_down(menu);
+	if (menu->count > 0) {
+		if (menu->entries[menu->current].widget->disabled) {
+			menu__nav_down(menu);
+		}
 	}
 
 	for (unsigned i = 0; i < menu->count; i++) {
@@ -499,10 +512,7 @@ static const struct sdl_tk_widget_vt sdl_tk_widget_menu_vt = {
 /* Exported function, documented in include/sdl-tk/widget/menu.h */
 struct sdl_tk_widget *sdl_tk_widget_menu_create(
 		struct sdl_tk_widget        *parent,
-		const char                  *title,
-		unsigned                     entry_count,
-		sdl_tk_widget_menu_entry_cb  cb,
-		void                        *pw)
+		const char                  *title)
 {
 	struct sdl_tk_widget_menu *menu;
 
@@ -524,51 +534,7 @@ struct sdl_tk_widget *sdl_tk_widget_menu_create(
 		goto error;
 	}
 
-	menu->entries = calloc(entry_count, sizeof(*menu->entries));
-	if (menu->entries == NULL) {
-		goto error;
-	}
-
-	menu->count = entry_count;
-	for (unsigned i = 0; i < entry_count; i++) {
-		struct sdl_tk_widget_menu_entry *entry = &menu->entries[i];
-		const char *entry_title;
-
-		entry->widget = cb(&menu->base, i, pw);
-		if (entry->widget == NULL) {
-			goto error;
-		}
-
-		entry_title = sdl_tk_widget_get_title(entry->widget);
-		if (entry_title == NULL) {
-			goto error;
-		}
-
-		entry->title[SDL_TK_WIDGET_NORMAL] = sdl_tk_text_create(
-				entry_title,
-				sdl_tk_colour_get(SDL_TK_COLOUR_INTERFACE),
-				SDL_TK_TEXT_SIZE_NORMAL);
-		if (entry->title[SDL_TK_WIDGET_NORMAL] == NULL) {
-			goto error;
-		}
-
-		entry->title[SDL_TK_WIDGET_SELECTED] = sdl_tk_text_create(
-				entry_title,
-				sdl_tk_colour_get(SDL_TK_COLOUR_BACKGROUND),
-				SDL_TK_TEXT_SIZE_NORMAL);
-		if (entry->title[SDL_TK_WIDGET_SELECTED] == NULL) {
-			goto error;
-		}
-
-		entry->title[SDL_TK_WIDGET_DISABLED] = sdl_tk_text_create(
-				entry_title,
-				sdl_tk_colour_get(SDL_TK_COLOUR_DISABLED),
-				SDL_TK_TEXT_SIZE_NORMAL);
-		if (entry->title[SDL_TK_WIDGET_DISABLED] == NULL) {
-			goto error;
-		}
-	}
-
+	menu->count = 0;
 	sdl_tk_widget_menu__layout(menu);
 
 	return &menu->base;
@@ -576,4 +542,108 @@ struct sdl_tk_widget *sdl_tk_widget_menu_create(
 error:
 	sdl_tk_widget_destroy(&menu->base);
 	return NULL;
+}
+
+/**
+ * Add a widget to a menu.
+ *
+ * \param[in]  menu       The menu widget to add an entry to.
+ * \param[in]  new_entry  The new widget to add to the menu.
+ * \param[in]  position   Entry position to add new menu entry at.
+ *                        Note, to place at the end, use
+ *                        \ref SDL_TK_WIDGET_POS_END.
+ * \return true on success, or false on error.
+ */
+static bool sdl_tk_widget_menu__add_entry(
+		struct sdl_tk_widget_menu *menu,
+		struct sdl_tk_widget *new_entry,
+		unsigned position)
+{
+	struct sdl_tk_widget_menu_entry *entry = NULL;
+	struct sdl_tk_widget_menu_entry *entries;
+	const char *entry_title;
+	unsigned entry_count;
+
+	entry_count = menu->count + 1;
+	entries = realloc(menu->entries,
+			entry_count * sizeof(*entries));
+	if (entries == NULL) {
+		return false;
+	}
+	menu->entries = entries;
+
+	if (position >= menu->count) {
+		position = menu->count;
+	} else {
+		memmove(entries + position + 1,
+			entries + position,
+			sizeof(*entries) * (menu->count - position));
+	}
+
+	entry = entries + position;
+	memset(entry, 0, sizeof(*entries));
+
+	entry->widget = new_entry;
+
+	entry_title = sdl_tk_widget_get_title(entry->widget);
+	if (entry_title == NULL) {
+		goto error;
+	}
+
+	entry->title[SDL_TK_WIDGET_NORMAL] = sdl_tk_text_create(
+			entry_title,
+			sdl_tk_colour_get(SDL_TK_COLOUR_INTERFACE),
+			SDL_TK_TEXT_SIZE_NORMAL);
+	if (entry->title[SDL_TK_WIDGET_NORMAL] == NULL) {
+		goto error;
+	}
+
+	entry->title[SDL_TK_WIDGET_SELECTED] = sdl_tk_text_create(
+			entry_title,
+			sdl_tk_colour_get(SDL_TK_COLOUR_BACKGROUND),
+			SDL_TK_TEXT_SIZE_NORMAL);
+	if (entry->title[SDL_TK_WIDGET_SELECTED] == NULL) {
+		goto error;
+	}
+
+	entry->title[SDL_TK_WIDGET_DISABLED] = sdl_tk_text_create(
+			entry_title,
+			sdl_tk_colour_get(SDL_TK_COLOUR_DISABLED),
+			SDL_TK_TEXT_SIZE_NORMAL);
+	if (entry->title[SDL_TK_WIDGET_DISABLED] == NULL) {
+		goto error;
+	}
+
+	menu->count = entry_count;
+	sdl_tk_widget_menu__layout(menu);
+
+	return true;
+
+error:
+	sdl_tk_widget_menu_free_entry_contents(entry);
+
+	if (position < menu->count) {
+		memmove(entries + position,
+			entries + position + 1,
+			sizeof(*entries) * (menu->count - position));
+	}
+
+	return false;
+}
+
+/* Exported function, documented in include/sdl-tk/widget/menu.h */
+bool sdl_tk_widget_menu_add_entry(
+		struct sdl_tk_widget *widget,
+		struct sdl_tk_widget *new_entry,
+		unsigned position)
+{
+	if (widget->t != &sdl_tk_widget_menu_vt) {
+		fprintf(stderr, "Error: Called %s with non menu widget",
+				__func__);
+		return false;
+	}
+
+	return sdl_tk_widget_menu__add_entry(
+			(struct sdl_tk_widget_menu *) widget,
+			new_entry, position);
 }

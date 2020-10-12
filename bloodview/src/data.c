@@ -176,15 +176,15 @@ static struct data_filter *data__allocate_filter(void)
 /**
  * Resister the calibration filter, if enabled.
  *
- * \param[in]  frequency  The sampling frequency.
- * \param[in]  channels   The number of channels.
- * \param[in]  src_mask   Mask of enabled sources.
+ * \param[in]  frequency     The sampling frequency.
+ * \param[in]  channels      The number of channels.
+ * \param[in]  channel_mask  Mask of enabled channels.
  * \return true on success, or false on error.
  */
 static bool data__register_calibrate(
 		unsigned frequency,
 		unsigned channels,
-		uint32_t src_mask)
+		uint32_t channel_mask)
 {
 	struct data_filter *filter;
 
@@ -193,7 +193,7 @@ static bool data__register_calibrate(
 		return false;
 	}
 
-	filter->ctx = data_cal_init(frequency, channels, src_mask);
+	filter->ctx = data_cal_init(frequency, channels, channel_mask);
 	if (filter->ctx == NULL) {
 		/* No need to free the filter, it's already owned by the
 		 * global state. */
@@ -212,19 +212,19 @@ static bool data__register_calibrate(
  *
  * This revovers the true values for calibrated channels.
  *
- * \param[in]  frequency  The sampling frequency.
- * \param[in]  channels   The number of channels.
- * \param[in]  src_mask   Mask of enabled sources.
+ * \param[in]  frequency     The sampling frequency.
+ * \param[in]  channels      The number of channels.
+ * \param[in]  channel_mask  Mask of enabled channels.
  * \return true on success, or false on error.
  */
 static bool data__register_recover(
 		unsigned frequency,
 		unsigned channels,
-		uint32_t src_mask)
+		uint32_t channel_mask)
 {
 	BV_UNUSED(frequency);
 	BV_UNUSED(channels);
-	BV_UNUSED(src_mask);
+	BV_UNUSED(channel_mask);
 
 	return true;
 }
@@ -232,19 +232,19 @@ static bool data__register_recover(
 /**
  * Resister the normalising filter, if enabled.
  *
- * \param[in]  frequency  The sampling frequency.
- * \param[in]  channels   The number of channels.
- * \param[in]  src_mask   Mask of enabled sources.
+ * \param[in]  frequency     The sampling frequency.
+ * \param[in]  channels      The number of channels.
+ * \param[in]  channel_mask  Mask of enabled channels.
  * \return true on success, or false on error.
  */
 static bool data__register_normalise(
 		unsigned frequency,
 		unsigned channels,
-		uint32_t src_mask)
+		uint32_t channel_mask)
 {
 	struct data_filter *filter;
 	struct data_avg_config config = {
-		.filter_freq = 1024 * main_menu_conifg_get_filter_normalise_frequency(),
+		.filter_freq = 1024 * main_menu_config_get_filter_normalise_frequency(),
 		.normalise   = true,
 	};
 
@@ -253,7 +253,7 @@ static bool data__register_normalise(
 		return false;
 	}
 
-	filter->ctx = data_avg_init(&config, frequency, channels, src_mask);
+	filter->ctx = data_avg_init(&config, frequency, channels, channel_mask);
 	if (filter->ctx == NULL) {
 		/* No need to free the filter, it's already owned by the
 		 * global state. */
@@ -272,20 +272,20 @@ static bool data__register_normalise(
  *
  * \param[in]  frequency  The sampling frequency.
  * \param[in]  channels   The number of channels.
- * \param[in]  src_mask   Mask of enabled sources.
+ * \param[in]  channel_mask  Mask of enabled channels.
  * \return true on success, or false on error.
  */
 static bool data__register_invert(
 		unsigned frequency,
 		unsigned channels,
-		uint32_t src_mask)
+		uint32_t channel_mask)
 {
 	bool enabled = false;
 	struct data_filter *filter;
 	struct data_invert_config config = { 0 };
 
 	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
-		config.invert[i] = main_menu_conifg_get_channel_inverted(i);
+		config.invert[i] = main_menu_config_get_channel_inverted(i);
 		if (config.invert[i]) {
 			enabled = true;
 		}
@@ -301,7 +301,8 @@ static bool data__register_invert(
 		return false;
 	}
 
-	filter->ctx = data_invert_init(&config, frequency, channels, src_mask);
+	filter->ctx = data_invert_init(&config, frequency,
+			channels, channel_mask);
 	if (filter->ctx == NULL) {
 		/* No need to free the filter, it's already owned by the
 		 * global state. */
@@ -316,21 +317,21 @@ static bool data__register_invert(
 }
 
 /**
- * Resister the normalising filter, if enabled.
+ * Resister the AC noise suppression filter, if enabled.
  *
- * \param[in]  frequency  The sampling frequency.
- * \param[in]  channels   The number of channels.
- * \param[in]  src_mask   Mask of enabled sources.
+ * \param[in]  frequency     The sampling frequency.
+ * \param[in]  channels      The number of channels.
+ * \param[in]  channel_mask  Mask of enabled channels.
  * \return true on success, or false on error.
  */
 static bool data__register_ac_denoise(
 		unsigned frequency,
 		unsigned channels,
-		uint32_t src_mask)
+		uint32_t channel_mask)
 {
 	struct data_filter *filter;
 	struct data_avg_config config = {
-		.filter_freq = (frequency / main_menu_conifg_get_filter_ac_denoise_frequency()) * 1024,
+		.filter_freq = (frequency / main_menu_config_get_filter_ac_denoise_frequency()) * 1024,
 		.normalise   = false,
 	};
 
@@ -339,7 +340,7 @@ static bool data__register_ac_denoise(
 		return false;
 	}
 
-	filter->ctx = data_avg_init(&config, frequency, channels, src_mask);
+	filter->ctx = data_avg_init(&config, frequency, channels, channel_mask);
 	if (filter->ctx == NULL) {
 		/* No need to free the filter, it's already owned by the
 		 * global state. */
@@ -356,44 +357,44 @@ static bool data__register_ac_denoise(
 /**
  * Initialise the data context.
  *
- * \param[in]  calibrate  Whether this is a calibration acquisition.
- * \param[in]  frequency  The sampling frequency.
- * \param[in]  channels   The number of channels.
- * \param[in]  src_mask   Mask of enabled sources.
+ * \param[in]  calibrate     Whether this is a calibration acquisition.
+ * \param[in]  frequency     The sampling frequency.
+ * \param[in]  channels      The number of channels.
+ * \param[in]  channel_mask  Mask of enabled channels.
  * \return true on success, or false on error.
  */
 static bool data__register_filters(
 		bool calibrate,
 		unsigned frequency,
 		unsigned channels,
-		uint32_t src_mask)
+		uint32_t channel_mask)
 {
 	if (calibrate) {
 		if (!data__register_calibrate(
-				frequency, channels, src_mask)) {
+				frequency, channels, channel_mask)) {
 			return false;
 		}
 	} else {
 		if (!data__register_recover(
-				frequency, channels, src_mask)) {
+				frequency, channels, channel_mask)) {
 			return false;
 		}
 	}
 
 
-	if (!data__register_invert(frequency, channels, src_mask)) {
+	if (!data__register_invert(frequency, channels, channel_mask)) {
 		return false;
 	}
 
-	if (main_menu_conifg_get_filter_normalise_enabled() &&
+	if (main_menu_config_get_filter_normalise_enabled() &&
 			!data__register_normalise(
-					frequency, channels, src_mask)) {
+					frequency, channels, channel_mask)) {
 		return false;
 	}
 
-	if (main_menu_conifg_get_filter_ac_denoise_enabled() &&
+	if (main_menu_config_get_filter_ac_denoise_enabled() &&
 			!data__register_ac_denoise(
-					frequency, channels, src_mask)) {
+					frequency, channels, channel_mask)) {
 		return false;
 	}
 
@@ -401,15 +402,16 @@ static bool data__register_filters(
 }
 
 /* Exported interface, documented in data.h */
-bool data_start(bool calibrate, unsigned frequency, unsigned src_mask)
+bool data_start(bool calibrate, unsigned frequency, unsigned channel_mask)
 {
-	unsigned channels = util_bit_count(src_mask);
-	unsigned n = 0;
+	unsigned channels = util_bit_count(channel_mask);
+	unsigned n;
 
 	assert(data_g.enabled == false);
 
+	n = 0;
 	for (unsigned i = 0; i < BV_ARRAY_LEN(data_g.mapping); i++) {
-		if (src_mask & (1u << i)) {
+		if (channel_mask & (1u << i)) {
 			data_g.mapping[i] = n++;
 		} else {
 			data_g.mapping[i] = UINT_MAX;
@@ -420,13 +422,17 @@ bool data_start(bool calibrate, unsigned frequency, unsigned src_mask)
 		return false;
 	}
 
-	if (!data__register_filters(calibrate, frequency, channels, src_mask)) {
+	if (!data__register_filters(calibrate, frequency,
+			channels, channel_mask)) {
 		data_finish();
 		return false;
 	}
 
-	for (unsigned i = 0; i < channels; i++) {
-		if (!graph_create(i, frequency)) {
+	for (unsigned i = 0; i < sizeof(channel_mask) * CHAR_BIT; i++) {
+		if (data_g.mapping[i] == UINT_MAX) {
+			continue;
+		}
+		if (!graph_create(data_g.mapping[i], frequency, i)) {
 			data_finish();
 			return false;
 		}
