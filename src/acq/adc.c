@@ -204,6 +204,12 @@ typedef struct
 	uint8_t  channel_adc[ADC_CHANNEL_COUNT];
 	uint8_t  channel_source[ADC_CHANNEL_COUNT];
 	uint8_t  smp[ADC_CHANNEL_COUNT];
+
+#if (BL_REVISION >= 2)
+	bool    rovse;
+	uint8_t ovsr;
+	uint8_t ovss;
+#endif
 } bl_acq_adc_config_t;
 
 struct bl_acq_adc_s
@@ -483,21 +489,16 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 		return BL_ERROR_HARDWARE_CONFLICT;
 	}
 #else
-	if (oversample > 0) {
-		uint32_t cfgr2 = ADC_CFGR2(adc->base);
-		cfgr2 &= ~(ADC_CFGR2_JOVSE | ADC_CFGR2_OVSR_MASK |
-				ADC_CFGR2_OVSS_MASK | ADC_CFGR2_TROVS |
-				ADC_CFGR2_ROVSM);
-
-		cfgr2 |= ADC_CFGR2_OVSR_VAL(oversample - 1);
-		cfgr2 |= ADC_CFGR2_OVSS_VAL(shift);
-		cfgr2 |= ADC_CFGR2_ROVSE;
-
-		ADC_CFGR2(adc->base) = cfgr2;
-	} else if (shift > 0) {
+	if ((oversample == 0) && (shift > 0)) {
 		return BL_ERROR_HARDWARE_CONFLICT;
-	} else {
-		ADC_CFGR2(adc->base) &= ~ADC_CFGR2_ROVSE;
+	}
+
+	if (oversample > 8) {
+		return BL_ERROR_OUT_OF_RANGE;
+	}
+
+	if (shift > 8) {
+		return BL_ERROR_OUT_OF_RANGE;
 	}
 
 	/* TODO: Add support for SMPPLUS (3.5 cycles). */
@@ -524,6 +525,12 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 			}
 		}
 	}
+
+#if (BL_REVISION >= 2)
+	config->rovse = (oversample > 0);
+	config->ovsr  = (oversample - 1);
+	config->ovss  = shift;
+#endif
 
 	for (unsigned i = 0; i < config->channel_count; i++) {
 		config->smp[i] = smp_table[smp[i]].smp;
@@ -579,6 +586,23 @@ void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag)
 	adc_enable_dma_circular_mode(adc->base);
 	adc_enable_dma(adc->base);
 	adc_set_single_conversion_mode(adc->base);
+
+#if (BL_REVISION >= 2)
+	if (config->rovse) {
+		uint32_t cfgr2 = ADC_CFGR2(adc->base);
+		cfgr2 &= ~(ADC_CFGR2_JOVSE | ADC_CFGR2_OVSR_MASK |
+				ADC_CFGR2_OVSS_MASK | ADC_CFGR2_TROVS |
+				ADC_CFGR2_ROVSM);
+
+		cfgr2 |= ADC_CFGR2_OVSR_VAL(config->ovsr);
+		cfgr2 |= ADC_CFGR2_OVSS_VAL(config->ovss);
+		cfgr2 |= ADC_CFGR2_ROVSE;
+
+		ADC_CFGR2(adc->base) = cfgr2;
+	} else {
+		ADC_CFGR2(adc->base) &= ~ADC_CFGR2_ROVSE;
+	}
+#endif
 
 	if (ccr_flag != 0) {
 		ADC_CCR(adc->group->master) |= ccr_flag;
