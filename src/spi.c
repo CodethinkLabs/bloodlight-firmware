@@ -94,6 +94,33 @@ void dma1_channel5_isr(void)
 	dma_disable_channel(DMA1, DMA_CHANNEL5);
 }
 
+void dma1_channel6_isr(void)
+{
+	if ((DMA1_ISR &DMA_ISR_TCIF2) != 0) {
+		DMA1_IFCR |= DMA_IFCR_CTCIF2;
+	}
+
+	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL6);
+
+	spi_disable_rx_dma(SPI2);
+
+	dma_disable_channel(DMA1, DMA_CHANNEL6);
+}
+
+/* SPI transmit completed with DMA */
+void dma1_channel7_isr(void)
+{
+	if ((DMA1_ISR &DMA_ISR_TCIF3) != 0) {
+		DMA1_IFCR |= DMA_IFCR_CTCIF3;
+	}
+
+	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL7);
+
+	spi_disable_tx_dma(SPI2);
+
+	dma_disable_channel(DMA1, DMA_CHANNEL7);
+}
+
 static void bl_spi__setup(void)
 {
 	rcc_periph_clock_enable(RCC_SPI2);
