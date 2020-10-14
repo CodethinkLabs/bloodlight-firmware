@@ -70,6 +70,11 @@ static struct {
 	unsigned          msg_next_queued;   /**< Next message to be sent. */
 	locked_uint_t     msg_used;          /**< Occupancy of message queue. */
 
+	/**
+	 * Current count of consecutive failures to read from the device.
+	 */
+	volatile unsigned failed_reads;
+
 	FILE *rec; /**< File for acquisition recordings. */
 } bv_device_g;
 
@@ -384,6 +389,8 @@ static void device__thread_receive_msg(
 	union bl_msg_data recv_msg;
 
 	if (bl_msg_read(bv_device_g.dev_fd, 100, &recv_msg)) {
+		unsigned failed_reads = 0;
+
 		switch (recv_msg.type) {
 		case BL_MSG_RESPONSE:
 			*sent_type = device__thread_receive_msg_response(
@@ -407,7 +414,13 @@ static void device__thread_receive_msg(
 		default:
 			fprintf(stderr, "Unexpected message from device:\n");
 			bl_msg_yaml_print(stderr, &recv_msg);
+			failed_reads = bv_device_g.failed_reads + 1;
+			break;
 		}
+		bv_device_g.failed_reads = failed_reads;
+
+	} else {
+		bv_device_g.failed_reads++;
 	}
 }
 
@@ -809,6 +822,7 @@ bool device_init(
 		return false;
 	}
 
+	bv_device_g.failed_reads = 0;
 	bv_device_g.dev_fd = dev_fd;
 	bv_device_g.cb = cb;
 	bv_device_g.pw = pw;
@@ -862,12 +876,17 @@ void device_fini(void)
 		return;
 	}
 
+	fprintf(stderr, "Attempting to clean up device state.\n");
+
 	if (locked_uint_is_equal(&bv_device_g.state, DEVICE_STATE_ACTIVE)) {
 		device_stop();
 	}
 
-	while (device__msg_get_next_queued() != NULL) {
-		/* Ensure the stop messages are sent before quitting. */
+	while (device__msg_get_next_queued() != NULL &&
+			bv_device_g.failed_reads < 2) {
+		/* Ensure the stop messages are sent before quitting,
+		 * unless we're failing to read from the device at all,
+		 * in which case we assume the device is dead and exit. */
 	}
 
 	bv_device_g.quit = true;
