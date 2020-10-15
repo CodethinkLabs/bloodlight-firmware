@@ -162,6 +162,14 @@ bool main_menu_config_get_channel_inverted(uint8_t channel);
 SDL_Color main_menu_config_get_channel_colour(uint8_t channel);
 
 /**
+ * Get channel name.
+ *
+ * \param[in]  channel  The channel to get name from.
+ * \return the channel name.
+ */
+const char *main_menu_config_get_channel_name(uint8_t channel);
+
+/**
  * Get whether the normalisation filter is enabled.
  *
  * \return true if enabled, false otherwise.

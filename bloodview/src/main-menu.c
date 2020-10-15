@@ -1611,6 +1611,15 @@ SDL_Color main_menu_config_get_channel_colour(uint8_t channel)
 }
 
 /* Exported interface, documented in main-menu.h */
+const char *main_menu_config_get_channel_name(uint8_t channel)
+{
+	struct desc_widget *desc = main_menu__get_channel_desc_menu(
+			channel, CHANNEL_CONV_HW_TO_MM);
+
+	return desc->menu.title;
+}
+
+/* Exported interface, documented in main-menu.h */
 bool main_menu_config_get_filter_normalise_enabled(void)
 {
 	return main_menu__get_desc_toggle_value(bl_main_menu,
