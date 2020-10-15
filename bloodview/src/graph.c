@@ -600,6 +600,69 @@ static bool graph__key_handler(
 	return ret;
 }
 
+/**
+ * Handle a keyboard input event.
+ *
+ * \param[in]  event  The SDL renderer.
+ * \param[in]  shift  True if the shift key is pressed.
+ * \param[in]  ctrl   True if the control key is pressed.
+ * \return true if the event was handled, or false otherwise.
+ */
+static bool graph__handle_key(
+		const SDL_Event *event,
+		bool shift,
+		bool ctrl)
+{
+	bool handled = false;
+
+	switch (event->key.keysym.sym) {
+	case SDLK_UP:
+		handled = graph__key_handler(shift, ctrl, graph__y_scale_inc);
+		break;
+
+	case SDLK_DOWN:
+		handled = graph__key_handler(shift, ctrl, graph__y_scale_dec);
+		break;
+
+	case SDLK_LEFT:
+		handled = graph__key_handler(shift, ctrl, graph__x_scale_inc);
+		break;
+
+	case SDLK_RIGHT:
+		handled = graph__key_handler(shift, ctrl, graph__x_scale_dec);
+		break;
+
+	case SDLK_PAGEUP:
+		if (graph_g.current == 0) {
+			graph_g.current = graph_g.count - 1;
+		} else {
+			graph_g.current--;
+		}
+		handled = true;
+		break;
+
+	case SDLK_PAGEDOWN:
+		graph_g.current++;
+		if (graph_g.current == graph_g.count) {
+			graph_g.current = 0;
+		}
+		handled = true;
+		break;
+
+	case SDLK_SPACE: /* Fall though */
+	case SDLK_RETURN:
+		graph_g.single = !graph_g.single;
+		handled = true;
+		break;
+
+	case SDLK_i:
+		handled = graph__key_handler(shift, ctrl, graph__invert);
+		break;
+	}
+
+	return handled;
+}
+
 /* Exported function, documented in graph.h */
 bool graph_handle_input(
 		const SDL_Event *event,
@@ -617,55 +680,7 @@ bool graph_handle_input(
 
 	switch (event->type) {
 	case SDL_KEYDOWN:
-		switch (event->key.keysym.sym) {
-		case SDLK_UP:
-			handled = graph__key_handler(shift, ctrl,
-					graph__y_scale_inc);
-			break;
-
-		case SDLK_DOWN:
-			handled = graph__key_handler(shift, ctrl,
-					graph__y_scale_dec);
-			break;
-
-		case SDLK_LEFT:
-			handled = graph__key_handler(shift, ctrl,
-					graph__x_scale_inc);
-			break;
-
-		case SDLK_RIGHT:
-			handled = graph__key_handler(shift, ctrl,
-					graph__x_scale_dec);
-			break;
-
-		case SDLK_PAGEUP:
-			if (graph_g.current == 0) {
-				graph_g.current = graph_g.count - 1;
-			} else {
-				graph_g.current--;
-			}
-			handled = true;
-			break;
-
-		case SDLK_PAGEDOWN:
-			graph_g.current++;
-			if (graph_g.current == graph_g.count) {
-				graph_g.current = 0;
-			}
-			handled = true;
-			break;
-
-		case SDLK_SPACE: /* Fall though */
-		case SDLK_RETURN:
-			graph_g.single = !graph_g.single;
-			handled = true;
-			break;
-
-		case SDLK_i:
-			handled = graph__key_handler(shift, ctrl,
-					graph__invert);
-			break;
-		}
+		handled = graph__handle_key(event, shift, ctrl);
 		break;
 	}
 
