@@ -79,9 +79,14 @@ void graph_fini(void)
 
 	if (graph_g.channel != NULL) {
 		for (unsigned i = 0; i < graph_g.count; i++) {
-			free(graph_g.channel[i].data);
-			memset(&graph_g.channel[i], 0,
-					sizeof(graph_g.channel[i]));
+			struct graph *g = graph_g.channel + i;
+			int32_t *data = g->data;
+
+			g->data = NULL;
+
+			free(data);
+
+			memset(g, 0, sizeof(*g));
 		}
 		free(graph_g.channel);
 	}
@@ -130,17 +135,17 @@ bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 
 	if (g->data == NULL) {
 		unsigned max = GRAPH_EXCESS + freq * GRAPH_HISTORY_SECONDS;
+
+		g->max = max;
+		g->step = freq / 500 + 1;
+		g->scale = Y_SCALE_DATUM / 8;
+		g->channel_idx = channel;
+		g->colour = main_menu_config_get_channel_colour(channel);
+
 		g->data = calloc(max, sizeof(*g->data));
 		if (g->data == NULL) {
 			return false;
 		}
-		g->max = max;
-
-		g->step = freq / 500 + 1;
-		g->scale = Y_SCALE_DATUM / 8;
-
-		g->channel_idx = channel;
-		g->colour = main_menu_config_get_channel_colour(channel);
 	} else {
 		return false;
 	}
