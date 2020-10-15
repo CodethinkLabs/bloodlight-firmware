@@ -157,24 +157,17 @@ static void sdl__handle_input(SDL_Event *event)
 				sdl_tk_widget_focus(
 						ctx.main_menu,
 						ctx.main_menu_open);
-				break;
+				return;
 
 			case SDLK_RSHIFT: /* Fall through */
 			case SDLK_LSHIFT:
 				ctx.shift = true;
-				break;
+				return;
 
 			case SDLK_RCTRL: /* Fall through */
 			case SDLK_LCTRL:
 				ctx.ctrl = true;
-				break;
-
-			default:
-				graph_handle_input(event,
-						&ctx.graph_rect,
-						ctx.shift,
-						ctx.ctrl);
-				break;
+				return;
 			}
 			break;
 
@@ -183,15 +176,17 @@ static void sdl__handle_input(SDL_Event *event)
 			case SDLK_RSHIFT: /* Fall through */
 			case SDLK_LSHIFT:
 				ctx.shift = false;
-				break;
+				return;
 
 			case SDLK_RCTRL: /* Fall through */
 			case SDLK_LCTRL:
 				ctx.ctrl = false;
-				break;
+				return;
 			}
 			break;
 		}
+
+		graph_handle_input(event, &ctx.graph_rect, ctx.shift, ctx.ctrl);
 	}
 }
 
@@ -214,11 +209,7 @@ bool sdl_handle_input(void)
 		case SDL_QUIT:
 			return false;
 
-		case SDL_KEYUP:
-		case SDL_KEYDOWN:
-		case SDL_MOUSEMOTION:
-		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP:
+		default:
 			sdl__handle_input(&event);
 			break;
 		}
