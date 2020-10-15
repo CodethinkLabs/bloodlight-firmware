@@ -895,6 +895,8 @@ void device_fini(void)
 		fprintf(stderr, "Error: Failed to join device thread (%i)",
 				ret);
 	}
+
+	data_finish();
 	device__set_state(DEVICE_STATE_NONE);
 
 	locked_uint_fini(&bv_device_g.state);
