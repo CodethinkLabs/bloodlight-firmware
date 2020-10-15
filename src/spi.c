@@ -20,8 +20,51 @@
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/dma.h>
 
+#if (BL_REVISION >= 2)
+#include <libopencm3/stm32/dmamux.h>
+#endif
+
 #include "spi.h"
 #include "led.h"
+
+#if (BL_REVISION == 1)
+static bl_spi_dma_t bl_spi_dma__rx =
+{
+	.dma         = &bl_acq_dma1,
+	.dma_channel = DMA_CHANNEL4,
+	.irq         = NVIC_DMA1_CHANNEL4_IRQ,
+	.enable      = 0,
+};
+
+static bl_spi_dma_t bl_spi_dma__tx =
+{
+	.dma         = &bl_acq_dma1,
+	.dma_channel = DMA_CHANNEL5,
+	.irq         = NVIC_DMA1_CHANNEL5_IRQ,
+	.enable      = 0,
+};
+#else
+static bl_spi_dma_t bl_spi_dma__rx =
+{
+	.dma         = &bl_acq_dma1,
+	.dma_channel = DMA_CHANNEL6,
+	.dmamux_req  = DMAMUX_CxCR_DMAREQ_ID_SPI2_RX,
+	.irq         = NVIC_DMA1_CHANNEL6_IRQ,
+	.enable      = 0,
+};
+
+static bl_spi_dma_t bl_spi_dma__tx =
+{
+	.dma         = &bl_acq_dma1,
+	.dma_channel = DMA_CHANNEL7,
+	.dmamux_req  = DMAMUX_CxCR_DMAREQ_ID_SPI2_TX,
+	.irq         = NVIC_DMA1_CHANNEL7_IRQ,
+	.enable      = 0,
+};
+#endif
+
+bl_spi_dma_t *bl_spi_dma_rx = &bl_spi_dma__rx;
+bl_spi_dma_t *bl_spi_dma_tx = &bl_spi_dma__tx;
 
 /* SPI receive completed with DMA */
 void dma1_channel4_isr(void)

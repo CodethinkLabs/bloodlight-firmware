@@ -17,6 +17,23 @@
 #ifndef BL_SPI_H
 #define BL_SPI_H
 
+#include "acq/dma.h"
+
+/**
+ * SPI DMA configs
+ */
+typedef struct
+{
+    bl_acq_dma_t      **dma;
+    const uint8_t       dma_channel;
+    const uint8_t       dmamux_req;
+    const uint16_t      irq;
+    unsigned            enable;
+} bl_spi_dma_t;
+
+extern bl_spi_dma_t *bl_spi_dma_rx;
+extern bl_spi_dma_t *bl_spi_dma_tx;
+
 /**
  * Initialise the SPI module.
  */
