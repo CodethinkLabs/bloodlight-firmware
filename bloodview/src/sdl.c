@@ -49,6 +49,8 @@ static struct sdl_ctx
 
 	bool shift; /**< Whether shift is pressed. */
 	bool ctrl;  /**< Whether ctrl is pressed. */
+
+	SDL_Rect graph_rect; /**< Rectangle containing graphs. */
 } ctx; /**< SDL module context global object. */
 
 /* Exported interface, documented in sdl.h */
@@ -126,6 +128,11 @@ bool sdl_init(const char *resources_dir_path,
 	sdl_tk_widget_focus(
 			ctx.main_menu,
 			ctx.main_menu_open);
+
+	ctx.graph_rect.x = 0;
+	ctx.graph_rect.y = 0;
+	ctx.graph_rect.w = ctx.w;
+	ctx.graph_rect.h = ctx.h;
 
 	return true;
 
@@ -222,18 +229,12 @@ bool sdl_handle_input(void)
 /* Exported interface, documented in sdl.h */
 void sdl_present(void)
 {
-	const SDL_Rect r = {
-		.x = 0,
-		.y = 0,
-		.w = ctx.w,
-		.h = ctx.h,
-	};
 	SDL_Color bg = sdl_tk_colour_get(SDL_TK_COLOUR_BACKGROUND);
 
 	SDL_SetRenderDrawColor(ctx.ren, bg.r, bg.g, bg.b, 255);
 	SDL_RenderClear(ctx.ren);
 
-	graph_render(ctx.ren, &r);
+	graph_render(ctx.ren, &ctx.graph_rect);
 
 	main_menu_update();
 	sdl_tk_widget_render(ctx.main_menu, ctx.ren, ctx.w / 2, ctx.h / 2);
