@@ -28,6 +28,8 @@
 
 #include <pthread.h>
 
+#include "sdl-tk/text.h"
+
 #include "util.h"
 #include "graph.h"
 #include "main-menu.h"
@@ -61,6 +63,11 @@ struct graph {
 	SDL_Color colour;    /**< Graph render colour. */
 };
 
+/** Per-graph render context. */
+struct render {
+	struct sdl_tk_text *label; /**< The graph name. */
+};
+
 /** Graph global context. */
 static struct {
 	struct graph *channel;
@@ -68,6 +75,10 @@ static struct {
 	unsigned count;
 	unsigned current;
 	bool     single;
+
+	struct render *render;
+	unsigned render_count;
+	bool render_finalise;
 
 	pthread_mutex_t lock;
 } graph_g;
@@ -94,6 +105,8 @@ void graph_fini(void)
 	graph_g.channel = NULL;
 	graph_g.count   = 0;
 	graph_g.single  = false;
+
+	graph_g.render_finalise = true;
 
 	pthread_mutex_unlock(&graph_g.lock);
 	pthread_mutex_destroy(&graph_g.lock);
@@ -245,6 +258,111 @@ static inline int32_t graph__data(const struct graph *g, unsigned pos)
 }
 
 /**
+ * Helper for creating channel label texture.
+ *
+ * \param[in]  channel  The channel index.
+ * \param[in]  colour   The channel colour.
+ * \return new text label, or NULL on error.
+ */
+static struct sdl_tk_text *graph__create_label(
+		uint8_t   channel,
+		SDL_Color colour)
+{
+	struct sdl_tk_text *text;
+	const char *string;
+
+	string = main_menu_config_get_channel_name(channel);
+	if (string == NULL) {
+		return NULL;
+	}
+
+	text = sdl_tk_text_create(string, colour, SDL_TK_TEXT_SIZE_NORMAL);
+	if (text == NULL) {
+		return NULL;
+	}
+
+	return text;
+}
+
+/**
+ * Render a graph's label, creating it if needed.
+ *
+ * \param[in]  ren  The SDL renderer.
+ * \param[in]  idx  The graph index to render the label for.
+ * \param[in]  g    The graph to render the label for.
+ * \param[in]  r    The rectangle containing the graphs.
+ * \return new text label, or NULL on error.
+ */
+static void graph__render_label(
+		SDL_Renderer   *ren,
+		unsigned        idx,
+		struct graph   *g,
+		const SDL_Rect *r)
+{
+	struct render *render;
+
+	if (graph_g.render_count <= idx) {
+		unsigned count = idx + 1;
+		size_t size = sizeof(*render);
+		unsigned old_count = graph_g.render_count;
+
+		render = realloc(graph_g.render, count * size);
+		if (render == NULL) {
+			return;
+		}
+
+		memset(&render[old_count], 0, (count - old_count) * size);
+
+		graph_g.render       = render;
+		graph_g.render_count = count;
+	}
+
+	render = graph_g.render + idx;
+
+	if (render->label == NULL) {
+		render->label = graph__create_label(g->channel_idx, g->colour);
+		if (render->label == NULL) {
+			return;
+		}
+	}
+
+	SDL_Rect rect = {
+		.x = r->x + 2,
+		.y = r->y + 2,
+		.w = render->label->w,
+		.h = render->label->h,
+	};
+
+	SDL_RenderCopy(ren, render->label->t, NULL, &rect);
+}
+
+/**
+ * Finalise the render components of graphs.
+ *
+ * This is work that must be done in the rendering thread.
+ */
+static void graph__render_fini(void)
+{
+	if (graph_g.render_finalise) {
+		if (graph_g.render != NULL) {
+			for (unsigned i = 0; i < graph_g.render_count; i++) {
+				struct render *r = graph_g.render + i;
+				struct sdl_tk_text *label = r->label;
+
+				r->label = NULL;
+
+				sdl_tk_text_destroy(label);
+			}
+			free(graph_g.render);
+			graph_g.render = NULL;
+		}
+
+		graph_g.render_count = 0;
+		graph_g.render_finalise = false;
+	}
+}
+
+/**
  * Render a graph.
  *
  * \param[in]  ren    The SDL renderer.
@@ -269,6 +387,11 @@ void graph__render(
 	if (idx >= graph_g.count) {
 		return;
 	}
+	if (g->data == NULL) {
+		return;
+	}
+
+	graph__render_label(ren, idx, g, r);
 
 	step = g->step;
 
@@ -335,6 +458,7 @@ void graph_render(
 	}
 
 cleanup:
+	graph__render_fini();
 	pthread_mutex_unlock(&graph_g.lock);
 }
 
