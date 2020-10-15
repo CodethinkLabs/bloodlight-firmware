@@ -663,9 +663,92 @@ static bool graph__handle_key(
 	return handled;
 }
 
+/**
+ * Handle a mouse input event.
+ *
+ * \param[in]  event  The SDL renderer.
+ * \param[in]  r      The rectangle containing the graphs.
+ * \param[in]  shift  True if the shift key is pressed.
+ * \param[in]  ctrl   True if the control key is pressed.
+ * \return true if the event was handled, or false otherwise.
+ */
+static bool graph__handle_mouse(
+		const SDL_Event *event,
+		const SDL_Rect *r,
+		bool shift,
+		bool ctrl)
+{
+	bool handled = false;
+	unsigned idx;
+	int x;
+	int y;
+	int h;
+
+	SDL_GetMouseState(&x, &y);
+
+	if (graph_g.count == 0) {
+		goto cleanup;
+	}
+
+	if (x < r->x || x >= r->x + r->w || y < r->y || y >= r->y + r->h) {
+		/* Outside graphs area. */
+		goto cleanup;
+	}
+
+	h = r->h / graph_g.count;
+	idx = (y - r->y) / h;
+
+	if (idx >= graph_g.count) {
+		idx = graph_g.count - 1;
+	}
+
+	if (graph_g.current != idx) {
+		graph_g.current = idx;
+		handled = true;
+	}
+
+	switch (event->type) {
+	case SDL_MOUSEWHEEL:
+		if (event->wheel.y > 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_inc);
+		} else if(event->wheel.y < 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_dec);
+		}
+
+		if (event->wheel.x > 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_inc);
+		} else if(event->wheel.x < 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_dec);
+		}
+		break;
+
+	case SDL_MOUSEBUTTONDOWN:
+		switch (event->button.button) {
+		case SDL_BUTTON_LEFT:
+			graph_g.single = !graph_g.single;
+			handled = true;
+			break;
+
+		case SDL_BUTTON_MIDDLE:
+			handled = graph__key_handler(shift, ctrl,
+					graph__invert);
+			break;
+		}
+		break;
+	}
+
+cleanup:
+	return handled;
+}
+
 /* Exported function, documented in graph.h */
 bool graph_handle_input(
 		const SDL_Event *event,
+		const SDL_Rect *r,
 		bool shift,
 		bool ctrl)
 {
@@ -681,6 +764,13 @@ bool graph_handle_input(
 	switch (event->type) {
 	case SDL_KEYDOWN:
 		handled = graph__handle_key(event, shift, ctrl);
+		break;
+
+	case SDL_MOUSEWHEEL:    /* Fall through. */
+	case SDL_MOUSEMOTION:   /* Fall through. */
+	case SDL_MOUSEBUTTONUP: /* Fall through. */
+	case SDL_MOUSEBUTTONDOWN:
+		handled = graph__handle_mouse(event, r, shift, ctrl);
 		break;
 	}
 

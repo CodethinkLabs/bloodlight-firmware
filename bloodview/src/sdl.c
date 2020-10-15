@@ -171,6 +171,7 @@ static void sdl__handle_input(SDL_Event *event)
 
 			default:
 				graph_handle_input(event,
+						&ctx.graph_rect,
 						ctx.shift,
 						ctx.ctrl);
 				break;
