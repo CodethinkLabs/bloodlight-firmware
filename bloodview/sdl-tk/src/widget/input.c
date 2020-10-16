@@ -161,12 +161,14 @@ const struct sdl_tk_text *sdl_tk_widget_input_detail(
  * Render an sdl-tk input widget.
  *
  * \param[in]  widget  The input widget to render.
+ * \param[in]  rect    Bounding rectangle for widget placement.
  * \param[in]  ren     SDL renderer to use.
- * \param[in]  x       X coordinate.
- * \param[in]  y       Y coordinate.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  */
 static void sdl_tk_widget_input_render(
 		struct sdl_tk_widget *widget,
+		const SDL_Rect       *rect,
 		SDL_Renderer         *ren,
 		unsigned              x,
 		unsigned              y)
@@ -180,6 +182,8 @@ static void sdl_tk_widget_input_render(
 		.w = widget->w,
 		.h = widget->h,
 	};
+
+	sdl_tl__shift_rect(rect, &r);
 
 	/* Input rectangle (title, border) */
 	sdl_tk_render_rect(ren, &interface_col, &r);
