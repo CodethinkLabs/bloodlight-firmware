@@ -406,8 +406,6 @@ static ssize_t bl_msg__read(int fd, void *data, size_t size, int timeout_ms)
 
 	ret = clock_gettime(CLOCK_MONOTONIC, &time_start);
 	if (ret == -1) {
-		fprintf(stderr, "Failed to read time: %s\n",
-				strerror(errno));
 		return -errno;
 	}
 
@@ -427,14 +425,11 @@ static ssize_t bl_msg__read(int fd, void *data, size_t size, int timeout_ms)
 
 			ret = clock_gettime(CLOCK_MONOTONIC, &time_end);
 			if (ret == -1) {
-				fprintf(stderr, "Failed to read time: %s\n",
-						strerror(errno));
 				return -errno;
 			}
 
 			elapsed_ms = time_diff_ms(&time_start, &time_end);
 			if (elapsed_ms >= timeout_ms) {
-				fprintf(stderr, "Timed out waiting for read\n");
 				return -ETIMEDOUT;
 			}
 			timeout_ms -= elapsed_ms;
