@@ -28,6 +28,8 @@
 
 #include <pthread.h>
 
+#include "sdl-tk/text.h"
+
 #include "util.h"
 #include "graph.h"
 #include "main-menu.h"
@@ -61,6 +63,11 @@ struct graph {
 	SDL_Color colour;    /**< Graph render colour. */
 };
 
+/** Per-graph render context. */
+struct render {
+	struct sdl_tk_text *label; /**< The graph name. */
+};
+
 /** Graph global context. */
 static struct {
 	struct graph *channel;
@@ -68,6 +75,10 @@ static struct {
 	unsigned count;
 	unsigned current;
 	bool     single;
+
+	struct render *render;
+	unsigned render_count;
+	bool render_finalise;
 
 	pthread_mutex_t lock;
 } graph_g;
@@ -79,9 +90,14 @@ void graph_fini(void)
 
 	if (graph_g.channel != NULL) {
 		for (unsigned i = 0; i < graph_g.count; i++) {
-			free(graph_g.channel[i].data);
-			memset(&graph_g.channel[i], 0,
-					sizeof(graph_g.channel[i]));
+			struct graph *g = graph_g.channel + i;
+			int32_t *data = g->data;
+
+			g->data = NULL;
+
+			free(data);
+
+			memset(g, 0, sizeof(*g));
 		}
 		free(graph_g.channel);
 	}
@@ -89,6 +105,8 @@ void graph_fini(void)
 	graph_g.channel = NULL;
 	graph_g.count   = 0;
 	graph_g.single  = false;
+
+	graph_g.render_finalise = true;
 
 	pthread_mutex_unlock(&graph_g.lock);
 	pthread_mutex_destroy(&graph_g.lock);
@@ -130,17 +148,17 @@ bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 
 	if (g->data == NULL) {
 		unsigned max = GRAPH_EXCESS + freq * GRAPH_HISTORY_SECONDS;
+
+		g->max = max;
+		g->step = freq / 500 + 1;
+		g->scale = Y_SCALE_DATUM / 8;
+		g->channel_idx = channel;
+		g->colour = main_menu_config_get_channel_colour(channel);
+
 		g->data = calloc(max, sizeof(*g->data));
 		if (g->data == NULL) {
 			return false;
 		}
-		g->max = max;
-
-		g->step = freq / 500 + 1;
-		g->scale = Y_SCALE_DATUM / 8;
-
-		g->channel_idx = channel;
-		g->colour = main_menu_config_get_channel_colour(channel);
 	} else {
 		return false;
 	}
@@ -240,6 +258,111 @@ static inline int32_t graph__data(const struct graph *g, unsigned pos)
 }
 
 /**
+ * Helper for creating channel label texture.
+ *
+ * \param[in]  channel  The channel index.
+ * \param[in]  colour   The channel colour.
+ * \return new text label, or NULL on error.
+ */
+static struct sdl_tk_text *graph__create_label(
+		uint8_t   channel,
+		SDL_Color colour)
+{
+	struct sdl_tk_text *text;
+	const char *string;
+
+	string = main_menu_config_get_channel_name(channel);
+	if (string == NULL) {
+		return NULL;
+	}
+
+	text = sdl_tk_text_create(string, colour, SDL_TK_TEXT_SIZE_NORMAL);
+	if (text == NULL) {
+		return NULL;
+	}
+
+	return text;
+}
+
+/**
+ * Render a graph's label, creating it if needed.
+ *
+ * \param[in]  ren  The SDL renderer.
+ * \param[in]  idx  The graph index to render the label for.
+ * \param[in]  g    The graph to render the label for.
+ * \param[in]  r    The rectangle containing the graphs.
+ * \return new text label, or NULL on error.
+ */
+static void graph__render_label(
+		SDL_Renderer   *ren,
+		unsigned        idx,
+		struct graph   *g,
+		const SDL_Rect *r)
+{
+	struct render *render;
+
+	if (graph_g.render_count <= idx) {
+		unsigned count = idx + 1;
+		size_t size = sizeof(*render);
+		unsigned old_count = graph_g.render_count;
+
+		render = realloc(graph_g.render, count * size);
+		if (render == NULL) {
+			return;
+		}
+
+		memset(&render[old_count], 0, (count - old_count) * size);
+
+		graph_g.render       = render;
+		graph_g.render_count = count;
+	}
+
+	render = graph_g.render + idx;
+
+	if (render->label == NULL) {
+		render->label = graph__create_label(g->channel_idx, g->colour);
+		if (render->label == NULL) {
+			return;
+		}
+	}
+
+	SDL_Rect rect = {
+		.x = r->x + 2,
+		.y = r->y + 2,
+		.w = render->label->w,
+		.h = render->label->h,
+	};
+
+	SDL_RenderCopy(ren, render->label->t, NULL, &rect);
+}
+
+/**
+ * Finalise the render components of graphs.
+ *
+ * This is work that must be done in the rendering thread.
+ */
+static void graph__render_fini(void)
+{
+	if (graph_g.render_finalise) {
+		if (graph_g.render != NULL) {
+			for (unsigned i = 0; i < graph_g.render_count; i++) {
+				struct render *r = graph_g.render + i;
+				struct sdl_tk_text *label = r->label;
+
+				r->label = NULL;
+
+				sdl_tk_text_destroy(label);
+			}
+			free(graph_g.render);
+			graph_g.render = NULL;
+		}
+
+		graph_g.render_count = 0;
+		graph_g.render_finalise = false;
+	}
+}
+
+/**
  * Render a graph.
  *
  * \param[in]  ren    The SDL renderer.
@@ -264,6 +387,11 @@ void graph__render(
 	if (idx >= graph_g.count) {
 		return;
 	}
+	if (g->data == NULL) {
+		return;
+	}
+
+	graph__render_label(ren, idx, g, r);
 
 	step = g->step;
 
@@ -330,6 +458,7 @@ void graph_render(
 	}
 
 cleanup:
+	graph__render_fini();
 	pthread_mutex_unlock(&graph_g.lock);
 }
 
@@ -471,9 +600,155 @@ static bool graph__key_handler(
 	return ret;
 }
 
+/**
+ * Handle a keyboard input event.
+ *
+ * \param[in]  event  The SDL renderer.
+ * \param[in]  shift  True if the shift key is pressed.
+ * \param[in]  ctrl   True if the control key is pressed.
+ * \return true if the event was handled, or false otherwise.
+ */
+static bool graph__handle_key(
+		const SDL_Event *event,
+		bool shift,
+		bool ctrl)
+{
+	bool handled = false;
+
+	switch (event->key.keysym.sym) {
+	case SDLK_UP:
+		handled = graph__key_handler(shift, ctrl, graph__y_scale_inc);
+		break;
+
+	case SDLK_DOWN:
+		handled = graph__key_handler(shift, ctrl, graph__y_scale_dec);
+		break;
+
+	case SDLK_LEFT:
+		handled = graph__key_handler(shift, ctrl, graph__x_scale_inc);
+		break;
+
+	case SDLK_RIGHT:
+		handled = graph__key_handler(shift, ctrl, graph__x_scale_dec);
+		break;
+
+	case SDLK_PAGEUP:
+		if (graph_g.current == 0) {
+			graph_g.current = graph_g.count - 1;
+		} else {
+			graph_g.current--;
+		}
+		handled = true;
+		break;
+
+	case SDLK_PAGEDOWN:
+		graph_g.current++;
+		if (graph_g.current == graph_g.count) {
+			graph_g.current = 0;
+		}
+		handled = true;
+		break;
+
+	case SDLK_SPACE: /* Fall though */
+	case SDLK_RETURN:
+		graph_g.single = !graph_g.single;
+		handled = true;
+		break;
+
+	case SDLK_i:
+		handled = graph__key_handler(shift, ctrl, graph__invert);
+		break;
+	}
+
+	return handled;
+}
+
+/**
+ * Handle a mouse input event.
+ *
+ * \param[in]  event  The SDL renderer.
+ * \param[in]  r      The rectangle containing the graphs.
+ * \param[in]  shift  True if the shift key is pressed.
+ * \param[in]  ctrl   True if the control key is pressed.
+ * \return true if the event was handled, or false otherwise.
+ */
+static bool graph__handle_mouse(
+		const SDL_Event *event,
+		const SDL_Rect *r,
+		bool shift,
+		bool ctrl)
+{
+	bool handled = false;
+	unsigned idx;
+	int x;
+	int y;
+	int h;
+
+	SDL_GetMouseState(&x, &y);
+
+	if (graph_g.count == 0) {
+		goto cleanup;
+	}
+
+	if (x < r->x || x >= r->x + r->w || y < r->y || y >= r->y + r->h) {
+		/* Outside graphs area. */
+		goto cleanup;
+	}
+
+	h = r->h / graph_g.count;
+	idx = (y - r->y) / h;
+
+	if (idx >= graph_g.count) {
+		idx = graph_g.count - 1;
+	}
+
+	if (graph_g.current != idx) {
+		graph_g.current = idx;
+		handled = true;
+	}
+
+	switch (event->type) {
+	case SDL_MOUSEWHEEL:
+		if (event->wheel.y > 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_inc);
+		} else if(event->wheel.y < 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__y_scale_dec);
+		}
+
+		if (event->wheel.x > 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_inc);
+		} else if(event->wheel.x < 0) {
+			handled = graph__key_handler(shift, ctrl,
+					graph__x_scale_dec);
+		}
+		break;
+
+	case SDL_MOUSEBUTTONDOWN:
+		switch (event->button.button) {
+		case SDL_BUTTON_LEFT:
+			graph_g.single = !graph_g.single;
+			handled = true;
+			break;
+
+		case SDL_BUTTON_MIDDLE:
+			handled = graph__key_handler(shift, ctrl,
+					graph__invert);
+			break;
+		}
+		break;
+	}
+
+cleanup:
+	return handled;
+}
+
 /* Exported function, documented in graph.h */
 bool graph_handle_input(
 		const SDL_Event *event,
+		const SDL_Rect *r,
 		bool shift,
 		bool ctrl)
 {
@@ -488,55 +763,14 @@ bool graph_handle_input(
 
 	switch (event->type) {
 	case SDL_KEYDOWN:
-		switch (event->key.keysym.sym) {
-		case SDLK_UP:
-			handled = graph__key_handler(shift, ctrl,
-					graph__y_scale_inc);
-			break;
+		handled = graph__handle_key(event, shift, ctrl);
+		break;
 
-		case SDLK_DOWN:
-			handled = graph__key_handler(shift, ctrl,
-					graph__y_scale_dec);
-			break;
-
-		case SDLK_LEFT:
-			handled = graph__key_handler(shift, ctrl,
-					graph__x_scale_inc);
-			break;
-
-		case SDLK_RIGHT:
-			handled = graph__key_handler(shift, ctrl,
-					graph__x_scale_dec);
-			break;
-
-		case SDLK_PAGEUP:
-			if (graph_g.current == 0) {
-				graph_g.current = graph_g.count - 1;
-			} else {
-				graph_g.current--;
-			}
-			handled = true;
-			break;
-
-		case SDLK_PAGEDOWN:
-			graph_g.current++;
-			if (graph_g.current == graph_g.count) {
-				graph_g.current = 0;
-			}
-			handled = true;
-			break;
-
-		case SDLK_SPACE: /* Fall though */
-		case SDLK_RETURN:
-			graph_g.single = !graph_g.single;
-			handled = true;
-			break;
-
-		case SDLK_i:
-			handled = graph__key_handler(shift, ctrl,
-					graph__invert);
-			break;
-		}
+	case SDL_MOUSEWHEEL:    /* Fall through. */
+	case SDL_MOUSEMOTION:   /* Fall through. */
+	case SDL_MOUSEBUTTONUP: /* Fall through. */
+	case SDL_MOUSEBUTTONDOWN:
+		handled = graph__handle_mouse(event, r, shift, ctrl);
 		break;
 	}
 

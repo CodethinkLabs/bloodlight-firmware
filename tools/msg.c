@@ -406,8 +406,6 @@ static ssize_t bl_msg__read(int fd, void *data, size_t size, int timeout_ms)
 
 	ret = clock_gettime(CLOCK_MONOTONIC, &time_start);
 	if (ret == -1) {
-		fprintf(stderr, "Failed to read time: %s\n",
-				strerror(errno));
 		return -errno;
 	}
 
@@ -427,14 +425,11 @@ static ssize_t bl_msg__read(int fd, void *data, size_t size, int timeout_ms)
 
 			ret = clock_gettime(CLOCK_MONOTONIC, &time_end);
 			if (ret == -1) {
-				fprintf(stderr, "Failed to read time: %s\n",
-						strerror(errno));
 				return -errno;
 			}
 
 			elapsed_ms = time_diff_ms(&time_start, &time_end);
 			if (elapsed_ms >= timeout_ms) {
-				fprintf(stderr, "Timed out waiting for read\n");
 				return -ETIMEDOUT;
 			}
 			timeout_ms -= elapsed_ms;
@@ -456,6 +451,7 @@ bool bl_msg_read(
 		int timeout,
 		union bl_msg_data *msg)
 {
+	static int previous_res;
 	ssize_t expected_len;
 	ssize_t read_len;
 	int res = 0;
@@ -463,11 +459,13 @@ bool bl_msg_read(
 	expected_len = sizeof(msg->type);
 	read_len = bl_msg__read(fd, &msg->type, expected_len, timeout);
 	if (read_len != expected_len) {
-		fprintf(stderr, "Failed to read message type from device");
-		if (read_len < 0)
-			fprintf(stderr, ": %s", strerror(-read_len));
-		fprintf(stderr, "\n");
 		res = -read_len;
+		if (res != previous_res) {
+			fprintf(stderr, "Failed to read message type from device");
+			if (read_len < 0)
+				fprintf(stderr, ": %s", strerror(res));
+			fprintf(stderr, "\n");
+		}
 		goto out;
 	}
 
@@ -475,11 +473,13 @@ bool bl_msg_read(
 	read_len = bl_msg__read(fd, &msg->type + sizeof(msg->type),
 			expected_len, timeout);
 	if (read_len != expected_len) {
-		fprintf(stderr, "Failed to read message body from device");
-		if (read_len < 0)
-			fprintf(stderr, ": %s", strerror(-read_len));
-		fprintf(stderr, "\n");
 		res = -read_len;
+		if (res != previous_res) {
+			fprintf(stderr, "Failed to read message body from device");
+			if (read_len < 0)
+				fprintf(stderr, ": %s", strerror(res));
+			fprintf(stderr, "\n");
+		}
 		goto out;
 	}
 
@@ -494,12 +494,14 @@ bool bl_msg_read(
 				expected_len, timeout);
 
 		if (read_len != expected_len) {
-			fprintf(stderr, "Failed to read %"PRIu8" samples from device",
-					msg->sample_data.count);
-			if (read_len < 0)
-				fprintf(stderr, ": %s", strerror(-read_len));
-			fprintf(stderr, "\n");
 			res = -read_len;
+			if (res != previous_res) {
+				fprintf(stderr, "Failed to read %"PRIu8" samples from device",
+						msg->sample_data.count);
+				if (read_len < 0)
+					fprintf(stderr, ": %s", strerror(res));
+				fprintf(stderr, "\n");
+			}
 			goto out;
 		}
 	}
@@ -508,6 +510,8 @@ out:
 	if (res == EINTR) {
 		bl_sig_killed = true;
 	}
+
+	previous_res = res;
 
 	return (res == 0);
 }

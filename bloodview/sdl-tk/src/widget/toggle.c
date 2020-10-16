@@ -57,17 +57,20 @@ static void sdl_tk_widget_toggle_destroy(
  * Render an sdl-tk toggle widget.
  *
  * \param[in]  widget  The toggle widget to render.
+ * \param[in]  rect    Bounding rectangle for widget placement.
  * \param[in]  ren     SDL renderer to use.
- * \param[in]  x       X coordinate.
- * \param[in]  y       Y coordinate.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  */
 static void sdl_tk_widget_toggle_render(
 		struct sdl_tk_widget *widget,
+		const SDL_Rect       *rect,
 		SDL_Renderer         *ren,
 		unsigned              x,
 		unsigned              y)
 {
 	SDL_TK_UNUSED(widget);
+	SDL_TK_UNUSED(rect);
 	SDL_TK_UNUSED(ren);
 	SDL_TK_UNUSED(x);
 	SDL_TK_UNUSED(y);
@@ -133,14 +136,23 @@ const struct sdl_tk_text *sdl_tk_widget_toggle_detail(
  *
  * \param[in]  widget  The toggle widget to fire input at.
  * \param[in]  event   The input event to be handled.
+ * \param[in]  rect    Bounding rectangle for widget placement.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  * \return true if the widget handled the input, false otherwise.
  */
 static bool sdl_tk_widget_toggle_input(
 		struct sdl_tk_widget *widget,
-		SDL_Event            *event)
+		SDL_Event            *event,
+		const SDL_Rect       *rect,
+		unsigned              x,
+		unsigned              y)
 {
 	SDL_TK_UNUSED(widget);
 	SDL_TK_UNUSED(event);
+	SDL_TK_UNUSED(rect);
+	SDL_TK_UNUSED(x);
+	SDL_TK_UNUSED(y);
 
 	return true;
 }

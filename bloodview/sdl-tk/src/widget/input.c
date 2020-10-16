@@ -161,12 +161,14 @@ const struct sdl_tk_text *sdl_tk_widget_input_detail(
  * Render an sdl-tk input widget.
  *
  * \param[in]  widget  The input widget to render.
+ * \param[in]  rect    Bounding rectangle for widget placement.
  * \param[in]  ren     SDL renderer to use.
- * \param[in]  x       X coordinate.
- * \param[in]  y       Y coordinate.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  */
 static void sdl_tk_widget_input_render(
 		struct sdl_tk_widget *widget,
+		const SDL_Rect       *rect,
 		SDL_Renderer         *ren,
 		unsigned              x,
 		unsigned              y)
@@ -180,6 +182,8 @@ static void sdl_tk_widget_input_render(
 		.w = widget->w,
 		.h = widget->h,
 	};
+
+	sdl_tl__shift_rect(rect, &r);
 
 	/* Input rectangle (title, border) */
 	sdl_tk_render_rect(ren, &interface_col, &r);
@@ -299,6 +303,9 @@ static bool append_char(
  * TODO: This is very primative at the moment.  It could do with:
  *       - Cursor display
  *       - Tracking and handling of modifiers, e.g. shift.
+ *
+ * \param[in]  input  Input widget.
+ * \param[in]  key    The keypress to handle.
  */
 static bool sdl_tk_widget_input_input_keypress(
 		struct sdl_tk_widget_input *input,
@@ -363,15 +370,65 @@ static bool sdl_tk_widget_input_input_keypress(
 }
 
 /**
+ * Fire an input event at an sdl-tk menu widget.
+ *
+ * \param[in]  input   Input widget.
+ * \param[in]  event   The input event to be handled.
+ * \param[in]  rect    Bounding rectangle for widget placement.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
+ * \return true if the widget handled the input, false otherwise.
+ */
+static bool sdl_tk_widget_input_input_mouse(
+		struct sdl_tk_widget_input *input,
+		SDL_Event                  *event,
+		const SDL_Rect             *rect,
+		unsigned                    x,
+		unsigned                    y)
+{
+	bool handled = false;
+	SDL_Rect r = {
+		.x = x - input->base.w / 2,
+		.y = y - input->base.h / 2,
+		.w = input->base.w,
+		.h = input->base.h,
+	};
+	int pos_x;
+	int pos_y;
+
+	sdl_tl__shift_rect(rect, &r);
+	SDL_GetMouseState(&pos_x, &pos_y);
+
+	if (pos_x < r.x || pos_x >= r.x + r.w ||
+	    pos_y < r.y || pos_y >= r.y + r.h) {
+		/* Outside widget area. */
+		goto cleanup;
+	}
+	handled = true;
+
+	/* TODO: Handle the event. */
+	SDL_TK_UNUSED(event);
+
+cleanup:
+	return handled;
+}
+
+/**
  * Fire an input event at an sdl-tk input widget.
  *
  * \param[in]  widget  The input widget to fire input at.
  * \param[in]  event   The input event to be handled.
+ * \param[in]  rect    Bounding rectangle for widget placement.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  * \return true if the widget handled the input, false otherwise.
  */
 static bool sdl_tk_widget_input_input(
 		struct sdl_tk_widget *widget,
-		SDL_Event            *event)
+		SDL_Event            *event,
+		const SDL_Rect       *rect,
+		unsigned              x,
+		unsigned              y)
 {
 	struct sdl_tk_widget_input *input = (struct sdl_tk_widget_input *) widget;
 
@@ -392,7 +449,8 @@ static bool sdl_tk_widget_input_input(
 		case SDL_MOUSEMOTION:
 		case SDL_MOUSEBUTTONUP:
 		case SDL_MOUSEBUTTONDOWN:
-			break;
+			return sdl_tk_widget_input_input_mouse(input,
+					event, rect, x, y);
 		}
 		break;
 	}

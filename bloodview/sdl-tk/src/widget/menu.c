@@ -115,12 +115,14 @@ static enum sdl_tk_widget_state sdl_tk_entry_state(
  * Render an sdl-tk menu widget.
  *
  * \param[in]  widget  The widget to render.
+ * \param[in]  rect    Bounding rectangle for widget placement.
  * \param[in]  ren     SDL renderer to use.
- * \param[in]  x       X coordinate.
- * \param[in]  y       Y coordinate.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  */
 static void sdl_tk_widget_menu_render(
 		struct sdl_tk_widget *widget,
+		const SDL_Rect       *rect,
 		SDL_Renderer         *ren,
 		unsigned              x,
 		unsigned              y)
@@ -139,9 +141,11 @@ static void sdl_tk_widget_menu_render(
 
 	if (widget->focus == SDL_TK_WIDGET_FOCUS_CHILD) {
 		sdl_tk_widget_render(menu->entries[menu->current].widget,
-				ren, x, y);
+				rect, ren, x, y);
 		return;
 	}
+
+	sdl_tl__shift_rect(rect, &r);
 
 	/* Menu rectangle (title, border) */
 	sdl_tk_render_rect(ren, &interface_col, &r);
@@ -430,13 +434,129 @@ static bool sdl_tk_widget_menu_input_keypress(
 /**
  * Fire an input event at an sdl-tk menu widget.
  *
+ * \param[in]  menu    Menu widget.
+ * \param[in]  event   The input event to be handled.
+ * \param[in]  rect    Bounding rectangle for widget placement.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
+ * \return true if the widget handled the input, false otherwise.
+ */
+static bool sdl_tk_widget_menu_input_mouse(
+		struct sdl_tk_widget_menu *menu,
+		SDL_Event                 *event,
+		const SDL_Rect            *rect,
+		unsigned                   x,
+		unsigned                   y)
+{
+	bool handled = false;
+	SDL_Rect r = {
+		.x = x - menu->base.w / 2,
+		.y = y - menu->base.h / 2,
+		.w = menu->base.w,
+		.h = menu->base.h,
+	};
+	int entry_min;
+	unsigned idx;
+	int pos_x;
+	int pos_y;
+
+	sdl_tl__shift_rect(rect, &r);
+	SDL_GetMouseState(&pos_x, &pos_y);
+
+	if (pos_x < r.x || pos_x >= r.x + r.w ||
+	    pos_y < r.y || pos_y >= r.y + r.h) {
+		/* Outside widget area. */
+		goto cleanup;
+	}
+	handled = true;
+
+	switch (event->type) {
+	case SDL_MOUSEBUTTONUP:
+		switch (event->button.button) {
+		case SDL_BUTTON_RIGHT:
+			if (menu->base.parent != NULL) {
+				struct sdl_tk_widget *parent = menu->base.parent;
+				assert(parent->focus == SDL_TK_WIDGET_FOCUS_CHILD);
+
+				menu->base.focus = SDL_TK_WIDGET_FOCUS_NONE;
+				parent->focus = SDL_TK_WIDGET_FOCUS_TARGET;
+			}
+			goto cleanup;
+		}
+		break;
+	}
+
+	if (menu->count == 0) {
+		goto cleanup;
+	}
+
+	entry_min = EDGE_WIDTH + menu->title->h + EDGE_WIDTH + GUTTER_WIDTH;
+	if (pos_y < r.y + entry_min) {
+		goto cleanup;
+	}
+
+	if (pos_y >= r.y + r.h - BORDER_WIDTH - GUTTER_WIDTH) {
+		goto cleanup;
+	}
+
+	idx = 0;
+	pos_y -= r.y + entry_min;
+	for (unsigned i = 0; i < menu->count; i++) {
+		const struct sdl_tk_widget_menu_entry *entry = &menu->entries[i];
+		const struct sdl_tk_text *title = entry->title[SDL_TK_WIDGET_NORMAL];
+		const struct sdl_tk_text *detail = entry->detail[SDL_TK_WIDGET_NORMAL];
+		unsigned entry_height;
+
+		if (title == NULL) {
+			continue;
+		}
+
+		entry_height = title->h;
+		if (detail != NULL) {
+			if (entry_height < detail->h) {
+				entry_height = detail->h;
+			}
+		}
+
+		if (pos_y < (int) entry_height) {
+			break;
+		}
+		pos_y -= entry_height;
+		idx++;
+	}
+
+	if (idx >= menu->count) {
+		idx = menu->count - 1;
+	}
+
+	menu->current = idx;
+
+	switch (event->type) {
+	case SDL_MOUSEBUTTONUP:
+		sdl_tk_widget_action(menu->entries[menu->current].widget);
+		break;
+	}
+
+cleanup:
+	return handled;
+}
+
+/**
+ * Fire an input event at an sdl-tk menu widget.
+ *
  * \param[in]  widget  The widget to fire input at.
  * \param[in]  event   The input event to be handled.
+ * \param[in]  rect    Bounding rectangle for widget placement.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  * \return true if the widget handled the input, false otherwise.
  */
 static bool sdl_tk_widget_menu_input(
 		struct sdl_tk_widget *widget,
-		SDL_Event            *event)
+		SDL_Event            *event,
+		const SDL_Rect       *rect,
+		unsigned              x,
+		unsigned              y)
 {
 	struct sdl_tk_widget_menu *menu = (struct sdl_tk_widget_menu *) widget;
 
@@ -447,7 +567,7 @@ static bool sdl_tk_widget_menu_input(
 	case SDL_TK_WIDGET_FOCUS_CHILD:
 		return sdl_tk_widget_input(
 				menu->entries[menu->current].widget,
-				event);
+				event, rect, x, y);
 
 	case SDL_TK_WIDGET_FOCUS_TARGET:
 		switch (event->type) {
@@ -458,7 +578,8 @@ static bool sdl_tk_widget_menu_input(
 		case SDL_MOUSEMOTION:
 		case SDL_MOUSEBUTTONUP:
 		case SDL_MOUSEBUTTONDOWN:
-			break;
+			return sdl_tk_widget_menu_input_mouse(menu,
+					event, rect, x, y);
 		}
 		break;
 	}

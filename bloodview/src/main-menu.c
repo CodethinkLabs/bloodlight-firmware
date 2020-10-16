@@ -1498,13 +1498,13 @@ static inline uint8_t main_menu__convert_led_index(
 }
 
 /**
- * Get the descriptor for a channel setup.
+ * Get the descriptor for a channel.
  *
  * \param[in]  channel     The channel to look up.
  * \param[in]  input_type  The input channel index type.
  * \return the channel descriptor.
  */
-static struct desc_widget *main_menu__get_channel_desc(
+static struct desc_widget *main_menu__get_channel_desc_menu(
 		uint8_t channel,
 		enum channel_conv input_type)
 {
@@ -1514,14 +1514,45 @@ static struct desc_widget *main_menu__get_channel_desc(
 	switch (mode) {
 	case BL_ACQ_MODE_CONTINUOUS:
 		desc = main_menu__get_desc_fmt(bl_main_menu,
-			"Config/Acquisition/Continuous/Channels/[%u]/Channel",
-			channel);
+			"Config/Acquisition/Continuous/Channels/[%u]", channel);
 		break;
 
 	case BL_ACQ_MODE_FLASH:
 		channel = main_menu__convert_led_index(channel, input_type);
 		desc = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Flash/Channels/[%u]", channel);
+		break;
+	}
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_MENU);
+
+	return desc;
+}
+
+/**
+ * Get the descriptor for a channel setup.
+ *
+ * \param[in]  channel     The channel to look up.
+ * \param[in]  input_type  The input channel index type.
+ * \return the channel setup descriptor.
+ */
+static struct desc_widget *main_menu__get_channel_desc(
+		uint8_t channel,
+		enum channel_conv input_type)
+{
+	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	struct desc_widget *chan_desc = main_menu__get_channel_desc_menu(
+			channel, input_type);
+	struct desc_widget *desc = NULL;
+
+	switch (mode) {
+	case BL_ACQ_MODE_CONTINUOUS:
+		desc = main_menu__get_desc_fmt(chan_desc, "Channel");
+		break;
+
+	case BL_ACQ_MODE_FLASH:
+		desc = chan_desc;
 		break;
 	}
 
@@ -1577,6 +1608,15 @@ SDL_Color main_menu_config_get_channel_colour(uint8_t channel)
 			main_menu__get_desc_input_unsigned(col, "Hue"),
 			main_menu__get_desc_input_unsigned(col, "Saturation"),
 			main_menu__get_desc_input_unsigned(col, "Value"));
+}
+
+/* Exported interface, documented in main-menu.h */
+const char *main_menu_config_get_channel_name(uint8_t channel)
+{
+	struct desc_widget *desc = main_menu__get_channel_desc_menu(
+			channel, CHANNEL_CONV_HW_TO_MM);
+
+	return desc->menu.title;
 }
 
 /* Exported interface, documented in main-menu.h */

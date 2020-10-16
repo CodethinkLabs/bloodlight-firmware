@@ -45,12 +45,14 @@ void sdl_tk_widget_destroy(
  * Render an sdl-tk widget.
  *
  * \param[in]  widget  The widget to render.
+ * \param[in]  rect    Bounding rectangle for widget placement.
  * \param[in]  ren     SDL renderer to use.
- * \param[in]  x       X coordinate.
- * \param[in]  y       Y coordinate.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  */
 void sdl_tk_widget_render(
 		struct sdl_tk_widget *widget,
+		const SDL_Rect       *rect,
 		SDL_Renderer         *ren,
 		unsigned              x,
 		unsigned              y);
@@ -76,11 +78,17 @@ void sdl_tk_widget_layout(
  *
  * \param[in]  widget  The widget to fire input at.
  * \param[in]  event   The input event to be handled.
+ * \param[in]  rect    Bounding rectangle for widget placement.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  * \return true if the widget handled the input, false otherwise.
  */
 bool sdl_tk_widget_input(
 		struct sdl_tk_widget *widget,
-		SDL_Event            *event);
+		SDL_Event            *event,
+		const SDL_Rect       *rect,
+		unsigned              x,
+		unsigned              y);
 
 /**
  * Set whether an sdl-tk widget has input focus.

@@ -43,12 +43,16 @@ static struct sdl_ctx
 
 	struct sdl_tk_widget *main_menu;      /**< Main menu sdl-tk widget. */
 	bool                  main_menu_open; /**< Whether the menu is open. */
+	int                   main_menu_x;    /**< Menu x-coordinate. */
+	int                   main_menu_y;    /**< Menu y-coordinate. */
 
 	unsigned w; /**< Viewport width. */
 	unsigned h; /**< Viewport height, */
 
 	bool shift; /**< Whether shift is pressed. */
 	bool ctrl;  /**< Whether ctrl is pressed. */
+
+	SDL_Rect graph_rect; /**< Rectangle containing graphs. */
 } ctx; /**< SDL module context global object. */
 
 /* Exported interface, documented in sdl.h */
@@ -123,9 +127,16 @@ bool sdl_init(const char *resources_dir_path,
 	}
 
 	ctx.main_menu_open = true;
+	ctx.main_menu_x = ctx.w / 2;
+	ctx.main_menu_y = ctx.h / 2;
 	sdl_tk_widget_focus(
 			ctx.main_menu,
 			ctx.main_menu_open);
+
+	ctx.graph_rect.x = 0;
+	ctx.graph_rect.y = 0;
+	ctx.graph_rect.w = ctx.w;
+	ctx.graph_rect.h = ctx.h;
 
 	return true;
 
@@ -135,38 +146,44 @@ error:
 }
 
 /**
+ * Toggle whether the main menu is displayed.
+ */
+static void sdl__main_menu_toggle(void)
+{
+	ctx.main_menu_open = !ctx.main_menu_open;
+
+	sdl_tk_widget_focus(ctx.main_menu, ctx.main_menu_open);
+}
+
+/**
  * Handle keyboard and mouse input.
  *
  * \param[in]  event  SDL event to handle.
  */
 static void sdl__handle_input(SDL_Event *event)
 {
-	if (!sdl_tk_widget_input(ctx.main_menu, event)) {
+	if (!sdl_tk_widget_input(ctx.main_menu, event, &ctx.graph_rect,
+			ctx.main_menu_x, ctx.main_menu_y)) {
 		switch (event->type) {
 		case SDL_KEYDOWN:
 			switch (event->key.keysym.sym) {
 			case SDLK_ESCAPE:
-				ctx.main_menu_open = !ctx.main_menu_open;
-				sdl_tk_widget_focus(
-						ctx.main_menu,
-						ctx.main_menu_open);
-				break;
+				if (ctx.main_menu_open == false) {
+					ctx.main_menu_x = ctx.w / 2;
+					ctx.main_menu_y = ctx.h / 2;
+				}
+				sdl__main_menu_toggle();
+				return;
 
 			case SDLK_RSHIFT: /* Fall through */
 			case SDLK_LSHIFT:
 				ctx.shift = true;
-				break;
+				return;
 
 			case SDLK_RCTRL: /* Fall through */
 			case SDLK_LCTRL:
 				ctx.ctrl = true;
-				break;
-
-			default:
-				graph_handle_input(event,
-						ctx.shift,
-						ctx.ctrl);
-				break;
+				return;
 			}
 			break;
 
@@ -175,15 +192,33 @@ static void sdl__handle_input(SDL_Event *event)
 			case SDLK_RSHIFT: /* Fall through */
 			case SDLK_LSHIFT:
 				ctx.shift = false;
-				break;
+				return;
 
 			case SDLK_RCTRL: /* Fall through */
 			case SDLK_LCTRL:
 				ctx.ctrl = false;
-				break;
+				return;
+			}
+			break;
+
+		case SDL_MOUSEBUTTONDOWN:
+			if (ctx.main_menu_open == false) {
+				switch (event->button.button) {
+				case SDL_BUTTON_RIGHT:
+					SDL_GetMouseState(
+							&ctx.main_menu_x,
+							&ctx.main_menu_y);
+					sdl__main_menu_toggle();
+					return;
+				}
+			} else {
+				sdl__main_menu_toggle();
+				return;
 			}
 			break;
 		}
+
+		graph_handle_input(event, &ctx.graph_rect, ctx.shift, ctx.ctrl);
 	}
 }
 
@@ -206,11 +241,18 @@ bool sdl_handle_input(void)
 		case SDL_QUIT:
 			return false;
 
-		case SDL_KEYUP:
-		case SDL_KEYDOWN:
-		case SDL_MOUSEMOTION:
-		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP:
+		case SDL_WINDOWEVENT:
+			switch (event.window.event) {
+			case SDL_WINDOWEVENT_SIZE_CHANGED:
+				ctx.w = event.window.data1;
+				ctx.h = event.window.data2;
+				ctx.graph_rect.w = ctx.w;
+				ctx.graph_rect.h = ctx.h;
+				break;
+			}
+			break;
+
+		default:
 			sdl__handle_input(&event);
 			break;
 		}
@@ -222,20 +264,15 @@ bool sdl_handle_input(void)
 /* Exported interface, documented in sdl.h */
 void sdl_present(void)
 {
-	const SDL_Rect r = {
-		.x = 0,
-		.y = 0,
-		.w = ctx.w,
-		.h = ctx.h,
-	};
 	SDL_Color bg = sdl_tk_colour_get(SDL_TK_COLOUR_BACKGROUND);
 
 	SDL_SetRenderDrawColor(ctx.ren, bg.r, bg.g, bg.b, 255);
 	SDL_RenderClear(ctx.ren);
 
-	graph_render(ctx.ren, &r);
+	graph_render(ctx.ren, &ctx.graph_rect);
 
 	main_menu_update();
-	sdl_tk_widget_render(ctx.main_menu, ctx.ren, ctx.w / 2, ctx.h / 2);
+	sdl_tk_widget_render(ctx.main_menu, &ctx.graph_rect,
+			ctx.ren, ctx.main_menu_x, ctx.main_menu_y);
 	SDL_RenderPresent(ctx.ren);
 }
