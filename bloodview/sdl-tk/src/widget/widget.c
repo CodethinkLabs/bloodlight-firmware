@@ -47,6 +47,7 @@ void sdl_tk_widget_destroy(
 /* Exported function, documented in include/sdl-tk/widget.h */
 void sdl_tk_widget_render(
 		struct sdl_tk_widget *widget,
+		const SDL_Rect       *rect,
 		SDL_Renderer         *ren,
 		unsigned              x,
 		unsigned              y)
@@ -55,7 +56,7 @@ void sdl_tk_widget_render(
 		assert(widget->t != NULL);
 		if (widget->t->render != NULL) {
 			if (widget->focus != SDL_TK_WIDGET_FOCUS_NONE) {
-				widget->t->render(widget, ren, x, y);
+				widget->t->render(widget, rect, ren, x, y);
 			}
 		}
 	}
