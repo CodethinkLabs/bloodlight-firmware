@@ -98,11 +98,17 @@ struct sdl_tk_widget_vt {
 	 *
 	 * \param[in]  widget  The widget to fire input at.
 	 * \param[in]  event   The input event to be handled.
+	 * \param[in]  rect    Bounding rectangle for widget placement.
+	 * \param[in]  x       X-coordinate for widget placement.
+	 * \param[in]  y       Y-coordinate for widget placement.
 	 * \return true if the widget handled the input, false otherwise.
 	 */
 	bool (*input)(
 			struct sdl_tk_widget *widget,
-			SDL_Event            *event);
+			SDL_Event            *event,
+			const SDL_Rect       *rect,
+			unsigned              x,
+			unsigned              y);
 
 	/**
 	 * Set whether an sdl-tk widget has input focus.
