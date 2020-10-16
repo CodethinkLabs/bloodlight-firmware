@@ -92,12 +92,15 @@ void sdl_tk_widget_layout(
 /* Exported function, documented in include/sdl-tk/widget.h */
 bool sdl_tk_widget_input(
 		struct sdl_tk_widget *widget,
-		SDL_Event         *event)
+		SDL_Event            *event,
+		const SDL_Rect       *rect,
+		unsigned              x,
+		unsigned              y)
 {
 	if (widget != NULL) {
 		assert(widget->t != NULL);
 		if (widget->t->input != NULL) {
-			return widget->t->input(widget, event);
+			return widget->t->input(widget, event, rect, x, y);
 		}
 	}
 
