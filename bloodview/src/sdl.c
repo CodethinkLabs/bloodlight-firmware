@@ -146,13 +146,24 @@ error:
 }
 
 /**
+ * Toggle whether the main menu is displayed.
+ */
+static void sdl__main_menu_toggle(void)
+{
+	ctx.main_menu_open = !ctx.main_menu_open;
+
+	sdl_tk_widget_focus(ctx.main_menu, ctx.main_menu_open);
+}
+
+/**
  * Handle keyboard and mouse input.
  *
  * \param[in]  event  SDL event to handle.
  */
 static void sdl__handle_input(SDL_Event *event)
 {
-	if (!sdl_tk_widget_input(ctx.main_menu, event)) {
+	if (!sdl_tk_widget_input(ctx.main_menu, event, &ctx.graph_rect,
+			ctx.main_menu_x, ctx.main_menu_y)) {
 		switch (event->type) {
 		case SDL_KEYDOWN:
 			switch (event->key.keysym.sym) {
@@ -161,10 +172,7 @@ static void sdl__handle_input(SDL_Event *event)
 					ctx.main_menu_x = ctx.w / 2;
 					ctx.main_menu_y = ctx.h / 2;
 				}
-				ctx.main_menu_open = !ctx.main_menu_open;
-				sdl_tk_widget_focus(
-						ctx.main_menu,
-						ctx.main_menu_open);
+				sdl__main_menu_toggle();
 				return;
 
 			case SDLK_RSHIFT: /* Fall through */
@@ -189,6 +197,22 @@ static void sdl__handle_input(SDL_Event *event)
 			case SDLK_RCTRL: /* Fall through */
 			case SDLK_LCTRL:
 				ctx.ctrl = false;
+				return;
+			}
+			break;
+
+		case SDL_MOUSEBUTTONDOWN:
+			if (ctx.main_menu_open == false) {
+				switch (event->button.button) {
+				case SDL_BUTTON_RIGHT:
+					SDL_GetMouseState(
+							&ctx.main_menu_x,
+							&ctx.main_menu_y);
+					sdl__main_menu_toggle();
+					return;
+				}
+			} else {
+				sdl__main_menu_toggle();
 				return;
 			}
 			break;
