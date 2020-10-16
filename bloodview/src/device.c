@@ -388,7 +388,7 @@ static void device__thread_receive_msg(
 {
 	union bl_msg_data recv_msg;
 
-	if (bl_msg_read(bv_device_g.dev_fd, 100, &recv_msg)) {
+	if (bl_msg_read(bv_device_g.dev_fd, 1000 / 3, &recv_msg)) {
 		unsigned failed_reads = 0;
 
 		switch (recv_msg.type) {
