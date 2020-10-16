@@ -136,14 +136,23 @@ const struct sdl_tk_text *sdl_tk_widget_toggle_detail(
  *
  * \param[in]  widget  The toggle widget to fire input at.
  * \param[in]  event   The input event to be handled.
+ * \param[in]  rect    Bounding rectangle for widget placement.
+ * \param[in]  x       X-coordinate for widget placement.
+ * \param[in]  y       Y-coordinate for widget placement.
  * \return true if the widget handled the input, false otherwise.
  */
 static bool sdl_tk_widget_toggle_input(
 		struct sdl_tk_widget *widget,
-		SDL_Event            *event)
+		SDL_Event            *event,
+		const SDL_Rect       *rect,
+		unsigned              x,
+		unsigned              y)
 {
 	SDL_TK_UNUSED(widget);
 	SDL_TK_UNUSED(event);
+	SDL_TK_UNUSED(rect);
+	SDL_TK_UNUSED(x);
+	SDL_TK_UNUSED(y);
 
 	return true;
 }
