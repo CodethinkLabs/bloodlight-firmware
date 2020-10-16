@@ -43,6 +43,8 @@ static struct sdl_ctx
 
 	struct sdl_tk_widget *main_menu;      /**< Main menu sdl-tk widget. */
 	bool                  main_menu_open; /**< Whether the menu is open. */
+	int                   main_menu_x;    /**< Menu x-coordinate. */
+	int                   main_menu_y;    /**< Menu y-coordinate. */
 
 	unsigned w; /**< Viewport width. */
 	unsigned h; /**< Viewport height, */
@@ -125,6 +127,8 @@ bool sdl_init(const char *resources_dir_path,
 	}
 
 	ctx.main_menu_open = true;
+	ctx.main_menu_x = ctx.w / 2;
+	ctx.main_menu_y = ctx.h / 2;
 	sdl_tk_widget_focus(
 			ctx.main_menu,
 			ctx.main_menu_open);
@@ -153,6 +157,10 @@ static void sdl__handle_input(SDL_Event *event)
 		case SDL_KEYDOWN:
 			switch (event->key.keysym.sym) {
 			case SDLK_ESCAPE:
+				if (ctx.main_menu_open == false) {
+					ctx.main_menu_x = ctx.w / 2;
+					ctx.main_menu_y = ctx.h / 2;
+				}
 				ctx.main_menu_open = !ctx.main_menu_open;
 				sdl_tk_widget_focus(
 						ctx.main_menu,
@@ -229,6 +237,7 @@ void sdl_present(void)
 	graph_render(ctx.ren, &ctx.graph_rect);
 
 	main_menu_update();
-	sdl_tk_widget_render(ctx.main_menu, ctx.ren, ctx.w / 2, ctx.h / 2);
+	sdl_tk_widget_render(ctx.main_menu, &ctx.graph_rect,
+			ctx.ren, ctx.main_menu_x, ctx.main_menu_y);
 	SDL_RenderPresent(ctx.ren);
 }
