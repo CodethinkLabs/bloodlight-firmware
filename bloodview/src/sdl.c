@@ -241,6 +241,17 @@ bool sdl_handle_input(void)
 		case SDL_QUIT:
 			return false;
 
+		case SDL_WINDOWEVENT:
+			switch (event.window.event) {
+			case SDL_WINDOWEVENT_SIZE_CHANGED:
+				ctx.w = event.window.data1;
+				ctx.h = event.window.data2;
+				ctx.graph_rect.w = ctx.w;
+				ctx.graph_rect.h = ctx.h;
+				break;
+			}
+			break;
+
 		default:
 			sdl__handle_input(&event);
 			break;
