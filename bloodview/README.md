@@ -48,7 +48,7 @@ menu that Bloodview and the device are configured.
 
 | Key                     | Meaning                                 |
 | ----------------------- | --------------------------------------- |
-| <kbd>Esc</kbd>          | Toggle whether the main menu is shown. |
+| <kbd>Esc</kbd>          | Toggle whether the main menu is shown.  |
 | <kbd>Return</kbd>       | Activate current menu entry.            |
 | <kbd>Cursor Right</kbd> | Activate current menu entry.            |
 | <kbd>Cursor Left</kbd>  | Traverse up to parent menu.             |
@@ -56,6 +56,13 @@ menu that Bloodview and the device are configured.
 | <kbd>Cursor Down</kbd>  | Cycle current menu entry down.          |
 
 If the main menu is open, it will consume keyboard input.
+
+You can also use the mouse to interact with the menu. The <kbd>RIGHT</kbd>
+mouse button opens the menu. Clicking outside the menu closes it.
+
+The <kbd>LEFT</kbd> mouse button selects a given menu entry. If you're in a
+sub-menu, clicking the <kbd>RIGHT</kbd> mouse button over the menu navigates
+back to the parent menu.
 
 The graph view
 --------------
@@ -71,3 +78,18 @@ of the acquisition.
 | <kbd>Cursor Down</kbd>  | Decrease scale in the Y direction.  |
 | <kbd>Page Up</kbd>      | Cycle current graph selection up.   |
 | <kbd>Page Down</kbd>    | Cycle current graph selection down. |
+
+The mouse can also be used to interact with the graphs.
+
+Clicking the <kbd>LEFT</kbd> mouse button on a graph will enter single
+graph mode. Clicking the <kbd>LEFT</kbd> mouse button again returns to
+multi-graph view. While in single graph view, moving the mouse up and
+down will rotate through the available graphs.
+
+Using the vertical mouse scroll wheel will alter the vertical scaling of
+the selected graph (or all graphs, if <kbd>Shift</kbd> is pressed).
+
+Using the horizontal mouse scroll wheel will alter the horizontal scaling of
+the selected graph (or all graphs, if <kbd>Shift</kbd> is pressed).
+
+Clicking the <kbd>MIDDLE</kbd> mouse button will flip a graph upside-down.
