@@ -303,6 +303,9 @@ static bool append_char(
  * TODO: This is very primative at the moment.  It could do with:
  *       - Cursor display
  *       - Tracking and handling of modifiers, e.g. shift.
+ *
+ * \param[in]  input  Input widget.
+ * \param[in]  key    The keypress to handle.
  */
 static bool sdl_tk_widget_input_input_keypress(
 		struct sdl_tk_widget_input *input,
