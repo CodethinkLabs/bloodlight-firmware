@@ -41,4 +41,31 @@
 #define SDL_TK_ARRAY_LEN(_a) \
 	((sizeof(_a)) / (sizeof(*_a)))
 
+/**
+ * Shift a rectangle so it's contained in a bounding rectangle.
+ *
+ * If the bounding rectangle is too small, the top left of the inner
+ * rectangle is kept inside the bounding rect.
+ *
+ * \param[in]      bound  Bounding rectangle.
+ * \param[in,out]  rect   Rectangle to update position of.
+ */
+static inline void sdl_tl__shift_rect(
+		const SDL_Rect *bound,
+		SDL_Rect *rect)
+{
+	if (rect->x + rect->w > bound->x + bound->w) {
+		rect->x -= (rect->x + rect->w) - (bound->x + bound->w);
+	}
+	if (rect->y + rect->h > bound->y + bound->h) {
+		rect->y -= (rect->y + rect->h) - (bound->y + bound->h);
+	}
+	if (rect->x < bound->x) {
+		rect->x += bound->x - rect->x;
+	}
+	if (rect->y < bound->y) {
+		rect->y += bound->y - rect->y;
+	}
+}
+
 #endif
