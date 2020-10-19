@@ -501,7 +501,7 @@ static bool graph__y_scale_dec(unsigned idx)
 		return false;
 	}
 
-	if (g->scale < Y_SCALE_STEP) {
+	if (g->scale <= Y_SCALE_STEP) {
 		g->scale = 1;
 	} else {
 		g->scale -= Y_SCALE_STEP;
