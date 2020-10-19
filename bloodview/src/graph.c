@@ -38,10 +38,13 @@
 #define GRAPH_EXCESS 1024
 
 /** Reference for scaling in the vertical dimension. */
-#define Y_SCALE_DATUM (1u << 10)
+#define Y_SCALE_DATUM (1LLU << 20)
 
-/** Step size for vertical scale increments. */
-#define Y_SCALE_STEP  (1u <<  4)
+/** Graph y-scale step factor. */
+#define Y_SCALE_STEP_DEN (1LLU << 6)
+
+/** Graph y-scale step multiplier. */
+#define Y_SCALE_STEP_NUM (Y_SCALE_STEP_DEN - 1)
 
 /** Maximum number of seconds of graph data to store for each channel. */
 #define GRAPH_HISTORY_SECONDS 64
@@ -152,7 +155,7 @@ bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 
 		g->max = max;
 		g->x_step = freq / 500 + 1;
-		g->scale = Y_SCALE_DATUM / 8;
+		g->scale = Y_SCALE_DATUM / (Y_SCALE_STEP_DEN * 2);
 		g->channel_idx = channel;
 		g->colour = main_menu_config_get_channel_colour(channel);
 
@@ -472,16 +475,19 @@ cleanup:
 static bool graph__y_scale_inc(unsigned idx)
 {
 	struct graph *g = graph_g.channel + idx;
-	unsigned old = g->scale;
+	uint64_t old;
 
 	if (idx >= graph_g.count) {
 		return false;
 	}
 
-	g->scale += Y_SCALE_STEP;
+	old = g->scale;
 
-	if (g->scale > Y_SCALE_DATUM * 8) {
-		g->scale = Y_SCALE_DATUM * 8;
+	g->scale += Y_SCALE_STEP_NUM - 1;
+	g->scale *= Y_SCALE_STEP_DEN;
+	g->scale /= Y_SCALE_STEP_NUM;
+	if (g->scale > UINT_MAX) {
+		g->scale = UINT_MAX;
 	}
 
 	return (g->scale != old);
@@ -496,17 +502,19 @@ static bool graph__y_scale_inc(unsigned idx)
 static bool graph__y_scale_dec(unsigned idx)
 {
 	struct graph *g = graph_g.channel + idx;
-	unsigned old = g->scale;
+	uint64_t old;
 
 	if (idx >= graph_g.count) {
 		return false;
 	}
 
-	if (g->scale <= Y_SCALE_STEP) {
+	old = g->scale;
+
+	g->scale /= Y_SCALE_STEP_DEN;
+	if (g->scale < 1) {
 		g->scale = 1;
-	} else {
-		g->scale -= Y_SCALE_STEP;
 	}
+	g->scale *= Y_SCALE_STEP_NUM;
 
 	return (g->scale != old);
 }
