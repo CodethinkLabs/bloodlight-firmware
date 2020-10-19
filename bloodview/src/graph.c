@@ -103,6 +103,7 @@ void graph_fini(void)
 	}
 
 	graph_g.channel = NULL;
+	graph_g.current = 0;
 	graph_g.count   = 0;
 	graph_g.single  = false;
 
