@@ -55,9 +55,9 @@ struct graph {
 	unsigned pos; /**< Position of next sample to insert. */
 	unsigned ren; /**< Last rendered sample. */
 
-	unsigned step;  /**< Rendering scale in time dimension. */
-	uint64_t scale; /**< The vertical scale. */
-	bool invert;    /**< Whether to invert the magnitudes. */
+	unsigned x_step; /**< Rendering scale in time dimension. */
+	uint64_t scale;  /**< The vertical scale. */
+	bool invert;     /**< Whether to invert the magnitudes. */
 
 	uint8_t channel_idx; /**< The acquisition channel index. */
 	SDL_Color colour;    /**< Graph render colour. */
@@ -150,7 +150,7 @@ bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 		unsigned max = GRAPH_EXCESS + freq * GRAPH_HISTORY_SECONDS;
 
 		g->max = max;
-		g->step = freq / 500 + 1;
+		g->x_step = freq / 500 + 1;
 		g->scale = Y_SCALE_DATUM / 8;
 		g->channel_idx = channel;
 		g->colour = main_menu_config_get_channel_colour(channel);
@@ -377,7 +377,7 @@ void graph__render(
 		unsigned        y_off)
 {
 	unsigned len;
-	unsigned step;
+	unsigned x_step;
 	unsigned x_min;
 	unsigned y_next;
 	unsigned y_prev;
@@ -393,7 +393,7 @@ void graph__render(
 
 	graph__render_label(ren, idx, g, r);
 
-	step = g->step;
+	x_step = g->x_step;
 
 	SDL_SetRenderDrawColor(ren,
 			g->colour.r,
@@ -409,7 +409,7 @@ void graph__render(
 
 	x_min = r->x;
 	for (unsigned x = r->x + r->w; x > x_min && len < g->len; x--) {
-		for (unsigned i = 0; i < step - 1; i++) {
+		for (unsigned i = 0; i < x_step - 1; i++) {
 			pos_next = graph_pos_decrement(g, pos_next);
 			y_prev = y_next;
 			y_next = y_off + graph__data(g, pos_next) * g->scale / Y_SCALE_DATUM;
@@ -519,19 +519,19 @@ static bool graph__y_scale_dec(unsigned idx)
 static bool graph__x_scale_inc(unsigned idx)
 {
 	struct graph *g = graph_g.channel + idx;
-	unsigned old = g->step;
+	unsigned old = g->x_step;
 
 	if (idx >= graph_g.count) {
 		return false;
 	}
 
-	g->step++;
+	g->x_step++;
 
-	if (g->step > 128) {
-		g->step = 128;
+	if (g->x_step > 128) {
+		g->x_step = 128;
 	}
 
-	return (g->step != old);
+	return (g->x_step != old);
 }
 
 /**
@@ -543,19 +543,19 @@ static bool graph__x_scale_inc(unsigned idx)
 static bool graph__x_scale_dec(unsigned idx)
 {
 	struct graph *g = graph_g.channel + idx;
-	unsigned old = g->step;
+	unsigned old = g->x_step;
 
 	if (idx >= graph_g.count) {
 		return false;
 	}
 
-	g->step--;
+	g->x_step--;
 
-	if (g->step == 0) {
-		g->step = 1;
+	if (g->x_step == 0) {
+		g->x_step = 1;
 	}
 
-	return (g->step != old);
+	return (g->x_step != old);
 }
 
 /**
