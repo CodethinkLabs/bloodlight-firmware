@@ -23,6 +23,7 @@
 
 #include <time.h>
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 
 #include "sdl-tk/widget/input.h"
@@ -530,10 +531,62 @@ static bool sdl_tk_widget_input_input_mouse(
 	}
 	handled = true;
 
-	/* TODO: Handle the event. */
-	SDL_TK_UNUSED(event);
+	if (event->type == SDL_MOUSEBUTTONDOWN &&
+	    event->button.button == SDL_BUTTON_LEFT) {
+		size_t len;
+		unsigned distance;
+		unsigned min = UINT_MAX;
+
+		r.x += EDGE_WIDTH;
+		r.w -= EDGE_WIDTH * 2;
+		r.y += input->title->h + EDGE_WIDTH * 2;
+		r.h -= input->title->h + EDGE_WIDTH * 2;
+		if (pos_x < r.x || pos_x >= r.x + r.w ||
+		    pos_y < r.y || pos_y >= r.y + r.h) {
+			/* Outside widget area. */
+			goto cleanup;
+		}
+
+		r.x += BORDER_WIDTH;
+		if (pos_x <= r.x) {
+			input->cursor = 0;
+			goto cleanup;
+		}
+
+		if (input->value == NULL) {
+			input->cursor = 0;
+			goto cleanup;
+		}
+		len = strlen(input->value);
+
+		distance = abs(pos_x - r.x);
+		min = distance;
+
+		for (unsigned i = 1; i <= len; i++) {
+			int cursor_x = r.x;
+			char backup = input->value[i];
+			char *limit = &input->value[i];
+
+			*limit = '\0';
+			cursor_x += sdl_tk_text_get_size(input->value,
+					SDL_TK_TEXT_SIZE_NORMAL);
+			*limit = backup;
+
+			distance = abs(pos_x - cursor_x);
+			if (distance <= min) {
+				min = distance;
+			} else {
+				input->cursor = i - 1;
+				goto cleanup;
+			}
+		}
+
+		input->cursor = len;
+	}
 
 cleanup:
+	sdl_tk_widget_input__layout(input);
+	input__cursor_flash_reset(input);
 	return handled;
 }
 
