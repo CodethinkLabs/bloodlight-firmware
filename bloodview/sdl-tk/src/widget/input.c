@@ -42,6 +42,8 @@ struct sdl_tk_widget_input {
 	/** Text to render to represent widget value. */
 	struct sdl_tk_text *detail[SDL_TK_COLOUR__COUNT];
 	char               *value; /**< The current widget value. */
+
+	unsigned cursor_x; /**< Cursor position in pixels. */
 };
 
 /**
@@ -75,22 +77,27 @@ static void sdl_tk_widget_input__layout(
 {
 	struct sdl_tk_text *detail = input->detail[SDL_TK_COLOUR_INTERFACE];
 	unsigned max_width;
+	unsigned cursor_x;
 	unsigned height;
 
 	assert(input->title != NULL);
 
 	max_width = input->title->w;
 	height = input->title->h;
+	cursor_x = 0;
 
 	if (detail != NULL) {
 		if (max_width < detail->w) {
 			max_width = detail->w;
 		}
+		cursor_x = detail->w;
 	}
 	height += input__get_detail_height(input);
 
 	input->base.w = EDGE_WIDTH * 2 + max_width;
 	input->base.h = EDGE_WIDTH * 4 + height;
+
+	input->cursor_x = cursor_x;
 }
 
 /**
@@ -194,6 +201,7 @@ static void sdl_tk_widget_input_render(
 	const struct sdl_tk_widget_input *input = (struct sdl_tk_widget_input *) widget;
 	SDL_Color background_col = sdl_tk_colour_get(SDL_TK_COLOUR_BACKGROUND);
 	SDL_Color interface_col = sdl_tk_colour_get(SDL_TK_COLOUR_INTERFACE);
+	unsigned h = input__get_detail_height(input);
 	SDL_Rect r = {
 		.x = x - widget->w / 2,
 		.y = y - widget->h / 2,
@@ -229,6 +237,19 @@ static void sdl_tk_widget_input_render(
 		r.h = input->detail[SDL_TK_COLOUR_INTERFACE]->h;
 		SDL_RenderCopy(ren, input->detail[SDL_TK_COLOUR_INTERFACE]->t,
 				NULL, &r);
+		r.x -= EDGE_WIDTH;
+		r.y -= EDGE_WIDTH;
+	}
+
+	if (widget->focus == SDL_TK_WIDGET_FOCUS_TARGET) {
+		r.x += EDGE_WIDTH + input->cursor_x;
+		r.y += EDGE_WIDTH;
+		SDL_SetRenderDrawColor(ren,
+				interface_col.r,
+				interface_col.g,
+				interface_col.b,
+				SDL_ALPHA_OPAQUE);
+		SDL_RenderDrawLine(ren, r.x, r.y, r.x, r.y + h);
 	}
 }
 
