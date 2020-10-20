@@ -47,6 +47,7 @@ struct sdl_tk_widget_input {
 	bool     cursor_show; /**< Whether to render the cursor. */
 	time_t   cursor_time; /**< Previous cursor render time in seconds. */
 	unsigned cursor_x;    /**< Cursor position in pixels. */
+	unsigned cursor;      /**< Cursor text position. */
 };
 
 /**
@@ -71,6 +72,36 @@ static inline unsigned input__get_detail_height(
 }
 
 /**
+ * Helper to get input text cursor position.
+ *
+ * \param[in] input  Text input widget.
+ * \return the detail height in pixels.
+ */
+static inline unsigned input__get_cursor_pos(
+		const struct sdl_tk_widget_input *input)
+{
+	unsigned cursor_x = 0;
+
+	if (input->value == NULL) {
+		return 0;
+	}
+
+	assert(input->cursor <= strlen(input->value));
+
+	if (input->cursor > 0) {
+		char backup = input->value[input->cursor];
+		char *limit = &input->value[input->cursor];
+
+		*limit = '\0';
+		cursor_x = sdl_tk_text_get_size(input->value,
+				SDL_TK_TEXT_SIZE_NORMAL);
+		*limit = backup;
+	}
+
+	return cursor_x;
+}
+
+/**
  * Lay out an input widget.
  *
  * \param[in]  input  The input widget to lay out.
@@ -80,27 +111,24 @@ static void sdl_tk_widget_input__layout(
 {
 	struct sdl_tk_text *detail = input->detail[SDL_TK_COLOUR_INTERFACE];
 	unsigned max_width;
-	unsigned cursor_x;
 	unsigned height;
 
 	assert(input->title != NULL);
 
 	max_width = input->title->w;
 	height = input->title->h;
-	cursor_x = 0;
 
 	if (detail != NULL) {
 		if (max_width < detail->w) {
 			max_width = detail->w;
 		}
-		cursor_x = detail->w;
 	}
 	height += input__get_detail_height(input);
 
 	input->base.w = EDGE_WIDTH * 2 + max_width;
 	input->base.h = EDGE_WIDTH * 4 + height;
 
-	input->cursor_x = cursor_x;
+	input->cursor_x = input__get_cursor_pos(input);
 }
 
 /**
@@ -140,8 +168,6 @@ static bool sdl_tk_widget_input__update_detail(
 			return false;
 		}
 	}
-
-	sdl_tk_widget_input__layout(input);
 
 	return true;
 }
@@ -291,7 +317,9 @@ static void sdl_tk_widget_input_action(
 	widget->parent->focus = SDL_TK_WIDGET_FOCUS_CHILD;
 	widget->focus = SDL_TK_WIDGET_FOCUS_TARGET;
 
+	input->cursor = (input->value) ? strlen(input->value) : 0;
 	input__cursor_flash_reset(input);
+	sdl_tk_widget_input__layout(input);
 }
 
 /**
@@ -316,9 +344,6 @@ static bool update_value(
 		free(input->value);
 		input->value = new_value;
 
-		sdl_tk_widget_input__update_detail(input);
-		sdl_tk_widget_input__layout(input);
-
 		updated = true;
 	} else {
 		free(new_value);
@@ -330,14 +355,14 @@ static bool update_value(
 }
 
 /**
- * Append a character to an input widget's value.
+ * Add a character to an input widget's value.
  *
  * \param[in]  input    Input widget to update value for.
  * \param[in]  c        Character to add to input widget's value.
  * \param[out] updated  Returns whether the input widget's value was changed.
  * \return true on success, or false on error.
  */
-static bool append_char(
+static bool add_char(
 		struct sdl_tk_widget_input *input,
 		char c,
 		bool *updated)
@@ -350,16 +375,27 @@ static bool append_char(
 		return false;
 	}
 
+	if (input->cursor > len) {
+		input->cursor = len;
+	}
+
 	temp = realloc(new, len + 2);
 	if (temp == NULL) {
 		free(new);
 		return false;
 	}
 	new = temp;
-	new[len] = c;
-	new[len + 1] = '\0';
+	memmove(new + input->cursor + 1,
+	        new + input->cursor,
+	        len - input->cursor + 1);
+	new[input->cursor] = c;
 
 	*updated = update_value(input, new);
+	if (*updated) {
+		input->cursor++;
+		sdl_tk_widget_input__update_detail(input);
+		sdl_tk_widget_input__layout(input);
+	}
 
 	return true;
 }
@@ -385,8 +421,11 @@ static bool sdl_tk_widget_input_input_keypress(
 	case SDLK_BACKSPACE:
 	{
 		size_t len = strlen(input->value);
-		if (len > 0) {
-			input->value[len - 1] = '\0';
+		if (input->cursor > 0 && input->cursor <= len) {
+			memmove(input->value + input->cursor - 1,
+			        input->value + input->cursor,
+			        len - input->cursor + 1);
+			input->cursor--;
 
 			sdl_tk_widget_input__update_detail(input);
 			sdl_tk_widget_input__layout(input);
@@ -407,20 +446,36 @@ static bool sdl_tk_widget_input_input_keypress(
 		}
 		break;
 
-	case SDLK_KP_0: handled = append_char(input, '0', &change); break;
-	case SDLK_KP_1: handled = append_char(input, '1', &change); break;
-	case SDLK_KP_2: handled = append_char(input, '2', &change); break;
-	case SDLK_KP_3: handled = append_char(input, '3', &change); break;
-	case SDLK_KP_4: handled = append_char(input, '4', &change); break;
-	case SDLK_KP_5: handled = append_char(input, '5', &change); break;
-	case SDLK_KP_6: handled = append_char(input, '6', &change); break;
-	case SDLK_KP_7: handled = append_char(input, '7', &change); break;
-	case SDLK_KP_8: handled = append_char(input, '8', &change); break;
-	case SDLK_KP_9: handled = append_char(input, '9', &change); break;
+	case SDLK_KP_0: handled = add_char(input, '0', &change); break;
+	case SDLK_KP_1: handled = add_char(input, '1', &change); break;
+	case SDLK_KP_2: handled = add_char(input, '2', &change); break;
+	case SDLK_KP_3: handled = add_char(input, '3', &change); break;
+	case SDLK_KP_4: handled = add_char(input, '4', &change); break;
+	case SDLK_KP_5: handled = add_char(input, '5', &change); break;
+	case SDLK_KP_6: handled = add_char(input, '6', &change); break;
+	case SDLK_KP_7: handled = add_char(input, '7', &change); break;
+	case SDLK_KP_8: handled = add_char(input, '8', &change); break;
+	case SDLK_KP_9: handled = add_char(input, '9', &change); break;
+
+	case SDLK_LEFT:
+		if (input->cursor > 0) {
+			input->cursor--;
+			sdl_tk_widget_input__layout(input);
+		}
+		input__cursor_flash_reset(input);
+		break;
+
+	case SDLK_RIGHT:
+		if (input->cursor < strlen(input->value)) {
+			input->cursor++;
+			sdl_tk_widget_input__layout(input);
+		}
+		input__cursor_flash_reset(input);
+		break;
 
 	default:
 		if (key >= ' ' && key <= 'z') {
-			handled = append_char(input, (char) key, &change);
+			handled = add_char(input, (char) key, &change);
 		} else {
 			handled = false;
 		}
@@ -429,6 +484,7 @@ static bool sdl_tk_widget_input_input_keypress(
 	}
 
 	if (change) {
+		input__cursor_flash_reset(input);
 		if (input->base.parent != NULL) {
 			sdl_tk_widget_layout(input->base.parent);
 		}
@@ -601,9 +657,11 @@ struct sdl_tk_widget *sdl_tk_widget_input_create(
 		goto error;
 	}
 
+	input->cursor = (input->value == NULL) ? 0 : strlen(input->value);
 	if (!sdl_tk_widget_input__update_detail(input)) {
 		goto error;
 	}
+	sdl_tk_widget_input__layout(input);
 
 	return &input->base;
 
@@ -630,6 +688,9 @@ bool sdl_tk_widget_input_set_value(
 	updated = update_value(input, strdup(value));
 
 	if (updated) {
+		input->cursor = (input->value) ? strlen(input->value) : 0;
+		sdl_tk_widget_input__update_detail(input);
+		sdl_tk_widget_input__layout(input);
 		if (input->base.parent != NULL) {
 			sdl_tk_widget_layout(input->base.parent);
 		}
