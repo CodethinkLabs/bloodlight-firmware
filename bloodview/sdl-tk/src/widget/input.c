@@ -45,6 +45,27 @@ struct sdl_tk_widget_input {
 };
 
 /**
+ * Helper to get input detail height.
+ *
+ * \param[in] input  Text input widget.
+ * \return the detail height in pixels.
+ */
+static inline unsigned input__get_detail_height(
+		const struct sdl_tk_widget_input *input)
+{
+	struct sdl_tk_text *detail = input->detail[SDL_TK_COLOUR_INTERFACE];
+	unsigned height = input->title->h;
+
+	if (detail != NULL) {
+		if (detail->h > input->title->h) {
+			height = detail->h;
+		}
+	}
+
+	return height;
+}
+
+/**
  * Lay out an input widget.
  *
  * \param[in]  input  The input widget to lay out.
@@ -65,11 +86,8 @@ static void sdl_tk_widget_input__layout(
 		if (max_width < detail->w) {
 			max_width = detail->w;
 		}
-		height += input->title->h > detail->h ?
-		          input->title->h : detail->h;
-	} else {
-		height += input->title->h;
 	}
+	height += input__get_detail_height(input);
 
 	input->base.w = EDGE_WIDTH * 2 + max_width;
 	input->base.h = EDGE_WIDTH * 4 + height;
