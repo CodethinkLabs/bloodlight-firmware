@@ -80,6 +80,17 @@ struct sdl_tk_text *sdl_tk_text_create(
 		sdl_tk_text_size_t  size);
 
 /**
+ * Find the length of a string in pixels.
+ *
+ * \param[in]  string  String to measure.
+ * \param[in]  size    Size to render the string.
+ * \return Length of string in pixels.
+ */
+unsigned sdl_tk_text_get_size(
+		const char         *string,
+		sdl_tk_text_size_t  size);
+
+/**
  * Destroy an sdl-tk text object.
  *
  * \param[in]  text  The text object to destroy.
