@@ -130,34 +130,17 @@ int bl_spi_dma_transceive(uint8_t *tx_buf, uint8_t *rx_buf, int len)
 		temp_data = SPI_DR(SPI2);
 	}
 
-	/* Set up rx dma, note it has higher priority to avoid overrun */
-	dma_set_peripheral_address(DMA1, DMA_CHANNEL4, (uint32_t)&SPI2_DR);
-	dma_set_memory_address(DMA1, DMA_CHANNEL4, (uint32_t)rx_buf);
-	dma_set_number_of_data(DMA1, DMA_CHANNEL4, len);
-	dma_set_read_from_peripheral(DMA1, DMA_CHANNEL4);
-	dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL4);
-	dma_set_peripheral_size(DMA1, DMA_CHANNEL4, DMA_CCR_PSIZE_8BIT);
-	dma_set_memory_size(DMA1, DMA_CHANNEL4, DMA_CCR_MSIZE_8BIT);
-	dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
+	bl_acq_dma_channel_enable(*(bl_spi_dma_rx->dma),
+							  bl_spi_dma_rx->dma_channel,
+							  bl_spi_dma_rx->dmamux_req,
+							  rx_buf, &SPI2_DR, len/2,
+							  false, DMA_FROM_DEVICE);
 
-	/* Set up tx dma */
-	dma_set_peripheral_address(DMA1, DMA_CHANNEL5, (uint32_t)&SPI2_DR);
-	dma_set_memory_address(DMA1, DMA_CHANNEL5, (uint32_t)tx_buf);
-	dma_set_number_of_data(DMA1, DMA_CHANNEL5, len);
-	dma_set_read_from_memory(DMA1, DMA_CHANNEL5);
-	dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL5);
-	dma_set_peripheral_size(DMA1, DMA_CHANNEL5, DMA_CCR_PSIZE_8BIT);
-	dma_set_memory_size(DMA1, DMA_CHANNEL5, DMA_CCR_MSIZE_8BIT);
-	dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_HIGH);
-
-	/* Enable dma transfer complete interrupts */
-	dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
-	dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL5);
-
-	/* Activate dma channels */
-	dma_enable_channel(DMA1, DMA_CHANNEL4);
-	dma_enable_channel(DMA1, DMA_CHANNEL5);
-
+	bl_acq_dma_channel_enable(*(bl_spi_dma_tx->dma),
+							  bl_spi_dma_tx->dma_channel,
+							  bl_spi_dma_tx->dmamux_req,
+							  tx_buf, &SPI2_DR, len/2,
+							  false, DMA_TO_DEVICE);
 	/* Enable the spi transfer via dma
 	 * This will immediately start the transmission,
 	 * after which when the receive is complete, the
@@ -172,13 +155,16 @@ int bl_spi_dma_transceive(uint8_t *tx_buf, uint8_t *rx_buf, int len)
 /* Exported function, documented in spi.h */
 void bl_spi_dma_init(void)
 {
+
+
 	/* DMA IRQ setup, priority set to be lower than acq */
-	/* SPI2 RX on DMA1 Channel 4 */
-	nvic_set_priority(NVIC_DMA1_CHANNEL4_IRQ, 0);
-	nvic_enable_irq(NVIC_DMA1_CHANNEL4_IRQ);
-	/* SPI2 TX on DMA1 Channel 5 */
-	nvic_set_priority(NVIC_DMA1_CHANNEL5_IRQ, 0);
-	nvic_enable_irq(NVIC_DMA1_CHANNEL5_IRQ);
+	nvic_set_priority(bl_spi_dma_rx->irq, 0);
+	nvic_enable_irq(bl_spi_dma_rx->irq);
+	bl_acq_dma_enable(*(bl_spi_dma_rx->dma));
+
+	nvic_set_priority(bl_spi_dma_tx->irq, 0);
+	nvic_enable_irq(bl_spi_dma_tx->irq);
+	bl_acq_dma_enable(*(bl_spi_dma_rx->dma));
 }
 
 /* Exported function, documented in spi.h */
