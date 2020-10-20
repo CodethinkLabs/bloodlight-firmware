@@ -211,6 +211,24 @@ error:
 	return NULL;
 }
 
+/* Exported function, documented in include/sdl-tk/text.h. */
+unsigned sdl_tk_text_get_size(
+		const char         *string,
+		sdl_tk_text_size_t  size)
+{
+	int ret;
+	int w;
+
+	ret = TTF_SizeText(sdl_font[size].font, string, &w, NULL);
+	if (ret < 0) {
+		fprintf(stderr, "TTF_SizeText Error: %s\n",
+				TTF_GetError());
+		return 0;
+	}
+
+	return w;
+}
+
 /* Exported function, documented in src/text.h. */
 const struct sdl_tk_text *sdl_tk_text_get_common(
 		enum sdl_tk_colour   col,
