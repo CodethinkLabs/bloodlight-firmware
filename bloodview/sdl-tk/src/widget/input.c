@@ -21,6 +21,7 @@
  * This is a single-line text entry widget.
  */
 
+#include <time.h>
 #include <assert.h>
 #include <stdlib.h>
 
@@ -43,7 +44,9 @@ struct sdl_tk_widget_input {
 	struct sdl_tk_text *detail[SDL_TK_COLOUR__COUNT];
 	char               *value; /**< The current widget value. */
 
-	unsigned cursor_x; /**< Cursor position in pixels. */
+	bool     cursor_show; /**< Whether to render the cursor. */
+	time_t   cursor_time; /**< Previous cursor render time in seconds. */
+	unsigned cursor_x;    /**< Cursor position in pixels. */
 };
 
 /**
@@ -198,16 +201,22 @@ static void sdl_tk_widget_input_render(
 		unsigned              x,
 		unsigned              y)
 {
-	const struct sdl_tk_widget_input *input = (struct sdl_tk_widget_input *) widget;
+	struct sdl_tk_widget_input *input = (struct sdl_tk_widget_input *) widget;
 	SDL_Color background_col = sdl_tk_colour_get(SDL_TK_COLOUR_BACKGROUND);
 	SDL_Color interface_col = sdl_tk_colour_get(SDL_TK_COLOUR_INTERFACE);
 	unsigned h = input__get_detail_height(input);
+	time_t now = time(NULL);
 	SDL_Rect r = {
 		.x = x - widget->w / 2,
 		.y = y - widget->h / 2,
 		.w = widget->w,
 		.h = widget->h,
 	};
+
+	if (now >= 0 && now != input->cursor_time) {
+		input->cursor_show = !input->cursor_show;
+		input->cursor_time = now;
+	}
 
 	sdl_tl__shift_rect(rect, &r);
 
@@ -241,16 +250,29 @@ static void sdl_tk_widget_input_render(
 		r.y -= EDGE_WIDTH;
 	}
 
-	if (widget->focus == SDL_TK_WIDGET_FOCUS_TARGET) {
-		r.x += EDGE_WIDTH + input->cursor_x;
-		r.y += EDGE_WIDTH;
-		SDL_SetRenderDrawColor(ren,
-				interface_col.r,
-				interface_col.g,
-				interface_col.b,
-				SDL_ALPHA_OPAQUE);
-		SDL_RenderDrawLine(ren, r.x, r.y, r.x, r.y + h);
+	if (input->cursor_show) {
+		if (widget->focus == SDL_TK_WIDGET_FOCUS_TARGET) {
+			r.x += EDGE_WIDTH + input->cursor_x;
+			r.y += EDGE_WIDTH;
+			SDL_SetRenderDrawColor(ren,
+					interface_col.r,
+					interface_col.g,
+					interface_col.b,
+					SDL_ALPHA_OPAQUE);
+			SDL_RenderDrawLine(ren, r.x, r.y, r.x, r.y + h);
+		}
 	}
+}
+
+/**
+ * Force the cursor flash pattern back to showing.
+ *
+ * \param[in]  input  A text input widget.
+ */
+static void input__cursor_flash_reset(struct sdl_tk_widget_input *input)
+{
+	input->cursor_show = true;
+	input->cursor_time = time(NULL);
 }
 
 /**
@@ -261,11 +283,15 @@ static void sdl_tk_widget_input_render(
 static void sdl_tk_widget_input_action(
 		struct sdl_tk_widget *widget)
 {
+	struct sdl_tk_widget_input *input = (struct sdl_tk_widget_input *) widget;
+
 	assert(widget->parent != NULL);
 	assert(widget->parent->focus == SDL_TK_WIDGET_FOCUS_TARGET);
 
 	widget->parent->focus = SDL_TK_WIDGET_FOCUS_CHILD;
 	widget->focus = SDL_TK_WIDGET_FOCUS_TARGET;
+
+	input__cursor_flash_reset(input);
 }
 
 /**
@@ -297,6 +323,8 @@ static bool update_value(
 	} else {
 		free(new_value);
 	}
+
+	input__cursor_flash_reset(input);
 
 	return updated;
 }
@@ -362,6 +390,7 @@ static bool sdl_tk_widget_input_input_keypress(
 
 			sdl_tk_widget_input__update_detail(input);
 			sdl_tk_widget_input__layout(input);
+			input__cursor_flash_reset(input);
 
 			change = true;
 		}
