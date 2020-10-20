@@ -423,11 +423,17 @@ static bool sdl_tk_widget_input_input_keypress(
 	{
 		size_t len = strlen(input->value);
 		if (input->cursor > 0 && input->cursor <= len) {
-			memmove(input->value + input->cursor - 1,
-			        input->value + input->cursor,
+			char *new = strdup(input->value);
+			if (new == NULL) {
+				return true;
+			}
+
+			memmove(new + input->cursor - 1,
+			        new + input->cursor,
 			        len - input->cursor + 1);
 			input->cursor--;
 
+			update_value(input, new);
 			sdl_tk_widget_input__update_detail(input);
 			sdl_tk_widget_input__layout(input);
 			input__cursor_flash_reset(input);
