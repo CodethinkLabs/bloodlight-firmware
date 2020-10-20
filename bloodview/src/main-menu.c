@@ -655,6 +655,11 @@ bool main_menu_unsigned_input_cb(
 {
 	size_t len = strlen(new_value);
 
+	if (len == 0) {
+		widget_value = 0;
+		return true;
+	}
+
 	for (unsigned i = 0; i < len; i++) {
 		if (isdigit(new_value[i]) == false) {
 			return false;
@@ -676,6 +681,11 @@ bool main_menu_double_input_cb(
 		const char *new_value)
 {
 	size_t len = strlen(new_value);
+
+	if (len == 0) {
+		widget_value = 0;
+		return true;
+	}
 
 	for (unsigned i = 0; i < len; i++) {
 		if (isdigit(new_value[i]) == false &&
