@@ -469,19 +469,12 @@ cleanup:
 /**
  * Increment a graphs's y-scale.
  *
- * \param[in]  idx  Index of graph to scale.
+ * \param[in]  g  Graph to scale.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__y_scale_inc(unsigned idx)
+static bool graph__y_scale_inc(struct graph *g)
 {
-	struct graph *g = graph_g.channel + idx;
-	uint64_t old;
-
-	if (idx >= graph_g.count) {
-		return false;
-	}
-
-	old = g->scale;
+	uint64_t old = g->scale;
 
 	g->scale += Y_SCALE_STEP_NUM - 1;
 	g->scale *= Y_SCALE_STEP_DEN;
@@ -496,19 +489,12 @@ static bool graph__y_scale_inc(unsigned idx)
 /**
  * Decrement a graphs's y-scale.
  *
- * \param[in]  idx  Index of graph to scale.
+ * \param[in]  g  Graph to scale.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__y_scale_dec(unsigned idx)
+static bool graph__y_scale_dec(struct graph *g)
 {
-	struct graph *g = graph_g.channel + idx;
-	uint64_t old;
-
-	if (idx >= graph_g.count) {
-		return false;
-	}
-
-	old = g->scale;
+	uint64_t old = g->scale;
 
 	g->scale /= Y_SCALE_STEP_DEN;
 	if (g->scale < 1) {
@@ -522,17 +508,12 @@ static bool graph__y_scale_dec(unsigned idx)
 /**
  * Increment a graphs's x-scale.
  *
- * \param[in]  idx  Index of graph to scale.
+ * \param[in]  g  Graph to scale.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__x_scale_inc(unsigned idx)
+static bool graph__x_scale_inc(struct graph *g)
 {
-	struct graph *g = graph_g.channel + idx;
 	unsigned old = g->x_step;
-
-	if (idx >= graph_g.count) {
-		return false;
-	}
 
 	g->x_step++;
 
@@ -546,17 +527,12 @@ static bool graph__x_scale_inc(unsigned idx)
 /**
  * Decrement a graphs's x-scale.
  *
- * \param[in]  idx  Index of graph to scale.
+ * \param[in]  g  Graph to scale.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__x_scale_dec(unsigned idx)
+static bool graph__x_scale_dec(struct graph *g)
 {
-	struct graph *g = graph_g.channel + idx;
 	unsigned old = g->x_step;
-
-	if (idx >= graph_g.count) {
-		return false;
-	}
 
 	g->x_step--;
 
@@ -570,13 +546,11 @@ static bool graph__x_scale_dec(unsigned idx)
 /**
  * Toggle a graph's inversion state.
  *
- * \param[in]  idx  The graph index to invert.
+ * \param[in]  g  Graph to scale.
  * \return true.
  */
-static bool graph__invert(unsigned idx)
+static bool graph__invert(struct graph *g)
 {
-	struct graph *g = graph_g.channel + idx;
-
 	g->invert = !g->invert;
 
 	return true;
@@ -592,7 +566,7 @@ static bool graph__invert(unsigned idx)
 static bool graph__key_handler(
 		bool shift,
 		bool ctrl,
-		bool (*func)(unsigned idx))
+		bool (*func)(struct graph *g))
 {
 	bool ret = false;
 
@@ -600,10 +574,16 @@ static bool graph__key_handler(
 
 	if (shift) {
 		for (unsigned i = 0; i < graph_g.count; i++) {
-			ret |= func(i);
+			if (i >= graph_g.count) {
+				continue;
+			}
+			ret |= func(graph_g.channel + i);
 		}
 	} else {
-		ret |= func(graph_g.current);
+		if (graph_g.current >= graph_g.count) {
+			return false;
+		}
+		ret |= func(graph_g.channel + graph_g.current);
 	}
 
 	return ret;
