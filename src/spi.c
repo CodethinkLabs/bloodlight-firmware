@@ -66,60 +66,30 @@ static bl_spi_dma_t bl_spi_dma__tx =
 bl_spi_dma_t *bl_spi_dma_rx = &bl_spi_dma__rx;
 bl_spi_dma_t *bl_spi_dma_tx = &bl_spi_dma__tx;
 
+/* This is a macro to avoid repeated code for each ISR. */
+#define DMA_CHANNEL_ISR(__dma, __channel) \
+    void dma##__dma##_channel##__channel##_isr(void) \
+    { \
+	if ((DMA##__dma##_ISR & DMA_ISR_TCIF2) != 0) { \
+		DMA##__dma##_IFCR |= DMA_IFCR_CTCIF2; \
+	} \
+	dma_disable_transfer_complete_interrupt(DMA##__dma, \
+								DMA_CHANNEL##__channel); \
+	spi_disable_rx_dma(SPI2); \
+	dma_disable_channel(DMA##__dma, DMA_CHANNEL##__channel); \
+    }
+
+#if (BL_REVISION == 1)
 /* SPI receive completed with DMA */
-void dma1_channel4_isr(void)
-{
-	if ((DMA1_ISR &DMA_ISR_TCIF2) != 0) {
-		DMA1_IFCR |= DMA_IFCR_CTCIF2;
-	}
-
-	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
-
-	spi_disable_rx_dma(SPI2);
-
-	dma_disable_channel(DMA1, DMA_CHANNEL4);
-}
-
+DMA_CHANNEL_ISR(1, 4);
 /* SPI transmit completed with DMA */
-void dma1_channel5_isr(void)
-{
-	if ((DMA1_ISR &DMA_ISR_TCIF3) != 0) {
-		DMA1_IFCR |= DMA_IFCR_CTCIF3;
-	}
-
-	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL5);
-
-	spi_disable_tx_dma(SPI2);
-
-	dma_disable_channel(DMA1, DMA_CHANNEL5);
-}
-
-void dma1_channel6_isr(void)
-{
-	if ((DMA1_ISR &DMA_ISR_TCIF2) != 0) {
-		DMA1_IFCR |= DMA_IFCR_CTCIF2;
-	}
-
-	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL6);
-
-	spi_disable_rx_dma(SPI2);
-
-	dma_disable_channel(DMA1, DMA_CHANNEL6);
-}
-
+DMA_CHANNEL_ISR(1, 5);
+#else
+/* SPI receive completed with DMA */
+DMA_CHANNEL_ISR(1, 6);
 /* SPI transmit completed with DMA */
-void dma1_channel7_isr(void)
-{
-	if ((DMA1_ISR &DMA_ISR_TCIF3) != 0) {
-		DMA1_IFCR |= DMA_IFCR_CTCIF3;
-	}
-
-	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL7);
-
-	spi_disable_tx_dma(SPI2);
-
-	dma_disable_channel(DMA1, DMA_CHANNEL7);
-}
+DMA_CHANNEL_ISR(1, 7);
+#endif
 
 static void bl_spi__setup(void)
 {
