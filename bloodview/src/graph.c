@@ -474,9 +474,7 @@ static bool graph__y_scale_inc(struct graph *g, bool ctrl)
 {
 	uint64_t old = g->scale;
 	uint64_t den = Y_SCALE_STEP_DEN;
-	uint64_t num = den + 1;
-
-	BV_UNUSED(ctrl);
+	uint64_t num = (ctrl) ? den * 2 : den + 1;
 
 	g->scale += den - 1;
 	g->scale *= num;
@@ -499,9 +497,7 @@ static bool graph__y_scale_dec(struct graph *g, bool ctrl)
 {
 	uint64_t old = g->scale;
 	uint64_t den = Y_SCALE_STEP_DEN;
-	uint64_t num = den - 1;
-
-	BV_UNUSED(ctrl);
+	uint64_t num = (ctrl) ? den / 2 : den - 1;
 
 	g->scale /= den;
 	if (g->scale < 1) {
