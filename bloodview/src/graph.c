@@ -43,9 +43,6 @@
 /** Graph y-scale step factor. */
 #define Y_SCALE_STEP_DEN (1LLU << 6)
 
-/** Graph y-scale step multiplier. */
-#define Y_SCALE_STEP_NUM (Y_SCALE_STEP_DEN - 1)
-
 /** Maximum number of seconds of graph data to store for each channel. */
 #define GRAPH_HISTORY_SECONDS 64
 
@@ -475,10 +472,12 @@ cleanup:
 static bool graph__y_scale_inc(struct graph *g)
 {
 	uint64_t old = g->scale;
+	uint64_t den = Y_SCALE_STEP_DEN;
+	uint64_t num = den + 1;
 
-	g->scale += Y_SCALE_STEP_NUM - 1;
-	g->scale *= Y_SCALE_STEP_DEN;
-	g->scale /= Y_SCALE_STEP_NUM;
+	g->scale += den - 1;
+	g->scale *= num;
+	g->scale /= den;
 	if (g->scale > UINT_MAX) {
 		g->scale = UINT_MAX;
 	}
@@ -495,12 +494,14 @@ static bool graph__y_scale_inc(struct graph *g)
 static bool graph__y_scale_dec(struct graph *g)
 {
 	uint64_t old = g->scale;
+	uint64_t den = Y_SCALE_STEP_DEN;
+	uint64_t num = den - 1;
 
-	g->scale /= Y_SCALE_STEP_DEN;
+	g->scale /= den;
 	if (g->scale < 1) {
 		g->scale = 1;
 	}
-	g->scale *= Y_SCALE_STEP_NUM;
+	g->scale *= num;
 
 	return (g->scale != old);
 }
