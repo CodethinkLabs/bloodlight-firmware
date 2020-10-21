@@ -92,6 +92,8 @@ DMA_CHANNEL_ISR(1, 6);
 DMA_CHANNEL_ISR(1, 7);
 #endif
 
+#define SPI_SR_FTLVL	SPI_SR_FTLVL_FIFO_FULL
+#define SPI_SR_FRLVL	SPI_SR_FRLVL_FIFO_FULL
 static void bl_spi__setup(void)
 {
 	rcc_periph_clock_enable(RCC_SPI2);
@@ -107,12 +109,17 @@ static void bl_spi__setup(void)
 	gpio_set_af(GPIOB, GPIO_AF5, GPIO13 | GPIO14 | GPIO15);
 
 	/* Disable SPI before reset it
-	 * We omitted the procedure of verifying tx/rx buffer
-	 * are empty while resetting the SPI, as in our use case
-	 * resetting SPI will only happen at beginning of each
-	 * acquisition.
+	 * Follow the procedure of disabling SPI documented
+	 * at section 30.5.8 of TRM.
 	 */
+	while (SPI_SR(SPI2) & (SPI_SR_FTLVL | SPI_SR_BSY)) {
+		;
+	}
 	spi_disable(SPI2);
+	volatile uint8_t temp_data __attribute__ ((unused));
+	while (SPI_SR(SPI2) & SPI_SR_FRLVL) {
+		temp_data = SPI_DR(SPI2);
+	}
 
 	/* SPI initialization */
 	spi_set_baudrate_prescaler(SPI2, SPI_CR1_BR_FPCLK_DIV_64);
