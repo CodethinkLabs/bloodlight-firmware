@@ -466,14 +466,17 @@ cleanup:
 /**
  * Increment a graphs's y-scale.
  *
- * \param[in]  g  Graph to scale.
+ * \param[in]  g     Graph to scale.
+ * \param[in]  ctrl  Whether ctrl key is pressed.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__y_scale_inc(struct graph *g)
+static bool graph__y_scale_inc(struct graph *g, bool ctrl)
 {
 	uint64_t old = g->scale;
 	uint64_t den = Y_SCALE_STEP_DEN;
 	uint64_t num = den + 1;
+
+	BV_UNUSED(ctrl);
 
 	g->scale += den - 1;
 	g->scale *= num;
@@ -488,14 +491,17 @@ static bool graph__y_scale_inc(struct graph *g)
 /**
  * Decrement a graphs's y-scale.
  *
- * \param[in]  g  Graph to scale.
+ * \param[in]  g     Graph to scale.
+ * \param[in]  ctrl  Whether ctrl key is pressed.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__y_scale_dec(struct graph *g)
+static bool graph__y_scale_dec(struct graph *g, bool ctrl)
 {
 	uint64_t old = g->scale;
 	uint64_t den = Y_SCALE_STEP_DEN;
 	uint64_t num = den - 1;
+
+	BV_UNUSED(ctrl);
 
 	g->scale /= den;
 	if (g->scale < 1) {
@@ -509,12 +515,15 @@ static bool graph__y_scale_dec(struct graph *g)
 /**
  * Increment a graphs's x-scale.
  *
- * \param[in]  g  Graph to scale.
+ * \param[in]  g     Graph to scale.
+ * \param[in]  ctrl  Whether ctrl key is pressed.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__x_scale_inc(struct graph *g)
+static bool graph__x_scale_inc(struct graph *g, bool ctrl)
 {
 	unsigned old = g->x_step;
+
+	BV_UNUSED(ctrl);
 
 	g->x_step++;
 
@@ -528,12 +537,15 @@ static bool graph__x_scale_inc(struct graph *g)
 /**
  * Decrement a graphs's x-scale.
  *
- * \param[in]  g  Graph to scale.
+ * \param[in]  g     Graph to scale.
+ * \param[in]  ctrl  Whether ctrl key is pressed.
  * \return true if scale changed, false otherwise.
  */
-static bool graph__x_scale_dec(struct graph *g)
+static bool graph__x_scale_dec(struct graph *g, bool ctrl)
 {
 	unsigned old = g->x_step;
+
+	BV_UNUSED(ctrl);
 
 	g->x_step--;
 
@@ -547,11 +559,14 @@ static bool graph__x_scale_dec(struct graph *g)
 /**
  * Toggle a graph's inversion state.
  *
- * \param[in]  g  Graph to scale.
+ * \param[in]  g     Graph to invert.
+ * \param[in]  ctrl  Whether ctrl key is pressed.
  * \return true.
  */
-static bool graph__invert(struct graph *g)
+static bool graph__invert(struct graph *g, bool ctrl)
 {
+	BV_UNUSED(ctrl);
+
 	g->invert = !g->invert;
 
 	return true;
@@ -567,24 +582,22 @@ static bool graph__invert(struct graph *g)
 static bool graph__key_handler(
 		bool shift,
 		bool ctrl,
-		bool (*func)(struct graph *g))
+		bool (*func)(struct graph *g, bool ctrl))
 {
 	bool ret = false;
-
-	BV_UNUSED(ctrl);
 
 	if (shift) {
 		for (unsigned i = 0; i < graph_g.count; i++) {
 			if (i >= graph_g.count) {
 				continue;
 			}
-			ret |= func(graph_g.channel + i);
+			ret |= func(graph_g.channel + i, ctrl);
 		}
 	} else {
 		if (graph_g.current >= graph_g.count) {
 			return false;
 		}
-		ret |= func(graph_g.channel + graph_g.current);
+		ret |= func(graph_g.channel + graph_g.current, ctrl);
 	}
 
 	return ret;
