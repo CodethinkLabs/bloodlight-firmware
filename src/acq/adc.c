@@ -250,6 +250,8 @@ struct bl_acq_adc_s
 	unsigned          samples_per_dma;
 	volatile uint16_t dma_buffer[BL_ACQ_DMA_MAX * 2];
 
+	void (*isr)(bl_acq_adc_t *, volatile uint16_t *);
+
 	bl_acq_adc_config_t config;
 };
 
@@ -438,6 +440,8 @@ enum bl_error bl_acq_adc_channel_configure(bl_acq_adc_t *adc,
 	return BL_ERROR_NONE;
 }
 
+static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, volatile uint16_t *buffer);
+
 enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 		uint32_t frequency, uint32_t sw_oversample,
 		uint8_t oversample, uint8_t shift)
@@ -556,6 +560,9 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 	 * consistent across samples. It's possible to modify this so that
 	 * we collect multiple samples per interrupt. */
 	adc->samples_per_dma = sw_oversample * config->channel_count;
+
+	/* TODO: Select optimal ISR based on configuration. */
+	adc->isr = bl_acq_adc_dma_isr;
 
 	return BL_ERROR_NONE;
 }
@@ -734,12 +741,11 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, volatile uint16_t *buffer)
 		bl_acq_adc_t *adc = bl_acq_adc##__adc; \
 		if (dma_get_interrupt_flag(DMA##__dma, \
 				DMA_CHANNEL##__channel, DMA_HTIF)) { \
-			bl_acq_adc_dma_isr(adc, &adc->dma_buffer[0]); \
+			adc->isr(adc, &adc->dma_buffer[0]); \
 			dma_clear_interrupt_flags(DMA##__dma, \
 					DMA_CHANNEL##__channel, DMA_HTIF); \
 		} else { \
-			bl_acq_adc_dma_isr(adc, \
-				&adc->dma_buffer[adc->samples_per_dma]); \
+			adc->isr(adc, &adc->dma_buffer[adc->samples_per_dma]); \
 			dma_clear_interrupt_flags(DMA##__dma, \
 					DMA_CHANNEL##__channel, DMA_TCIF); \
 		} \
