@@ -66,6 +66,9 @@ struct graph {
 /** Per-graph render context. */
 struct render {
 	struct sdl_tk_text *label; /**< The graph name. */
+	struct sdl_tk_text *scale; /**< The graph scale. */
+
+	uint64_t prev_scale;
 };
 
 /** Graph global context. */
@@ -286,6 +289,37 @@ static struct sdl_tk_text *graph__create_label(
 }
 
 /**
+ * Helper for creating channel scale texture.
+ *
+ * \param[in]  scale   The graph scale value.
+ * \param[in]  colour  The channel colour.
+ * \return new text label, or NULL on error.
+ */
+static struct sdl_tk_text *graph__create_scale(
+		uint64_t  scale,
+		SDL_Color colour)
+{
+	struct sdl_tk_text *text;
+	static char string[64];
+	int written;
+
+	written = snprintf(string, sizeof(string), "Scale: %f",
+			((double)scale) / ((double)Y_SCALE_DATUM));
+	if (written <= 0) {
+		return NULL;
+	} else if ((unsigned)written >= sizeof(string)) {
+		return NULL;
+	}
+
+	text = sdl_tk_text_create(string, colour, SDL_TK_TEXT_SIZE_NORMAL);
+	if (text == NULL) {
+		return NULL;
+	}
+
+	return text;
+}
+
+/**
  * Render a graph's label, creating it if needed.
  *
  * \param[in]  ren  The SDL renderer.
@@ -327,6 +361,20 @@ static void graph__render_label(
 		}
 	}
 
+	if (render->prev_scale != g->scale) {
+		struct sdl_tk_text *scale = render->scale;
+		render->scale = NULL;
+		sdl_tk_text_destroy(scale);
+	}
+
+	if (render->scale == NULL) {
+		render->scale = graph__create_scale(g->scale, g->colour);
+		if (render->scale == NULL) {
+			return;
+		}
+		render->prev_scale = g->scale;
+	}
+
 	SDL_Rect rect = {
 		.x = r->x + 2,
 		.y = r->y + 2,
@@ -335,6 +383,11 @@ static void graph__render_label(
 	};
 
 	SDL_RenderCopy(ren, render->label->t, NULL, &rect);
+	rect.y += rect.h;
+
+	rect.w = render->scale->w;
+	rect.h = render->scale->h;
+	SDL_RenderCopy(ren, render->scale->t, NULL, &rect);
 }
 
 /**
@@ -349,10 +402,13 @@ static void graph__render_fini(void)
 			for (unsigned i = 0; i < graph_g.render_count; i++) {
 				struct render *r = graph_g.render + i;
 				struct sdl_tk_text *label = r->label;
+				struct sdl_tk_text *scale = r->scale;
 
 				r->label = NULL;
+				r->scale = NULL;
 
 				sdl_tk_text_destroy(label);
+				sdl_tk_text_destroy(scale);
 			}
 			free(graph_g.render);
 			graph_g.render = NULL;
