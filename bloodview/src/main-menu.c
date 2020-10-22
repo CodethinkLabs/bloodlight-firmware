@@ -73,11 +73,13 @@ struct desc_widget_value {
 		INPUT_TYPE_DOUBLE,
 		INPUT_TYPE_UNSIGNED,
 		INPUT_TYPE_ACQ_MODE,
+		INPUT_TYPE_DERIVATIVE,
 	} type; /**< The input value type. */
 	union {
-		double           type_double;   /**< Data for double values */
-		unsigned         type_unsigned; /**< Data for unsigned values */
-		enum bl_acq_mode type_acq_mode; /**< Data for acquisition modes */
+		double             type_double;     /**< Data for double values */
+		unsigned           type_unsigned;   /**< Data for unsigned values */
+		enum bl_acq_mode   type_acq_mode;   /**< Data for acquisition modes */
+		enum bv_derivative type_derivative; /**< Data for derivative modes */
 	};
 };
 
@@ -406,9 +408,10 @@ static struct desc_widget *bl_main_menu;
 
 /** CYAML schema: Valid input widget type mapping. */
 static const cyaml_strval_t widget_input_type[] = {
-	{ .val = INPUT_TYPE_DOUBLE,   .str = "double" },
-	{ .val = INPUT_TYPE_UNSIGNED, .str = "unsigned" },
-	{ .val = INPUT_TYPE_ACQ_MODE, .str = "acq-mode" },
+	{ .val = INPUT_TYPE_DOUBLE,     .str = "double" },
+	{ .val = INPUT_TYPE_UNSIGNED,   .str = "unsigned" },
+	{ .val = INPUT_TYPE_ACQ_MODE,   .str = "acq-mode" },
+	{ .val = INPUT_TYPE_DERIVATIVE, .str = "derivative" },
 };
 
 /** CYAML schema: Valid widget type mapping. */
@@ -432,6 +435,13 @@ static const cyaml_strval_t bv_action_type[] = {
 static const cyaml_strval_t bv_acq_mode[] = {
 	{ .val = BL_ACQ_MODE_CONTINUOUS, .str = "Continuous" },
 	{ .val = BL_ACQ_MODE_FLASH,      .str = "Flash" },
+};
+
+/** CYAML schema: Valid acquisition mode mapping. */
+static const cyaml_strval_t bv_derivative[] = {
+	{ .val = BV_DERIVATIVE_NONE,   .str = "None" },
+	{ .val = BV_DERIVATIVE_FIRST,  .str = "First" },
+	{ .val = BV_DERIVATIVE_SECOND, .str = "Second" },
 };
 
 static const cyaml_schema_value_t schema_main_menu;
@@ -491,6 +501,9 @@ static const cyaml_schema_field_t schema_main_menu_widget_select_value_mapping[]
 	CYAML_FIELD_ENUM("acq-mode", CYAML_FLAG_DEFAULT,
 			struct desc_widget_value, type_acq_mode,
 			bv_acq_mode, CYAML_ARRAY_LEN(bv_acq_mode)),
+	CYAML_FIELD_ENUM("derivative", CYAML_FLAG_DEFAULT,
+			struct desc_widget_value, type_derivative,
+			bv_derivative, CYAML_ARRAY_LEN(bv_derivative)),
 	CYAML_FIELD_END
 };
 
@@ -637,6 +650,11 @@ static void main_menu_select_cb(
 		sdl_tk_widget_enable(desc_flash->widget,
 				new_value == BL_ACQ_MODE_FLASH);
 		break;
+
+	case INPUT_TYPE_DERIVATIVE:
+		value->select.value.type_derivative = new_value;
+		break;
+
 	default:
 		break;
 	}
@@ -792,6 +810,10 @@ static unsigned main_menu__select_value(
 		value = val->type_acq_mode;
 		break;
 
+	case INPUT_TYPE_DERIVATIVE:
+		value = val->type_derivative;
+		break;
+
 	default:
 		break;
 	}
@@ -838,6 +860,11 @@ static bool main_menu__get_select_options(
 	case INPUT_TYPE_ACQ_MODE:
 		strval = bv_acq_mode;
 		count = CYAML_ARRAY_LEN(bv_acq_mode);
+		break;
+
+	case INPUT_TYPE_DERIVATIVE:
+		strval = bv_derivative;
+		count = CYAML_ARRAY_LEN(bv_derivative);
 		break;
 
 	default:
@@ -1641,6 +1668,18 @@ bool main_menu_config_get_filter_ac_denoise_enabled(void)
 {
 	return main_menu__get_desc_toggle_value(bl_main_menu,
 			"Config/Filtering/AC denoise");
+}
+
+/* Exported interface, documented in main-menu.h */
+enum bv_derivative main_menu_config_get_derivative_mode(void)
+{
+	struct desc_widget *desc = main_menu__get_desc_fmt(
+			bl_main_menu, "Config/Filtering/Derivative");
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_SELECT);
+
+	return main_menu__select_value(&desc->select.value);
 }
 
 /* Exported interface, documented in main-menu.h */

@@ -31,6 +31,7 @@ MKDIR =	mkdir -p
 
 BV_SRC = \
 	src/data-invert.c \
+	src/derivative.c \
 	src/bloodview.c \
 	src/main-menu.c \
 	src/data-avg.c \

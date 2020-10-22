@@ -28,6 +28,13 @@
 
 #include "../../src/acq.h"
 
+/** Bloodview derivative modes. */
+enum bv_derivative {
+	BV_DERIVATIVE_NONE,
+	BV_DERIVATIVE_FIRST,
+	BV_DERIVATIVE_SECOND,
+};
+
 /**
  * Create the bloodlight main menu widget set.
  *
@@ -182,6 +189,13 @@ bool main_menu_config_get_filter_normalise_enabled(void);
  * \return true if enabled, false otherwise.
  */
 bool main_menu_config_get_filter_ac_denoise_enabled(void);
+
+/**
+ * Get the Derivative Mode.
+ *
+ * \return the configured Derivative mode.
+ */
+enum bv_derivative main_menu_config_get_derivative_mode(void);
 
 /**
  * Get the frequency for sample normalisation.

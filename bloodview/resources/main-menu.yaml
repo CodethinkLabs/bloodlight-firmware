@@ -267,6 +267,10 @@ sub-menus:
     - toggle:
         title: AC denoise
         value: on
+    - select:
+        title: Derivative
+        value:
+          derivative: None
 
   - &menu-config
     - menu:

@@ -33,6 +33,7 @@
 #include "data-avg.h"
 #include "data-cal.h"
 #include "main-menu.h"
+#include "derivative.h"
 #include "data-invert.h"
 
 /** Data filter details. */
@@ -355,6 +356,40 @@ static bool data__register_ac_denoise(
 }
 
 /**
+ * Resister the derivative filter.
+ *
+ * \param[in]  frequency     The sampling frequency.
+ * \param[in]  channels      The number of channels.
+ * \param[in]  channel_mask  Mask of enabled channels.
+ * \return true on success, or false on error.
+ */
+static bool data__register_derivative(
+		unsigned frequency,
+		unsigned channels,
+		uint32_t channel_mask)
+{
+	struct data_filter *filter;
+
+	filter = data__allocate_filter();
+	if (filter == NULL) {
+		return false;
+	}
+
+	filter->ctx = derivative_init(frequency, channels, channel_mask);
+	if (filter->ctx == NULL) {
+		/* No need to free the filter, it's already owned by the
+		 * global state. */
+		return false;
+	}
+
+	filter->fini = derivative_fini;
+	filter->proc = derivative_proc;
+
+	data_g.count++;
+	return true;
+}
+
+/**
  * Initialise the data context.
  *
  * \param[in]  calibrate     Whether this is a calibration acquisition.
@@ -394,6 +429,18 @@ static bool data__register_filters(
 
 	if (main_menu_config_get_filter_ac_denoise_enabled() &&
 			!data__register_ac_denoise(
+					frequency, channels, channel_mask)) {
+		return false;
+	}
+
+	if (main_menu_config_get_derivative_mode() > BV_DERIVATIVE_NONE &&
+			!data__register_derivative(
+					frequency, channels, channel_mask)) {
+		return false;
+	}
+
+	if (main_menu_config_get_derivative_mode() > BV_DERIVATIVE_FIRST &&
+			!data__register_derivative(
 					frequency, channels, channel_mask)) {
 		return false;
 	}
