@@ -440,7 +440,12 @@ enum bl_error bl_acq_adc_channel_configure(bl_acq_adc_t *adc,
 	return BL_ERROR_NONE;
 }
 
-static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, volatile uint16_t *buffer);
+static void bl_acq_adc_dma_isr_single(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer);
+static void bl_acq_adc_dma_isr_multi(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer);
+static void bl_acq_adc_dma_isr_flash(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer);
 
 enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 		uint32_t frequency, uint32_t sw_oversample,
@@ -561,8 +566,9 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 	 * we collect multiple samples per interrupt. */
 	adc->samples_per_dma = sw_oversample * config->channel_count;
 
-	/* TODO: Select optimal ISR based on configuration. */
-	adc->isr = bl_acq_adc_dma_isr;
+	/* Select optimal ISR based on configuration. */
+	adc->isr = (config->channel_count > 1 ?
+		bl_acq_adc_dma_isr_multi : bl_acq_adc_dma_isr_single);
 
 	return BL_ERROR_NONE;
 }
@@ -572,6 +578,11 @@ void bl_acq_adc_flash_init(bl_acq_adc_t *adc, bool enable, bool master)
 	adc->flash_enable = enable;
 	adc->flash_master = master;
 	adc->flash_index  = 0;
+
+	/* TODO: Combine this with configuration. */
+	if (enable) {
+		adc->isr = bl_acq_adc_dma_isr_flash;
+	}
 }
 
 void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag)
@@ -693,7 +704,22 @@ bl_acq_dma_t *bl_acq_adc_get_dma(const bl_acq_adc_t *adc)
 	return *(adc->dma);
 }
 
-static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, volatile uint16_t *buffer)
+static void bl_acq_adc_dma_isr_single(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer)
+{
+	uint32_t sample = 0;
+	volatile uint16_t *p = buffer;
+	for (unsigned s = 0; s < adc->samples_per_dma; s++) {
+		sample += *p++;
+	}
+
+	unsigned channel = bl_acq_source_get_channel(
+			adc->config.channel_source[0]);
+	bl_acq_channel_commit_sample(channel, sample);
+}
+
+static void bl_acq_adc_dma_isr_multi(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer)
 {
 	uint32_t sample[adc->config.channel_count];
 	for (unsigned c = 0; c < adc->config.channel_count; c++) {
@@ -707,30 +733,44 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, volatile uint16_t *buffer)
 		}
 	}
 
-	if (adc->flash_enable) {
-		for (unsigned c = 0; c < adc->config.channel_count; c++) {
-			if (bl_led_channel[adc->flash_index].src_mask &
-				adc->config.src_mask[c]) {
-				unsigned channel = bl_acq_source_get_channel(
-						adc->config.channel_source[c]);
-				bl_acq_channel_commit_sample(channel, sample[c]);
-			}
-		}
+	for (unsigned c = 0; c < adc->config.channel_count; c++) {
+		unsigned channel = bl_acq_source_get_channel(
+				adc->config.channel_source[c]);
+		bl_acq_channel_commit_sample(channel, sample[c]);
+	}
+}
 
-		adc->flash_index++;
-		if (adc->flash_index >= bl_led_count) {
-			adc->flash_index = 0;
-		}
+static void bl_acq_adc_dma_isr_flash(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer)
+{
+	uint32_t sample[adc->config.channel_count];
+	for (unsigned c = 0; c < adc->config.channel_count; c++) {
+		sample[c] = 0;
+	}
 
-		if (adc->flash_master) {
-			bl_led_loop();
+	volatile uint16_t *p = buffer;
+	for (unsigned s = 0; s < adc->samples_per_dma;) {
+		for (unsigned c = 0; c < adc->config.channel_count; c++, s++) {
+			sample[c] += *p++;
 		}
-	} else {
-		for (unsigned c = 0; c < adc->config.channel_count; c++) {
+	}
+
+	for (unsigned c = 0; c < adc->config.channel_count; c++) {
+		if (bl_led_channel[adc->flash_index].src_mask &
+			adc->config.src_mask[c]) {
 			unsigned channel = bl_acq_source_get_channel(
 					adc->config.channel_source[c]);
 			bl_acq_channel_commit_sample(channel, sample[c]);
 		}
+	}
+
+	adc->flash_index++;
+	if (adc->flash_index >= bl_led_count) {
+		adc->flash_index = 0;
+	}
+
+	if (adc->flash_master) {
+		bl_led_loop();
 	}
 }
 
