@@ -686,15 +686,14 @@ bl_acq_dma_t *bl_acq_adc_get_dma(const bl_acq_adc_t *adc)
 	return *(adc->dma);
 }
 
-static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
+static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, volatile uint16_t *buffer)
 {
-	volatile uint16_t *p = &adc->dma_buffer[adc->samples_per_dma * buffer];
-
 	uint32_t sample[adc->config.channel_count];
 	for (unsigned c = 0; c < adc->config.channel_count; c++) {
 		sample[c] = 0;
 	}
 
+	volatile uint16_t *p = buffer;
 	for (unsigned s = 0; s < adc->samples_per_dma;) {
 		for (unsigned c = 0; c < adc->config.channel_count; c++, s++) {
 			sample[c] += *p++;
@@ -732,13 +731,15 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 #define DMA_CHANNEL_ISR(__dma, __channel, __adc) \
 	void dma##__dma##_channel##__channel##_isr(void) \
 	{ \
+		bl_acq_adc_t *adc = bl_acq_adc##__adc; \
 		if (dma_get_interrupt_flag(DMA##__dma, \
 				DMA_CHANNEL##__channel, DMA_HTIF)) { \
-			bl_acq_adc_dma_isr(bl_acq_adc##__adc, 0); \
+			bl_acq_adc_dma_isr(adc, &adc->dma_buffer[0]); \
 			dma_clear_interrupt_flags(DMA##__dma, \
 					DMA_CHANNEL##__channel, DMA_HTIF); \
 		} else { \
-			bl_acq_adc_dma_isr(bl_acq_adc##__adc, 1); \
+			bl_acq_adc_dma_isr(adc, \
+				&adc->dma_buffer[adc->samples_per_dma]); \
 			dma_clear_interrupt_flags(DMA##__dma, \
 					DMA_CHANNEL##__channel, DMA_TCIF); \
 		} \
