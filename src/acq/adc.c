@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 Codethink Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "adc.h"
 #include "rcc.h"
 #include "source.h"
@@ -234,6 +250,8 @@ struct bl_acq_adc_s
 	unsigned          samples_per_dma;
 	volatile uint16_t dma_buffer[BL_ACQ_DMA_MAX * 2];
 
+	void (*isr)(bl_acq_adc_t *, volatile uint16_t *);
+
 	bl_acq_adc_config_t config;
 };
 
@@ -422,6 +440,13 @@ enum bl_error bl_acq_adc_channel_configure(bl_acq_adc_t *adc,
 	return BL_ERROR_NONE;
 }
 
+static void bl_acq_adc_dma_isr_single(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer);
+static void bl_acq_adc_dma_isr_multi(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer);
+static void bl_acq_adc_dma_isr_flash(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer);
+
 enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 		uint32_t frequency, uint32_t sw_oversample,
 		uint8_t oversample, uint8_t shift)
@@ -541,6 +566,10 @@ enum bl_error bl_acq_adc_configure(bl_acq_adc_t *adc,
 	 * we collect multiple samples per interrupt. */
 	adc->samples_per_dma = sw_oversample * config->channel_count;
 
+	/* Select optimal ISR based on configuration. */
+	adc->isr = (config->channel_count > 1 ?
+		bl_acq_adc_dma_isr_multi : bl_acq_adc_dma_isr_single);
+
 	return BL_ERROR_NONE;
 }
 
@@ -549,6 +578,11 @@ void bl_acq_adc_flash_init(bl_acq_adc_t *adc, bool enable, bool master)
 	adc->flash_enable = enable;
 	adc->flash_master = master;
 	adc->flash_index  = 0;
+
+	/* TODO: Combine this with configuration. */
+	if (enable) {
+		adc->isr = bl_acq_adc_dma_isr_flash;
+	}
 }
 
 void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag)
@@ -670,45 +704,73 @@ bl_acq_dma_t *bl_acq_adc_get_dma(const bl_acq_adc_t *adc)
 	return *(adc->dma);
 }
 
-static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
+static void bl_acq_adc_dma_isr_single(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer)
 {
-	volatile uint16_t *p = &adc->dma_buffer[adc->samples_per_dma * buffer];
+	uint32_t sample = 0;
+	volatile uint16_t *p = buffer;
+	for (unsigned s = 0; s < adc->samples_per_dma; s++) {
+		sample += *p++;
+	}
 
+	unsigned channel = bl_acq_source_get_channel(
+			adc->config.channel_source[0]);
+	bl_acq_channel_commit_sample(channel, sample);
+}
+
+static void bl_acq_adc_dma_isr_multi(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer)
+{
 	uint32_t sample[adc->config.channel_count];
 	for (unsigned c = 0; c < adc->config.channel_count; c++) {
 		sample[c] = 0;
 	}
 
+	volatile uint16_t *p = buffer;
 	for (unsigned s = 0; s < adc->samples_per_dma;) {
 		for (unsigned c = 0; c < adc->config.channel_count; c++, s++) {
 			sample[c] += *p++;
 		}
 	}
 
-	if (adc->flash_enable) {
-		for (unsigned c = 0; c < adc->config.channel_count; c++) {
-			if (bl_led_channel[adc->flash_index].src_mask &
-				adc->config.src_mask[c]) {
-				unsigned channel = bl_acq_source_get_channel(
-						adc->config.channel_source[c]);
-				bl_acq_channel_commit_sample(channel, sample[c]);
-			}
-		}
+	for (unsigned c = 0; c < adc->config.channel_count; c++) {
+		unsigned channel = bl_acq_source_get_channel(
+				adc->config.channel_source[c]);
+		bl_acq_channel_commit_sample(channel, sample[c]);
+	}
+}
 
-		adc->flash_index++;
-		if (adc->flash_index >= bl_led_count) {
-			adc->flash_index = 0;
-		}
+static void bl_acq_adc_dma_isr_flash(
+	bl_acq_adc_t *adc, volatile uint16_t *buffer)
+{
+	uint32_t sample[adc->config.channel_count];
+	for (unsigned c = 0; c < adc->config.channel_count; c++) {
+		sample[c] = 0;
+	}
 
-		if (adc->flash_master) {
-			bl_led_loop();
+	volatile uint16_t *p = buffer;
+	for (unsigned s = 0; s < adc->samples_per_dma;) {
+		for (unsigned c = 0; c < adc->config.channel_count; c++, s++) {
+			sample[c] += *p++;
 		}
-	} else {
-		for (unsigned c = 0; c < adc->config.channel_count; c++) {
+	}
+
+	for (unsigned c = 0; c < adc->config.channel_count; c++) {
+		if (bl_led_channel[adc->flash_index].src_mask &
+			adc->config.src_mask[c]) {
 			unsigned channel = bl_acq_source_get_channel(
 					adc->config.channel_source[c]);
 			bl_acq_channel_commit_sample(channel, sample[c]);
 		}
+	}
+
+	adc->flash_index++;
+	if (adc->flash_index >= bl_led_count) {
+		adc->flash_index = 0;
+	}
+
+	if (adc->flash_master) {
+		bl_led_loop();
 	}
 }
 
@@ -716,13 +778,14 @@ static void bl_acq_adc_dma_isr(bl_acq_adc_t *adc, unsigned buffer)
 #define DMA_CHANNEL_ISR(__dma, __channel, __adc) \
 	void dma##__dma##_channel##__channel##_isr(void) \
 	{ \
+		bl_acq_adc_t *adc = bl_acq_adc##__adc; \
 		if (dma_get_interrupt_flag(DMA##__dma, \
 				DMA_CHANNEL##__channel, DMA_HTIF)) { \
-			bl_acq_adc_dma_isr(bl_acq_adc##__adc, 0); \
+			adc->isr(adc, &adc->dma_buffer[0]); \
 			dma_clear_interrupt_flags(DMA##__dma, \
 					DMA_CHANNEL##__channel, DMA_HTIF); \
 		} else { \
-			bl_acq_adc_dma_isr(bl_acq_adc##__adc, 1); \
+			adc->isr(adc, &adc->dma_buffer[adc->samples_per_dma]); \
 			dma_clear_interrupt_flags(DMA##__dma, \
 					DMA_CHANNEL##__channel, DMA_TCIF); \
 		} \
