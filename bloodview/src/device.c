@@ -256,16 +256,16 @@ static FILE *device__open_recording(bool calibrate)
  */
 static unsigned device__get_channel_mask(uint16_t src_mask)
 {
-	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
 	unsigned mask = 0;
 
 	switch (mode) {
-	case BL_ACQ_MODE_FLASH:
+	case BL_ACQ_FLASH:
 		mask = main_menu_config_get_led_mask();
 		mask |= (src_mask & 0xF0) << BL_LED_COUNT;
 		break;
 
-	case BL_ACQ_MODE_CONTINUOUS:
+	case BL_ACQ_CONTINUOUS:
 		mask =  src_mask;
 		break;
 	}
@@ -527,14 +527,14 @@ static bool device__queue_msg_led(bool enable_lights)
  */
 static enum bl_acq_source device__get_channel_source(uint8_t channel)
 {
-	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
 
 	switch (mode) {
-	case BL_ACQ_MODE_CONTINUOUS:
+	case BL_ACQ_CONTINUOUS:
 		/* Channels map to sources. */
 		return channel;
 
-	case BL_ACQ_MODE_FLASH:
+	case BL_ACQ_FLASH:
 		if (channel < BL_LED_COUNT) {
 			enum bl_acq_source led_source_affinity[] = {
 				[ 0] = BL_ACQ_PD3,
@@ -646,7 +646,7 @@ static bool device__queue_msg_start(void)
 	}
 
 	msg->type = BL_MSG_START;
-	msg->start.mode      = main_menu_config_get_acq_mode();
+	msg->start.flash_mode      = main_menu_config_get_acq_flash_mode();
 	msg->start.frequency = main_menu_config_get_frequency();
 	msg->start.led_mask  = main_menu_config_get_led_mask();
 	msg->start.src_mask  = main_menu_config_get_source_mask();
@@ -686,16 +686,16 @@ static bool device__queue_msg_abort(void)
 static bool device__queue_channel_conf_messages(bool calibrate)
 {
 	unsigned source_mask = main_menu_config_get_source_mask();
-	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
 	unsigned led_mask = main_menu_config_get_led_mask();
 	unsigned channel_mask = 0;
 
 	switch (mode) {
-	case BL_ACQ_MODE_CONTINUOUS:
+	case BL_ACQ_CONTINUOUS:
 		channel_mask = source_mask;
 		break;
 
-	case BL_ACQ_MODE_FLASH:
+	case BL_ACQ_FLASH:
 		source_mask &= ~(BL_ACQ_PD1 |
 				 BL_ACQ_PD2 |
 				 BL_ACQ_PD3 |

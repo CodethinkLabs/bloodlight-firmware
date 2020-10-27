@@ -63,9 +63,9 @@ void main_menu_update(void);
 /**
  * Get the Acquisition Mode.
  *
- * \return the configured acquisition mode.
+ * \return the configured acquisition flash mode.
  */
-enum bl_acq_mode main_menu_config_get_acq_mode(void);
+enum bl_acq_flash_mode main_menu_config_get_acq_flash_mode(void);
 
 /**
  * Get the LED mask.
