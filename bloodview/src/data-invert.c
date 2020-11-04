@@ -61,7 +61,7 @@ void *data_invert_init(
 	}
 
 	index = 0;
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ACQ_SOURCE_MAX; i++) {
 		if (src_mask & (1u << i)) {
 			if (config->invert[index] == true) {
 				ctx->invert |= (1u << index);

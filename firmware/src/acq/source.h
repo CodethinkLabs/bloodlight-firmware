@@ -20,7 +20,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "../error.h"
+#include "common/error.h"
+
 #include "../acq.h"
 
 typedef struct  {

@@ -1,8 +1,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "common/util.h"
+
 #include "mq.h"
-#include "util.h"
 
 #define BL_MSG_QUEUE_COUNT 76
 

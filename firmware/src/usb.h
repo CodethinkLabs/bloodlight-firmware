@@ -14,12 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef BL_TOOLS_UTIL_H
-#define BL_TOOLS_UTIL_H
+#ifndef BL_USB_H
+#define BL_USB_H
 
-#include <stdbool.h>
-#include <inttypes.h>
+#include "common/msg.h"
+#include "common/usb.h"
 
-bool read_sized_uint(const char *value, uint32_t *out, size_t target_size);
+/**
+ * Initialise the USB module.
+ */
+void bl_usb_init(void);
+
+/**
+ * Poll the USB.
+ */
+void bl_usb_poll(void);
 
 #endif

@@ -14,23 +14,30 @@
  * limitations under the License.
  */
 
-#ifndef BL_USB_H
-#define BL_USB_H
+#ifndef BL_ACQ_TIMER_H
+#define BL_ACQ_TIMER_H
 
-#include "msg.h"
+#include <stdint.h>
 
-#define BL_STR_MANUFACTURER "Codethink"
-#define BL_STR_PRODUCT      "Bloodlight"
-#define BL_STR_SERIAL_NUM   "ct-bloodlight:000000"
+#include "common/error.h"
 
-/**
- * Initialise the USB module.
- */
-void bl_usb_init(void);
 
-/**
- * Poll the USB.
- */
-void bl_usb_poll(void);
+typedef struct bl_acq_timer_s bl_acq_timer_t;
+
+extern bl_acq_timer_t *bl_acq_tim1;
+
+void bl_acq_timer_init(uint32_t bus_freq);
+
+enum bl_error bl_acq_timer_configure(bl_acq_timer_t *timer, uint32_t frequency);
+
+void bl_acq_timer_enable(bl_acq_timer_t *timer);
+void bl_acq_timer_disable(bl_acq_timer_t *timer);
+
+void bl_acq_timer_start(const bl_acq_timer_t *timer);
+void bl_acq_timer_stop(const bl_acq_timer_t *timer);
+
+void bl_acq_timer_start_all(void);
+void bl_acq_timer_stop_all(void);
 
 #endif
+

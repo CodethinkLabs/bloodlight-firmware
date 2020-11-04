@@ -14,12 +14,24 @@
  * limitations under the License.
  */
 
-#ifndef BL_TOOLS_UTIL_H
-#define BL_TOOLS_UTIL_H
+#ifndef BL_COMMON_UTIL_H
+#define BL_COMMON_UTIL_H
 
-#include <stdbool.h>
-#include <inttypes.h>
+/**
+ * Helper to squash warnings about unused variables.
+ *
+ * \param[in]  _u  The variable that is unused.
+ */
+#define BL_UNUSED(_u) \
+	((void)(_u))
 
-bool read_sized_uint(const char *value, uint32_t *out, size_t target_size);
+/**
+ * Helper to get the number of entires in an array.
+ *
+ * \param[in]  _a  Array to get the entry count for.
+ * \return entry count of array.
+ */
+#define BL_ARRAY_LEN(_a) \
+	((sizeof(_a)) / (sizeof(*_a)))
 
 #endif

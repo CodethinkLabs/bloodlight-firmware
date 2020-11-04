@@ -33,8 +33,8 @@
 
 #include <unistd.h>
 
-#include "../../src/msg.h"
-#include "../../src/acq/channel.h"
+#include "common/msg.h"
+#include "common/channel.h"
 
 #include "../../tools/msg.h"
 #include "../../tools/device.h"
@@ -560,7 +560,7 @@ static enum bl_acq_source device__get_channel_source(uint8_t channel)
 		}
 	}
 
-	return BL_ACQ__SRC_COUNT;
+	return BL_ACQ_SOURCE_MAX;
 }
 
 /**
@@ -710,7 +710,7 @@ static bool device__queue_channel_conf_messages(bool calibrate)
 		break;
 	}
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ACQ_SOURCE_MAX; i++) {
 		if (source_mask & (1U << i)) {
 			if (!device__queue_msg_source_conf(i)) {
 				return false;
@@ -718,7 +718,7 @@ static bool device__queue_channel_conf_messages(bool calibrate)
 		}
 	}
 
-	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+	for (unsigned i = 0; i < BL_CHANNEL_MAX; i++) {
 		if (channel_mask & (1U << i)) {
 			if (!device__queue_msg_channel_conf(i, calibrate)) {
 				return false;

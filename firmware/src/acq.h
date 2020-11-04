@@ -19,50 +19,17 @@
 
 #include <stdbool.h>
 
+#include "common/acq.h"
+
 #include "led.h"
 
 union bl_msg_data;
 
-/** SPI mode**/
-extern enum bl_acq_spi_mode {
-	BL_ACQ_SPI_NONE,
-	BL_ACQ_SPI_MOTHER,
-	BL_ACQ_SPI_DAUGHTER,
-} bl_spi_mode;
-
-/** Acquisition detection mode **/
-enum bl_acq_detection_mode {
-	BL_ACQ_REFLECTIVE,
-	BL_ACQ_TRANSMISSIVE,
-};
-
-/** Acquisition flash mode */
-enum bl_acq_flash_mode {
-	BL_ACQ_CONTINUOUS,
-	BL_ACQ_FLASH,
-};
-
-/**
- * Acquisition sources.
- *
- * These are the four photodiodes and anything else we want to sample for
- * debug / reference.
- */
-enum bl_acq_source {
-	BL_ACQ_PD1,
-	BL_ACQ_PD2,
-	BL_ACQ_PD3,
-	BL_ACQ_PD4,
-	BL_ACQ_3V3,
-	BL_ACQ_5V0,
-	BL_ACQ_TMP,
-
 #if (BL_REVISION > 1)
-	BL_ACQ_EXT,
+#define BL_ACQ__SRC_COUNT 8
+#else
+#define BL_ACQ__SRC_COUNT 7
 #endif
-
-	BL_ACQ__SRC_COUNT /**< Not a source, but a count of sources. */
-};
 
 /**
  * Initialise the acquisition module.

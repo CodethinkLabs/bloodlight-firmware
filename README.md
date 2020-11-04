@@ -36,19 +36,19 @@ git submodule update
 And build it:
 
 ```bash
-make -C libopencm3/
+make -C firmware/libopencm3/
 ```
 
 Now you can build the `bloodlight-firmware.elf`:
 
 ```bash
-make
+make -C firmware/
 ```
 
 To build for REVISION 2 or later, simply prepend REVISION=x:
 
 ```bash
-REVISION=2 make
+REVISION=2 make -C firmware/
 ```
 
 And the Bloodlight host tools:
@@ -114,7 +114,7 @@ configured with `--enable-stlink`.
 
 To simply flash the board, run:
 ```bash
-sudo make flash
+sudo make -C firmware/ flash
 ```
 
 Note: If you can't find this file, it's available in the

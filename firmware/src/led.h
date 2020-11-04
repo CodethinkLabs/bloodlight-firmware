@@ -20,9 +20,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "error.h"
-
-#define BL_LED_COUNT 16
+#include "common/error.h"
+#include "common/led.h"
 
 /** LED source globals */
 typedef struct {

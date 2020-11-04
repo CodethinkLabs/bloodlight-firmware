@@ -17,7 +17,8 @@
 #ifndef BL_MQ_H
 #define BL_MQ_H
 
-#include "msg.h"
+#include "common/msg.h"
+
 #include "acq/channel.h"
 
 struct mq_ctx {

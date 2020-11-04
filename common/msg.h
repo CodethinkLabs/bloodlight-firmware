@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef BL_MSG_H
-#define BL_MSG_H
+#ifndef BL_COMMON_MSG_H
+#define BL_COMMON_MSG_H
 
+#include "error.h"
 #include "acq.h"
 #include "led.h"
 #include <inttypes.h>
@@ -239,13 +240,5 @@ static inline union bl_msg_data * bl_msg_decode(uint8_t *data, uint16_t len)
 
 	return (void *)data;
 }
-
-/**
- * Handle an incomming message.
- *
- * \param[in]  msg  Incomming message to be handled.
- * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
- */
-enum bl_error bl_msg_handle(const union bl_msg_data *msg);
 
 #endif

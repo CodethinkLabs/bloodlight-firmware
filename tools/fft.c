@@ -21,8 +21,9 @@
 #include <math.h>
 #include <assert.h>
 
-#include "../src/msg.h"
-#include "../src/acq/channel.h"
+#include "common/msg.h"
+#include "common/channel.h"
+#include "common/util.h"
 
 #include "msg.h"
 #include "sig.h"
@@ -285,7 +286,7 @@ static void destroy_channel(struct channel_data *channel)
 static int read_stream(uint32_t window_length, uint16_t window_count)
 {
 	union bl_msg_data msg; // message for reading into
-	struct channel_data channels[BL_ACQ_CHANNEL_COUNT] = {0};
+	struct channel_data channels[BL_CHANNEL_MAX] = {0};
 	struct channel_data *channel;
 	int ret;
 	unsigned highest_channel = 0;
@@ -294,7 +295,8 @@ static int read_stream(uint32_t window_length, uint16_t window_count)
 		uint32_t length_samples;
 		switch(msg.type) {
 		case BL_MSG_CHANNEL_CONF:
-			assert(msg.channel_conf.channel < BL_ACQ_CHANNEL_COUNT);
+			assert(msg.channel_conf.channel <
+					BL_ARRAY_LEN(channels));
 
 			if (msg.channel_conf.channel > highest_channel) {
 				highest_channel = msg.channel_conf.channel;
@@ -321,7 +323,8 @@ static int read_stream(uint32_t window_length, uint16_t window_count)
 			break;
 		case BL_MSG_SAMPLE_DATA16:
 		case BL_MSG_SAMPLE_DATA32:
-			assert(msg.sample_data.channel < BL_ACQ_CHANNEL_COUNT);
+			assert(msg.sample_data.channel <
+					BL_ARRAY_LEN(channels));
 			channel = channels + msg.sample_data.channel;
 
 			for (unsigned i = 0; i < msg.sample_data.count; i++) {
@@ -338,7 +341,7 @@ static int read_stream(uint32_t window_length, uint16_t window_count)
 	}
 	ret = 0;
 cleanup:
-	for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ARRAY_LEN(channels); i++) {
 		destroy_channel(channels + i);
 	}
 	return ret;

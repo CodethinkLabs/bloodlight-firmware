@@ -28,8 +28,8 @@
 
 #include <cyaml/cyaml.h>
 
-#include "../../src/acq.h"
-#include "../../src/util.h"
+#include "common/led.h"
+#include "common/util.h"
 
 #include "sdl-tk/widget.h"
 

@@ -22,10 +22,10 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "../src/error.h"
-#include "../src/util.h"
-#include "../src/msg.h"
-#include "../src/acq.h"
+#include "common/error.h"
+#include "common/util.h"
+#include "common/msg.h"
+#include "common/acq.h"
 
 #include "device.h"
 #include "msg.h"
@@ -371,7 +371,7 @@ static int bl_cmd_start_stream(
 		}
 	};
 	uint32_t src_mask, led_mask;
-	uint32_t frequency, oversample;
+	uint32_t frequency;
 	int ret;
 	int dev_fd;
 	enum {

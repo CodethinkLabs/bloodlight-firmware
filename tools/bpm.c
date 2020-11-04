@@ -20,8 +20,9 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include "../src/msg.h"
-#include "../src/acq/channel.h"
+#include "common/msg.h"
+#include "common/channel.h"
+#include "common/util.h"
 
 #include "msg.h"
 #include "sig.h"
@@ -101,7 +102,7 @@ void init_channel(struct channel_data *channel,
 int read_stream(uint32_t peak_threshold)
 {
 	union bl_msg_data msg; // message for reading into
-	struct channel_data channels[BL_ACQ_CHANNEL_COUNT] = {0};
+	struct channel_data channels[BL_CHANNEL_MAX] = {0};
 	struct channel_data *channel;
 	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, &msg)) {
 		switch (msg.type) {
@@ -110,7 +111,7 @@ int read_stream(uint32_t peak_threshold)
 					&msg.channel_conf);
 			break;
 		case BL_MSG_START:
-			for (unsigned i = 0; i < BL_ACQ_CHANNEL_COUNT; i++) {
+			for (unsigned i = 0; i < BL_ARRAY_LEN(channels); i++) {
 				channel_start(channels + i, &msg.start);
 			}
 			break;

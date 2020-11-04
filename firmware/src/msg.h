@@ -14,24 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef BL_UTIL_H
-#define BL_UTIL_H
+#ifndef BL_MSG_H
+#define BL_MSG_H
+
+#include "common/msg.h"
+#include "common/error.h"
 
 /**
- * Helper to squash warnings about unused variables.
+ * Handle an incomming message.
  *
- * \param[in]  _u  The variable that is unused.
+ * \param[in]  msg  Incomming message to be handled.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
-#define BL_UNUSED(_u) \
-	((void)(_u))
-
-/**
- * Helper to get the number of entires in an array.
- *
- * \param[in]  _a  Array to get the entry count for.
- * \return entry count of array.
- */
-#define BL_ARRAY_LEN(_a) \
-	((sizeof(_a)) / (sizeof(*_a)))
+enum bl_error bl_msg_handle(const union bl_msg_data *msg);
 
 #endif
