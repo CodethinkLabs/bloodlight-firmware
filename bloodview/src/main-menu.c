@@ -78,7 +78,7 @@ struct desc_widget_value {
 	union {
 		double             type_double;     /**< Data for double values */
 		unsigned           type_unsigned;   /**< Data for unsigned values */
-		enum bl_acq_mode   type_acq_mode;   /**< Data for acquisition modes */
+		enum bl_acq_flash_mode   type_acq_mode;   /**< Data for acquisition modes */
 		enum bv_derivative type_derivative; /**< Data for derivative modes */
 	};
 };
@@ -433,8 +433,8 @@ static const cyaml_strval_t bv_action_type[] = {
 
 /** CYAML schema: Valid acquisition mode mapping. */
 static const cyaml_strval_t bv_acq_mode[] = {
-	{ .val = BL_ACQ_MODE_CONTINUOUS, .str = "Continuous" },
-	{ .val = BL_ACQ_MODE_FLASH,      .str = "Flash" },
+	{ .val = BL_ACQ_CONTINUOUS, .str = "Continuous" },
+	{ .val = BL_ACQ_FLASH,      .str = "Flash" },
 };
 
 /** CYAML schema: Valid acquisition mode mapping. */
@@ -646,9 +646,9 @@ static void main_menu_select_cb(
 		value->select.value.type_acq_mode = new_value;
 
 		sdl_tk_widget_enable(desc_continuous->widget,
-				new_value == BL_ACQ_MODE_CONTINUOUS);
+				new_value == BL_ACQ_CONTINUOUS);
 		sdl_tk_widget_enable(desc_flash->widget,
-				new_value == BL_ACQ_MODE_FLASH);
+				new_value == BL_ACQ_FLASH);
 		break;
 
 	case INPUT_TYPE_DERIVATIVE:
@@ -1349,7 +1349,7 @@ static uint16_t main_menu__config_get_led_mask_helper(
 }
 
 /* Exported interface, documented in main-menu.h */
-enum bl_acq_mode main_menu_config_get_acq_mode(void)
+enum bl_acq_flash_mode main_menu_config_get_acq_flash_mode(void)
 {
 	struct desc_widget *desc = main_menu__get_desc_fmt(
 			bl_main_menu, "Config/Acquisition/Mode");
@@ -1365,9 +1365,9 @@ enum bl_acq_mode main_menu_config_get_acq_mode(void)
  *
  * \return the configured acquisition mode.
  */
-static const char *main_menu_config_get_acq_mode_string(void)
+static const char *main_menu_config_get_acq_flash_mode_string(void)
 {
-	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
 
 	for (unsigned i = 0; i < BV_ARRAY_LEN(bv_acq_mode); i++) {
 		if (bv_acq_mode[i].val == mode) {
@@ -1383,7 +1383,7 @@ uint16_t main_menu_config_get_led_mask(void)
 {
 	struct desc_widget *desc = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/%s/LEDs",
-			main_menu_config_get_acq_mode_string());
+			main_menu_config_get_acq_flash_mode_string());
 
 	assert(desc != NULL);
 
@@ -1395,7 +1395,7 @@ uint16_t main_menu_config_get_source_mask(void)
 {
 	struct desc_widget *sources = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/%s/Sources",
-			main_menu_config_get_acq_mode_string());
+			main_menu_config_get_acq_flash_mode_string());
 	uint16_t src_mask = 0;
 	uint16_t src_count;
 
@@ -1429,17 +1429,17 @@ uint16_t main_menu_config_get_frequency(void)
  */
 struct desc_widget *main_menu__get_source_desc(enum bl_acq_source source)
 {
-	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
 	struct desc_widget *desc = NULL;
 
 	switch (mode) {
-	case BL_ACQ_MODE_CONTINUOUS:
+	case BL_ACQ_CONTINUOUS:
 		desc = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Continuous/Channels/[%u]/Source",
 			source);
 		break;
 
-	case BL_ACQ_MODE_FLASH:
+	case BL_ACQ_FLASH:
 		desc = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Flash/Source setup/[%u]", source);
 		break;
@@ -1545,16 +1545,16 @@ static struct desc_widget *main_menu__get_channel_desc_menu(
 		uint8_t channel,
 		enum channel_conv input_type)
 {
-	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
 	struct desc_widget *desc = NULL;
 
 	switch (mode) {
-	case BL_ACQ_MODE_CONTINUOUS:
+	case BL_ACQ_CONTINUOUS:
 		desc = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Continuous/Channels/[%u]", channel);
 		break;
 
-	case BL_ACQ_MODE_FLASH:
+	case BL_ACQ_FLASH:
 		channel = main_menu__convert_led_index(channel, input_type);
 		desc = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Flash/Channels/[%u]", channel);
@@ -1578,17 +1578,17 @@ static struct desc_widget *main_menu__get_channel_desc(
 		uint8_t channel,
 		enum channel_conv input_type)
 {
-	enum bl_acq_mode mode = main_menu_config_get_acq_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
 	struct desc_widget *chan_desc = main_menu__get_channel_desc_menu(
 			channel, input_type);
 	struct desc_widget *desc = NULL;
 
 	switch (mode) {
-	case BL_ACQ_MODE_CONTINUOUS:
+	case BL_ACQ_CONTINUOUS:
 		desc = main_menu__get_desc_fmt(chan_desc, "Channel");
 		break;
 
-	case BL_ACQ_MODE_FLASH:
+	case BL_ACQ_FLASH:
 		desc = chan_desc;
 		break;
 	}

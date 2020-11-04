@@ -36,6 +36,7 @@
 #include "msg.h"
 #include "mq.h"
 #include "usb.h"
+#include "spi.h"
 
 
 static uint32_t bl_acq__ahb_freq = 0;
@@ -81,7 +82,8 @@ void bl_acq_init(uint32_t clock)
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_start(
-		enum bl_acq_mode mode,
+		enum bl_acq_detection_mode detection_mode,
+		enum bl_acq_flash_mode flash_mode,
 		uint16_t frequency,
 		uint16_t led_mask,
 		uint16_t src_mask)
@@ -100,7 +102,7 @@ enum bl_error bl_acq_start(
 		return BL_ERROR_ACTIVE_ACQUISITION;
 	}
 
-	if (mode == BL_ACQ_MODE_FLASH) {
+	if (flash_mode == BL_ACQ_FLASH) {
 		if ((led_mask & (led_mask - 1)) == 0) {
 			return BL_ERROR_MODE_MISMATCH;
 		}
@@ -116,6 +118,18 @@ enum bl_error bl_acq_start(
 	} else {
 		/* Channels map to sources. */
 		acq_chan_mask = src_mask;
+	}
+
+	/* Detection mode casting to SPI mode:
+	 * reflective   -> none SPI
+	 * transmissive -> SPI mother mode
+	 * As USB is connected, SPI daughter mode is not valid
+	 */
+	if (bl_spi_mode != (enum bl_acq_spi_mode)detection_mode) {
+		bl_spi_mode = detection_mode;
+		if (bl_spi_mode != BL_ACQ_SPI_NONE) {
+			bl_spi_init();
+		}
 	}
 
 	/* Get source list from channels */
@@ -142,7 +156,7 @@ enum bl_error bl_acq_start(
 		/* Finalize Config. */
 		config->frequency = frequency;
 
-		unsigned multiplex = mode ? bl_led_count : 1;
+		unsigned multiplex = flash_mode ? bl_led_count : 1;
 		config->frequency_trigger = (config->frequency *
 				config->sw_oversample * multiplex);
 		config->frequency_sample = (config->frequency_trigger <<
@@ -347,7 +361,7 @@ enum bl_error bl_acq_start(
 			return status;
 		}
 
-		bl_acq_adc_flash_init(adc, mode, is_first);
+		bl_acq_adc_flash_init(adc, flash_mode, is_first);
 		is_first = false;
 	}
 

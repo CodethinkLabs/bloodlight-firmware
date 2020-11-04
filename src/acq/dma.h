@@ -17,7 +17,14 @@
 #ifndef BL_ACQ_DMA_H
 #define BL_ACQ_DMA_H
 
+#include <stdbool.h>
 #include <stdint.h>
+
+enum dma_data_direction {
+    DMA_TO_DEVICE,
+    DMA_FROM_DEVICE,
+    DMA_NONE,
+};
 
 typedef struct bl_acq_dma_s bl_acq_dma_t;
 
@@ -33,7 +40,7 @@ void bl_acq_dma_disable(bl_acq_dma_t *dma);
 
 void bl_acq_dma_channel_enable(bl_acq_dma_t *dma,
 		unsigned channel, uint8_t dmareq,
-		volatile void *dst, volatile void *src, uint32_t count);
-
+		volatile void *m_addr, volatile void *p_addr, uint32_t count,
+		bool is_adc_dma, enum dma_data_direction dir);
 #endif
 

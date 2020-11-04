@@ -75,7 +75,8 @@ static enum bl_error bl_msg_channel_conf(const union bl_msg_data *msg)
 static enum bl_error bl_msg_start(const union bl_msg_data *msg)
 {
 	return bl_acq_start(
-			msg->start.mode,
+			msg->start.detection_mode,
+			msg->start.flash_mode,
 			msg->start.frequency,
 			msg->start.led_mask,
 			msg->start.src_mask);

@@ -378,7 +378,8 @@ static int bl_cmd_start_stream(
 		ARG_PROG,
 		ARG_CMD,
 		ARG_DEV_PATH,
-		ARG_MODE,
+		ARG_FLASH_MODE,
+		ARG_DETECT_MODE,
 		ARG_FREQUENCY,
 		ARG_SRC_MASK,
 		ARG_LED_MASK,
@@ -390,6 +391,7 @@ static int bl_cmd_start_stream(
 		fprintf(stderr, "  %s %s \\\n"
 				"  \t<DEVICE_PATH|--auto|-a> \\\n"
 				"  \t<--flash|-f|--continous|-c> \\\n"
+				"  \t<--transmissive|-t|--reflective|-r> \\\n"
 				"  \t<FREQUENCY> \\\n"
 				"  \t<SRC_MASK>\\\n"
 				"  \t<LED_MASK>\n",
@@ -410,12 +412,19 @@ static int bl_cmd_start_stream(
 		return EXIT_FAILURE;
 	}
 
-	if (!strncmp(argv[ARG_MODE], "--flash", 8) ||
-		  !strncmp(argv[ARG_MODE], "-f", 3)) {
-		msg.start.mode  = BL_ACQ_MODE_FLASH;
+	if (!strncmp(argv[ARG_FLASH_MODE], "--flash", 8) ||
+		  !strncmp(argv[ARG_FLASH_MODE], "-f", 3)) {
+		msg.start.flash_mode  = BL_ACQ_FLASH;
 	} else {
-		msg.start.mode  = BL_ACQ_MODE_CONTINUOUS;
+		msg.start.flash_mode  = BL_ACQ_CONTINUOUS;
 	}
+	if (!strncmp(argv[ARG_DETECT_MODE], "--transmissive", 15) ||
+		  !strncmp(argv[ARG_FLASH_MODE], "-t", 3)) {
+		msg.start.detection_mode  = BL_ACQ_TRANSMISSIVE;
+	} else {
+		msg.start.detection_mode  = BL_ACQ_REFLECTIVE;
+	}
+
 
 	msg.start.frequency  = frequency;
 	msg.start.src_mask   = src_mask;

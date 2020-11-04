@@ -4,6 +4,9 @@
 declare DEFAULT_DEVICE="--auto"
 
 # Default to use flash mode for acquisition
+declare DEFAULT_DETECTION_MODE="reflective"
+
+# Default to use flash mode for acquisition
 declare DEFAULT_MODE="flash"
 # By default, turn on:
 # - the green LED    (1 << 14)
@@ -29,6 +32,7 @@ usage()
 run_cal()
 {
 	declare device="${DEVICE:-$DEFAULT_DEVICE}"
+	declare detection="--${DETECTION_MODE:-$DEFAULT_DETECTION_MODE}"
 	declare mode="--${MODE:-$DEFAULT_MODE}"
 	declare led_mask="${LED_MASK:-$DEFAULT_LED_MASK}"
 	declare src_mask="${SRC_MASK:-$DEFAULT_SRC_MASK}"
@@ -39,7 +43,7 @@ run_cal()
 	./tools/bl led     "$device" "$led_mask"
 
 	# srccfg <source> <gain> <offset> <sw oversample> [hw oversample] [hw shift]
-	./tools/bl srccfg "$device" 0 16 0 "$oversample" 0 0 # Photodiode 1
+	./tools/bl srccfg "$device" 0  1 0 "$oversample" 0 0 # Photodiode 1
 	./tools/bl srccfg "$device" 1  1 0 "$oversample" 0 0 # Photodiode 2
 	./tools/bl srccfg "$device" 2  1 0 "$oversample" 0 0 # Photodiode 3
 	./tools/bl srccfg "$device" 3  1 0 "$oversample" 0 0 # Photodiode 4
@@ -70,7 +74,7 @@ run_cal()
 	./tools/bl chancfg "$device" 18 6  0  0  1 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$mode" "$frequency" "$src_mask" "$led_mask"
+	./tools/bl start   "$device" "$mode" "$detection" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Run an acquisition.

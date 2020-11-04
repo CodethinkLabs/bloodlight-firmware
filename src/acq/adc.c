@@ -601,7 +601,7 @@ void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag)
 	bl_acq_dma_enable(*(adc->dma));
 	bl_acq_dma_channel_enable(*(adc->dma), adc->dma_channel, adc->dmamux_req,
 			adc->dma_buffer, &ADC_DR(adc->base),
-			adc->samples_per_dma);
+			adc->samples_per_dma, true, DMA_FROM_DEVICE);
 
 	const bl_acq_adc_config_t *config = &adc->config;
 

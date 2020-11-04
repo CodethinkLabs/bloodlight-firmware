@@ -104,7 +104,8 @@ void bl_acq_dma_disable(bl_acq_dma_t *dma)
 
 void bl_acq_dma_channel_enable(bl_acq_dma_t *dma,
 		unsigned channel, uint8_t dmareq,
-		volatile void *dst, volatile void *src, uint32_t count)
+		volatile void *m_addr, volatile void *p_addr, uint32_t count,
+		bool is_adc_dma, enum dma_data_direction dir)
 {
 #if (BL_REVISION >= 2)
 	dmareq += dma->dmamux_offset;
@@ -116,23 +117,30 @@ void bl_acq_dma_channel_enable(bl_acq_dma_t *dma,
 
 	dma_channel_reset(dma->base, channel);
 
-	dma_set_peripheral_address(dma->base, channel, (uint32_t)src);
-	dma_set_memory_address(dma->base, channel, (uint32_t)dst);
+	dma_set_peripheral_address(dma->base, channel, (uint32_t)p_addr);
+	dma_set_memory_address(dma->base, channel, (uint32_t)m_addr);
 
 	dma_enable_memory_increment_mode(dma->base, channel);
 
-	dma_set_read_from_peripheral(dma->base, channel);
+	if (dir == DMA_FROM_DEVICE) {
+		dma_set_read_from_peripheral(dma->base, channel);
+	} else if (dir == DMA_TO_DEVICE) {
+		dma_set_read_from_memory(dma->base, channel);
+	}
+
 	dma_set_peripheral_size(dma->base, channel, DMA_CCR_PSIZE_16BIT);
 	dma_set_memory_size(dma->base, channel, DMA_CCR_MSIZE_16BIT);
 
-	dma_enable_half_transfer_interrupt(dma->base, channel);
 	dma_enable_transfer_complete_interrupt(dma->base, channel);
 
 	dma_set_number_of_data(dma->base, channel, (count * 2));
 
-	dma_enable_circular_mode(dma->base, channel);
+	if (is_adc_dma) {
+		dma_enable_half_transfer_interrupt(dma->base, channel);
+		dma_enable_circular_mode(dma->base, channel);
+	}
+
 	dma_enable_channel(dma->base, channel);
 
 	dma->channel_mask |= 1U << channel;
 }
-

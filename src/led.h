@@ -17,6 +17,7 @@
 #ifndef BL_LED_H
 #define BL_LED_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "error.h"

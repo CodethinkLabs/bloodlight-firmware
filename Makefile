@@ -8,6 +8,7 @@ CFILES = \
 	src/bl.c \
 	src/msg.c \
 	src/usb.c \
+	src/spi.c \
 	src/mq.c \
 	src/acq.c \
 	src/acq/timer.c \
@@ -30,6 +31,15 @@ else
 	OOCD_TARGET    = stm32g4x
 
 	CFILES += src/acq/dac.c
+endif
+
+ifeq ($(SPI),TEST)
+	CFILES += src/spi-test.c
+	CFLAGS += -DBL_SPI_TEST
+else ifeq ($(SPI),DMA-TEST)
+	CFILES += src/spi-test.c
+	CFLAGS += -DBL_SPI_TEST
+	CFLAGS += -DBL_SPI_DMA_TEST
 endif
 
 # You shouldn't have to edit anything below here.
