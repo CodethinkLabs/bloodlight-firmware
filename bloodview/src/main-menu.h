@@ -26,7 +26,7 @@
 
 #include "sdl-tk/colour.h"
 
-#include "../../src/acq.h"
+#include "common/acq.h"
 
 /** Bloodview derivative modes. */
 enum bv_derivative {

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef BL_ERROR_H
-#define BL_ERROR_H
+#ifndef BL_COMMON_ERROR_H
+#define BL_COMMON_ERROR_H
 
 /** Error codes. */
 enum bl_error {

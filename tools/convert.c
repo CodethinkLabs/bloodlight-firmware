@@ -24,9 +24,10 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "../src/error.h"
-#include "../src/util.h"
-#include "../src/msg.h"
+#include "common/error.h"
+#include "common/util.h"
+#include "common/msg.h"
+#include "common/channel.h"
 
 #include "msg.h"
 #include "sig.h"
@@ -141,13 +142,13 @@ static int bl_cmd_wav_write_data_header(FILE *file)
 	return EXIT_SUCCESS;
 }
 
-static uint8_t chan[BL_ACQ__SRC_COUNT] = { 0 };
+static uint8_t chan[BL_CHANNEL_MAX] = { 0 };
 
 static void init_chan_lookup(unsigned src_mask)
 {
 	unsigned used = 0;
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ARRAY_LEN(chan); i++) {
 		if ((1U << i) & src_mask) {
 			chan[i] = used;
 			used++;
@@ -165,6 +166,8 @@ static int bl_sample_msg_to_file(
 		struct fifo **fifos,
 		unsigned *time_index)
 {
+	BL_UNUSED(src_mask);
+
 	unsigned count = msg->sample_data.count;
 
 	size_t written;
@@ -227,7 +230,7 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 	unsigned frequency;
 	FILE *file;
 	int ret;
-	struct fifo *fifos[BL_ACQ__SRC_COUNT];
+	struct fifo *fifos[BL_CHANNEL_MAX];
 	enum {
 		ARG_PROG,
 		ARG_CMD,
@@ -258,7 +261,7 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		file = stdout;
 	}
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ARRAY_LEN(fifos); i++) {
 		fifos[i] = fifo_create(FIFO_MAX);
 		if (fifos[i] == NULL) {
 			fprintf(stderr, "Failed to create fifo: %s\n",
@@ -322,7 +325,7 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 		}
 	}
 cleanup:
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ARRAY_LEN(fifos); i++) {
 		fifo_destroy(fifos[i]);
 	}
 

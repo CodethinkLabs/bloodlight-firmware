@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef BL_TOOLS_UTIL_H
-#define BL_TOOLS_UTIL_H
+#ifndef BL_COMMON_LED_H
+#define BL_COMMON_LED_H
 
-#include <stdbool.h>
-#include <inttypes.h>
-
-bool read_sized_uint(const char *value, uint32_t *out, size_t target_size);
+#define BL_LED_COUNT 16
 
 #endif

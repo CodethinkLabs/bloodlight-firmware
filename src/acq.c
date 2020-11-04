@@ -30,10 +30,11 @@
 #include "acq/dac.h"
 #endif
 
+#include "common/error.h"
+#include "common/util.h"
+#include "common/msg.h"
+
 #include "delay.h"
-#include "error.h"
-#include "util.h"
-#include "msg.h"
 #include "mq.h"
 #include "usb.h"
 #include "spi.h"

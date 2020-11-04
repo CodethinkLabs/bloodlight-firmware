@@ -17,7 +17,7 @@
 #include "timer.h"
 #include "rcc.h"
 
-#include "../util.h"
+#include "common/util.h"
 #include "../led.h"
 
 #include <libopencm3/stm32/timer.h>

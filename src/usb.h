@@ -17,11 +17,8 @@
 #ifndef BL_USB_H
 #define BL_USB_H
 
-#include "msg.h"
-
-#define BL_STR_MANUFACTURER "Codethink"
-#define BL_STR_PRODUCT      "Bloodlight"
-#define BL_STR_SERIAL_NUM   "ct-bloodlight:000000"
+#include "common/msg.h"
+#include "common/usb.h"
 
 /**
  * Initialise the USB module.

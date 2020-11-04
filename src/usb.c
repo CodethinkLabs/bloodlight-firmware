@@ -26,8 +26,9 @@
 #include <libopencm3/stm32/crs.h>
 #endif
 
-#include "error.h"
-#include "util.h"
+#include "common/error.h"
+#include "common/util.h"
+
 #include "msg.h"
 #include "mq.h"
 #include "usb.h"

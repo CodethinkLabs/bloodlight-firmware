@@ -24,14 +24,14 @@
 #ifndef BV_DATA_INVERT_H
 #define BV_DATA_INVERT_H
 
-#include "../../src/acq.h"
+#include "common/acq.h"
 
 /**
  * The data inverting filter's configuration.
  */
 struct data_invert_config {
 	/** Whether each channel should be inverted. */
-	bool invert[BL_ACQ__SRC_COUNT];
+	bool invert[BL_ACQ_SOURCE_MAX];
 };
 
 /**

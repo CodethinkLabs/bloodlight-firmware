@@ -20,10 +20,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "../error.h"
+#include "common/error.h"
+#include "common/channel.h"
+
 #include "../acq.h"
 
 #define BL_ACQ_CHANNEL_COUNT 19
+
+#if (BL_ACQ_CHANNEL_COUNT > BL_CHANNEL_MAX)
+#error "BL_ACQ_CHANNEL_COUNT must be less than BL_CHANNEL_MAX"
+#endif
 
 enum bl_error bl_acq_channel_configure(unsigned channel,
 		enum bl_acq_source source,

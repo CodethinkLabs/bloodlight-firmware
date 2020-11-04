@@ -23,9 +23,9 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "../src/error.h"
-#include "../src/util.h"
-#include "../src/msg.h"
+#include "common/error.h"
+#include "common/util.h"
+#include "common/msg.h"
 
 #include "msg.h"
 #include "sig.h"
@@ -80,12 +80,12 @@ static void bl__calibrate_channel(
 
 static void bl__handle_start(
 		const union bl_msg_data *msg,
-		struct channel_conf conf[BL_ACQ__SRC_COUNT])
+		struct channel_conf conf[BL_ACQ_SOURCE_MAX])
 {
 	(void) msg;
 
 	/* Re-start calibration on start message. */
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ACQ_SOURCE_MAX; i++) {
 		conf[i].sample_min = 0xFFFFFFFF;
 		conf[i].sample_max = 0x00000000;
 	}
@@ -93,7 +93,7 @@ static void bl__handle_start(
 
 static void bl__handle_channel_conf(
 		const union bl_msg_data *msg,
-		struct channel_conf conf[BL_ACQ__SRC_COUNT])
+		struct channel_conf conf[BL_ACQ_SOURCE_MAX])
 {
 	unsigned channel = msg->channel_conf.channel;
 
@@ -111,9 +111,12 @@ static void bl__handle_channel_conf(
 
 static void bl__handle_sample_data32(
 		const union bl_msg_data *msg,
-		struct channel_conf conf[BL_ACQ__SRC_COUNT])
+		struct channel_conf conf[BL_ACQ_SOURCE_MAX])
 {
 	unsigned channel = msg->sample_data.channel;
+	if (channel >= BL_ACQ_SOURCE_MAX) {
+		return;
+	}
 
 	for (unsigned i = 0; i < msg->sample_data.count; i++) {
 		uint32_t sample = msg->sample_data.data32[i];
@@ -131,7 +134,7 @@ static void bl__handle_sample_data32(
 
 static int bl__calibrate(void)
 {
-	struct channel_conf conf[BL_ACQ__SRC_COUNT] = { 0 };
+	struct channel_conf conf[BL_ACQ_SOURCE_MAX] = { 0 };
 	union bl_msg_data msg;
 
 	while (!bl_sig_killed && bl_msg_yaml_parse(stdin, &msg)) {
@@ -155,13 +158,13 @@ static int bl__calibrate(void)
 		}
 	}
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ARRAY_LEN(conf); i++) {
 		if (conf[i].enabled) {
 			bl__calibrate_channel(i, 16, &conf[i]);
 		}
 	}
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ARRAY_LEN(conf); i++) {
 		if (conf[i].enabled) {
 			printf("./tools/bl chancfg \"$device\" %u %u %u %u\n", i,
 					(unsigned) conf[i].source,

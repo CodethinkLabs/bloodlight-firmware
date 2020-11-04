@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 
-#include "../error.h"
+#include "common/error.h"
 
 typedef struct bl_acq_dac_s bl_acq_dac_t;
 

@@ -19,7 +19,8 @@
 #include "source.h"
 #include "channel.h"
 
-#include "../util.h"
+#include "common/util.h"
+
 #include "../delay.h"
 #include "../led.h"
 

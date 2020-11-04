@@ -2,7 +2,7 @@ VARIANT = release
 
 BUILDDIR = build/$(VARIANT)
 
-CFLAGS = -Wall -Wextra -pedantic --std=gnu11 -Isdl-tk/include
+CFLAGS = -Wall -Wextra -pedantic --std=gnu11 -Isdl-tk/include -I..
 LDFLAGS = -pthread
 
 CFLAGS += $(shell pkg-config sdl2 SDL2_ttf --cflags)

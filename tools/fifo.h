@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef BL_TOOLS_FIFO_H
+#define BL_TOOLS_FIFO_H
+
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -50,3 +53,5 @@ void pfifo_destroy(struct pfifo *fifo);
 bool pfifo_write(struct pfifo *fifo, void *value);
 bool pfifo_read(struct pfifo *fifo, void **value);
 bool pfifo_peek_back(const struct pfifo *fifo, uint16_t steps, void **out);
+
+#endif

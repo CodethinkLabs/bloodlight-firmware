@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "../../src/acq.h"
+#include "common/acq.h"
 
 #include "util.h"
 #include "data-cal.h"
@@ -99,7 +99,7 @@ static enum bl_acq_source data_cal__channel_to_source(
 		}
 	}
 
-	return BL_ACQ__SRC_COUNT;
+	return BL_ACQ_SOURCE_MAX;
 }
 
 /* Exported interface, documented in data-cal.h */
@@ -119,7 +119,7 @@ void data_cal_fini(void *pw)
 				&shift, &offset);
 
 		src = data_cal__channel_to_source(ctx, i);
-		if (src >= BL_ACQ__SRC_COUNT) {
+		if (src >= BL_ACQ_SOURCE_MAX) {
 			continue;
 		}
 

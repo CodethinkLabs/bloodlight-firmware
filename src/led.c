@@ -20,10 +20,11 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 
-#include "error.h"
-#include "util.h"
+#include "common/error.h"
+#include "common/util.h"
+#include "common/msg.h"
+
 #include "led.h"
-#include "msg.h"
 #include "acq/channel.h"
 #include "spi.h"
 #include "acq.h"

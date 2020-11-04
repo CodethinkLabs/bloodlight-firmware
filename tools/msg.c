@@ -26,9 +26,9 @@
 #include <unistd.h>
 #include <poll.h>
 
-#include "../src/error.h"
-#include "../src/util.h"
-#include "../src/msg.h"
+#include "common/error.h"
+#include "common/util.h"
+#include "common/msg.h"
 
 #include "msg.h"
 #include "sig.h"

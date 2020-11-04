@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "../../src/msg.h"
+#include "common/msg.h"
 
 #include "data.h"
 #include "util.h"
@@ -285,7 +285,7 @@ static bool data__register_invert(
 	struct data_filter *filter;
 	struct data_invert_config config = { 0 };
 
-	for (unsigned i = 0; i < BL_ACQ__SRC_COUNT; i++) {
+	for (unsigned i = 0; i < BL_ACQ_SOURCE_MAX; i++) {
 		config.invert[i] = main_menu_config_get_channel_inverted(i);
 		if (config.invert[i]) {
 			enabled = true;

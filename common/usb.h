@@ -14,24 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef BL_UTIL_H
-#define BL_UTIL_H
+#ifndef BL_COMMON_USB_H
+#define BL_COMMON_USB_H
 
-/**
- * Helper to squash warnings about unused variables.
- *
- * \param[in]  _u  The variable that is unused.
- */
-#define BL_UNUSED(_u) \
-	((void)(_u))
-
-/**
- * Helper to get the number of entires in an array.
- *
- * \param[in]  _a  Array to get the entry count for.
- * \return entry count of array.
- */
-#define BL_ARRAY_LEN(_a) \
-	((sizeof(_a)) / (sizeof(*_a)))
+#define BL_STR_MANUFACTURER "Codethink"
+#define BL_STR_PRODUCT      "Bloodlight"
+#define BL_STR_SERIAL_NUM   "ct-bloodlight:000000"
 
 #endif

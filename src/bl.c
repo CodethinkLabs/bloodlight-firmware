@@ -18,13 +18,14 @@
 
 #include <libopencm3/stm32/rcc.h>
 
+#include "common/error.h"
+
 #include "acq.h"
 #include "led.h"
 #include "bl.h"
 #include "usb.h"
 #include "tick.h"
 #include "delay.h"
-#include "error.h"
 #include "spi.h"
 
 enum bl_acq_spi_mode bl_spi_mode = BL_ACQ_SPI_DAUGHTER;

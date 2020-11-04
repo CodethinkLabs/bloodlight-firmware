@@ -17,10 +17,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "error.h"
-#include "util.h"
-#include "bl.h"
+#include "common/util.h"
+
 #include "msg.h"
+#include "bl.h"
+#include "led.h"
+#include "acq.h"
 
 /**
  * Handle the LED message.

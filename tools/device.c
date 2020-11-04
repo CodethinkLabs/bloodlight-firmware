@@ -27,7 +27,7 @@
 
 #include <libudev.h>
 
-#include "../src/usb.h"
+#include "common/usb.h"
 
 #include "device.h"
 

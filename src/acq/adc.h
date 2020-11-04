@@ -20,7 +20,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "../error.h"
+#include "common/error.h"
 
 
 typedef struct bl_acq_adc_group_s bl_acq_adc_group_t;
