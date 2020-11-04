@@ -21,9 +21,9 @@ jobs:
                libnewlib-arm-none-eabi
                libfftw3-dev
     - name: Build libopencm3
-      run: make -j4 -C libopencm3
+      run: make -j4 -C firmware/libopencm3
     - name: Build firmware
-      run: make
+      run: make -C firmware
     - name: Build bloodview (gcc)
       run: make -BC bloodview
     - name: Build bloodview (clang)
@@ -62,4 +62,4 @@ jobs:
     - name: Cppcheck tools
       run: cppcheck --enable=warning,performance,portability,information --std=c11 tools/
     - name: Cppcheck firmware
-      run: cppcheck --enable=warning,performance,portability,information --std=c11 src/
+      run: cppcheck --enable=warning,performance,portability,information --std=c11 firmware/src/

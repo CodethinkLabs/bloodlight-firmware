@@ -1,6 +1,8 @@
 PROJECT = bloodlight-firmware
 BUILD_DIR = bin
 
+CFLAGS += -I..
+
 CFILES = \
 	src/tick.c \
 	src/delay.c \
