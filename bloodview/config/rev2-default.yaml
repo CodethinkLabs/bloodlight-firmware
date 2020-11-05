@@ -511,9 +511,13 @@ menu:
               - toggle: {title: Infrared (1550nm), value: false}
               - toggle: {title: Infrared (1650nm), value: false}
       - select:
-          title: Mode
+          title: Emission mode
           value:
-            acq-mode: Flash
+            emission-mode: Flash
+      - select:
+          title: Detection mode
+          value:
+            detection-mode: Reflective
   - menu:
       title: Filtering
       entries:
