@@ -646,10 +646,11 @@ static bool device__queue_msg_start(void)
 	}
 
 	msg->type = BL_MSG_START;
-	msg->start.flash_mode = main_menu_config_get_acq_emission_mode();
-	msg->start.frequency  = main_menu_config_get_frequency();
-	msg->start.led_mask   = main_menu_config_get_led_mask();
-	msg->start.src_mask   = main_menu_config_get_source_mask();
+	msg->start.detection_mode = main_menu_config_get_acq_detection_mode();
+	msg->start.flash_mode     = main_menu_config_get_acq_emission_mode();
+	msg->start.frequency      = main_menu_config_get_frequency();
+	msg->start.led_mask       = main_menu_config_get_led_mask();
+	msg->start.src_mask       = main_menu_config_get_source_mask();
 
 	device__msg_send(msg);
 	return true;
