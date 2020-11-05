@@ -133,9 +133,10 @@ static bl_acq_source_t bl_acq_source[] =
 	[BL_ACQ_PD3] = {
 		.gpio_port    = GPIOB,
 		.gpio_pin     = 1,
-		.opamp        = &bl_acq_opamp6,
-		.opamp_used   = true,
-		.adc          = NULL,
+		.opamp        = NULL,
+		.opamp_used   = false,
+		.adc          = &bl_acq_adc3,
+		.adc_channel  = 1,
 		.enable       = 0,
 	},
 	[BL_ACQ_PD4] = {
