@@ -61,11 +61,11 @@ void main_menu_destroy(struct sdl_tk_widget *main_menu);
 void main_menu_update(void);
 
 /**
- * Get the Acquisition Mode.
+ * Get the acquisition emission mode.
  *
- * \return the configured acquisition flash mode.
+ * \return the configured acquisition emission mode.
  */
-enum bl_acq_flash_mode main_menu_config_get_acq_flash_mode(void);
+enum bl_acq_flash_mode main_menu_config_get_acq_emission_mode(void);
 
 /**
  * Get the LED mask.

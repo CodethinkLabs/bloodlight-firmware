@@ -248,9 +248,9 @@ sub-menus:
         title: Flash
         entries: *menu-mode-flash
     - select:
-        title: Mode
+        title: Emission mode
         value:
-          acq-mode: Continuous
+          emission-mode: Continuous
 
   - &menu-filtering
     - input:
