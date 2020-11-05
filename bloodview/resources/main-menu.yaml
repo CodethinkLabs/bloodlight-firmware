@@ -259,6 +259,10 @@ sub-menus:
         title: Emission mode
         value:
           emission-mode: Continuous
+    - select:
+        title: Detection mode
+        value:
+          detection-mode: Reflective
 
   - &menu-filtering
     - input:
