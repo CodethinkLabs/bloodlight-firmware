@@ -239,7 +239,7 @@ static struct desc_widget *main_menu__get_desc_child(
 			return NULL;
 		}
 
-		if (i > base->menu.entry_count) {
+		if (i >= base->menu.entry_count) {
 			fprintf(stderr, "Config index too high: %u\n", i);
 			return NULL;
 		}
