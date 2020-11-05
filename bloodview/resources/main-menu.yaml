@@ -18,6 +18,8 @@ sub-menus:
         title: 5.0 Volts
     - toggle:
         title: Temperature
+    - toggle:
+        title: External
 
   - &menu-colour
     - input:
@@ -101,6 +103,9 @@ sub-menus:
         entries: *menu-channel-setup
     - menu:
         title: Temperature
+        entries: *menu-channel-setup
+    - menu:
+        title: External
         entries: *menu-channel-setup
 
   - &menu-leds
@@ -221,6 +226,9 @@ sub-menus:
     - menu:
         title: Temperature
         entries: *menu-source
+    - menu:
+        title: External
+        entries: *menu-source
 
   - &menu-mode-flash
     - menu:
@@ -248,9 +256,13 @@ sub-menus:
         title: Flash
         entries: *menu-mode-flash
     - select:
-        title: Mode
+        title: Emission mode
         value:
-          acq-mode: Continuous
+          emission-mode: Continuous
+    - select:
+        title: Detection mode
+        value:
+          detection-mode: Reflective
 
   - &menu-filtering
     - input:

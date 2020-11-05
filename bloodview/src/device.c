@@ -256,7 +256,7 @@ static FILE *device__open_recording(bool calibrate)
  */
 static unsigned device__get_channel_mask(uint16_t src_mask)
 {
-	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 	unsigned mask = 0;
 
 	switch (mode) {
@@ -527,7 +527,7 @@ static bool device__queue_msg_led(bool enable_lights)
  */
 static enum bl_acq_source device__get_channel_source(uint8_t channel)
 {
-	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 
 	switch (mode) {
 	case BL_ACQ_CONTINUOUS:
@@ -646,10 +646,11 @@ static bool device__queue_msg_start(void)
 	}
 
 	msg->type = BL_MSG_START;
-	msg->start.flash_mode      = main_menu_config_get_acq_flash_mode();
-	msg->start.frequency = main_menu_config_get_frequency();
-	msg->start.led_mask  = main_menu_config_get_led_mask();
-	msg->start.src_mask  = main_menu_config_get_source_mask();
+	msg->start.detection_mode = main_menu_config_get_acq_detection_mode();
+	msg->start.flash_mode     = main_menu_config_get_acq_emission_mode();
+	msg->start.frequency      = main_menu_config_get_frequency();
+	msg->start.led_mask       = main_menu_config_get_led_mask();
+	msg->start.src_mask       = main_menu_config_get_source_mask();
 
 	device__msg_send(msg);
 	return true;
@@ -686,7 +687,7 @@ static bool device__queue_msg_abort(void)
 static bool device__queue_channel_conf_messages(bool calibrate)
 {
 	unsigned source_mask = main_menu_config_get_source_mask();
-	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 	unsigned led_mask = main_menu_config_get_led_mask();
 	unsigned channel_mask = 0;
 

@@ -72,13 +72,15 @@ struct desc_widget_value {
 	enum {
 		INPUT_TYPE_DOUBLE,
 		INPUT_TYPE_UNSIGNED,
-		INPUT_TYPE_ACQ_MODE,
+		INPUT_TYPE_ACQ_EMISSION_MODE,
+		INPUT_TYPE_ACQ_DETECTION_MODE,
 		INPUT_TYPE_DERIVATIVE,
 	} type; /**< The input value type. */
 	union {
 		double             type_double;     /**< Data for double values */
 		unsigned           type_unsigned;   /**< Data for unsigned values */
-		enum bl_acq_flash_mode   type_acq_mode;   /**< Data for acquisition modes */
+		enum bl_acq_flash_mode     type_acq_emission_mode;  /**< Data for emission modes */
+		enum bl_acq_detection_mode type_acq_detection_mode; /**< Data for detection modes */
 		enum bv_derivative type_derivative; /**< Data for derivative modes */
 	};
 };
@@ -239,7 +241,7 @@ static struct desc_widget *main_menu__get_desc_child(
 			return NULL;
 		}
 
-		if (i > base->menu.entry_count) {
+		if (i >= base->menu.entry_count) {
 			fprintf(stderr, "Config index too high: %u\n", i);
 			return NULL;
 		}
@@ -408,10 +410,11 @@ static struct desc_widget *bl_main_menu;
 
 /** CYAML schema: Valid input widget type mapping. */
 static const cyaml_strval_t widget_input_type[] = {
-	{ .val = INPUT_TYPE_DOUBLE,     .str = "double" },
-	{ .val = INPUT_TYPE_UNSIGNED,   .str = "unsigned" },
-	{ .val = INPUT_TYPE_ACQ_MODE,   .str = "acq-mode" },
-	{ .val = INPUT_TYPE_DERIVATIVE, .str = "derivative" },
+	{ .val = INPUT_TYPE_DOUBLE,             .str = "double" },
+	{ .val = INPUT_TYPE_UNSIGNED,           .str = "unsigned" },
+	{ .val = INPUT_TYPE_ACQ_EMISSION_MODE,  .str = "emission-mode" },
+	{ .val = INPUT_TYPE_ACQ_DETECTION_MODE, .str = "detection-mode" },
+	{ .val = INPUT_TYPE_DERIVATIVE,         .str = "derivative" },
 };
 
 /** CYAML schema: Valid widget type mapping. */
@@ -431,10 +434,16 @@ static const cyaml_strval_t bv_action_type[] = {
 	{ .val = BV_ACTION_QUIT, .str = "bv_action_quit" },
 };
 
-/** CYAML schema: Valid acquisition mode mapping. */
-static const cyaml_strval_t bv_acq_mode[] = {
+/** CYAML schema: Valid acquisition emission mode mapping. */
+static const cyaml_strval_t bv_acq_emission_mode[] = {
 	{ .val = BL_ACQ_CONTINUOUS, .str = "Continuous" },
 	{ .val = BL_ACQ_FLASH,      .str = "Flash" },
+};
+
+/** CYAML schema: Valid acquisition detection mode mapping. */
+static const cyaml_strval_t bv_acq_detection_mode[] = {
+	{ .val = BL_ACQ_REFLECTIVE,   .str = "Reflective" },
+	{ .val = BL_ACQ_TRANSMISSIVE, .str = "Transmissive" },
 };
 
 /** CYAML schema: Valid acquisition mode mapping. */
@@ -498,9 +507,12 @@ static const cyaml_schema_field_t schema_main_menu_widget_select_value_mapping[]
 	CYAML_FIELD_ENUM("kind", CYAML_FLAG_OPTIONAL,
 			struct desc_widget_value, type,
 			widget_input_type, CYAML_ARRAY_LEN(widget_input_type)),
-	CYAML_FIELD_ENUM("acq-mode", CYAML_FLAG_DEFAULT,
-			struct desc_widget_value, type_acq_mode,
-			bv_acq_mode, CYAML_ARRAY_LEN(bv_acq_mode)),
+	CYAML_FIELD_ENUM("emission-mode", CYAML_FLAG_DEFAULT,
+			struct desc_widget_value, type_acq_emission_mode,
+			bv_acq_emission_mode, CYAML_ARRAY_LEN(bv_acq_emission_mode)),
+	CYAML_FIELD_ENUM("detection-mode", CYAML_FLAG_DEFAULT,
+			struct desc_widget_value, type_acq_detection_mode,
+			bv_acq_detection_mode, CYAML_ARRAY_LEN(bv_acq_detection_mode)),
 	CYAML_FIELD_ENUM("derivative", CYAML_FLAG_DEFAULT,
 			struct desc_widget_value, type_derivative,
 			bv_derivative, CYAML_ARRAY_LEN(bv_derivative)),
@@ -642,13 +654,17 @@ static void main_menu_select_cb(
 	assert(desc_flash != NULL);
 
 	switch (value->select.value.type) {
-	case INPUT_TYPE_ACQ_MODE:
-		value->select.value.type_acq_mode = new_value;
+	case INPUT_TYPE_ACQ_EMISSION_MODE:
+		value->select.value.type_acq_emission_mode = new_value;
 
 		sdl_tk_widget_enable(desc_continuous->widget,
 				new_value == BL_ACQ_CONTINUOUS);
 		sdl_tk_widget_enable(desc_flash->widget,
 				new_value == BL_ACQ_FLASH);
+		break;
+
+	case INPUT_TYPE_ACQ_DETECTION_MODE:
+		value->select.value.type_acq_detection_mode = new_value;
 		break;
 
 	case INPUT_TYPE_DERIVATIVE:
@@ -806,8 +822,12 @@ static unsigned main_menu__select_value(
 	unsigned value = 0;
 
 	switch (val->type) {
-	case INPUT_TYPE_ACQ_MODE:
-		value = val->type_acq_mode;
+	case INPUT_TYPE_ACQ_EMISSION_MODE:
+		value = val->type_acq_emission_mode;
+		break;
+
+	case INPUT_TYPE_ACQ_DETECTION_MODE:
+		value = val->type_acq_detection_mode;
 		break;
 
 	case INPUT_TYPE_DERIVATIVE:
@@ -857,9 +877,14 @@ static bool main_menu__get_select_options(
 	const cyaml_strval_t *strval = NULL;
 
 	switch (val->type) {
-	case INPUT_TYPE_ACQ_MODE:
-		strval = bv_acq_mode;
-		count = CYAML_ARRAY_LEN(bv_acq_mode);
+	case INPUT_TYPE_ACQ_EMISSION_MODE:
+		strval = bv_acq_emission_mode;
+		count = CYAML_ARRAY_LEN(bv_acq_emission_mode);
+		break;
+
+	case INPUT_TYPE_ACQ_DETECTION_MODE:
+		strval = bv_acq_detection_mode;
+		count = CYAML_ARRAY_LEN(bv_acq_detection_mode);
 		break;
 
 	case INPUT_TYPE_DERIVATIVE:
@@ -1349,10 +1374,22 @@ static uint16_t main_menu__config_get_led_mask_helper(
 }
 
 /* Exported interface, documented in main-menu.h */
-enum bl_acq_flash_mode main_menu_config_get_acq_flash_mode(void)
+enum bl_acq_flash_mode main_menu_config_get_acq_emission_mode(void)
 {
 	struct desc_widget *desc = main_menu__get_desc_fmt(
-			bl_main_menu, "Config/Acquisition/Mode");
+			bl_main_menu, "Config/Acquisition/Emission mode");
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_SELECT);
+
+	return main_menu__select_value(&desc->select.value);
+}
+
+/* Exported interface, documented in main-menu.h */
+enum bl_acq_detection_mode main_menu_config_get_acq_detection_mode(void)
+{
+	struct desc_widget *desc = main_menu__get_desc_fmt(
+			bl_main_menu, "Config/Acquisition/Detection mode");
 
 	assert(desc != NULL);
 	assert(desc->type == WIDGET_TYPE_SELECT);
@@ -1365,13 +1402,13 @@ enum bl_acq_flash_mode main_menu_config_get_acq_flash_mode(void)
  *
  * \return the configured acquisition mode.
  */
-static const char *main_menu_config_get_acq_flash_mode_string(void)
+static const char *main_menu_config_get_acq_emission_mode_string(void)
 {
-	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 
-	for (unsigned i = 0; i < BV_ARRAY_LEN(bv_acq_mode); i++) {
-		if (bv_acq_mode[i].val == mode) {
-			return bv_acq_mode[i].str;
+	for (unsigned i = 0; i < BV_ARRAY_LEN(bv_acq_emission_mode); i++) {
+		if (bv_acq_emission_mode[i].val == mode) {
+			return bv_acq_emission_mode[i].str;
 		}
 	}
 
@@ -1383,7 +1420,7 @@ uint16_t main_menu_config_get_led_mask(void)
 {
 	struct desc_widget *desc = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/%s/LEDs",
-			main_menu_config_get_acq_flash_mode_string());
+			main_menu_config_get_acq_emission_mode_string());
 
 	assert(desc != NULL);
 
@@ -1395,7 +1432,7 @@ uint16_t main_menu_config_get_source_mask(void)
 {
 	struct desc_widget *sources = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/%s/Sources",
-			main_menu_config_get_acq_flash_mode_string());
+			main_menu_config_get_acq_emission_mode_string());
 	uint16_t src_mask = 0;
 	uint16_t src_count;
 
@@ -1429,7 +1466,7 @@ uint16_t main_menu_config_get_frequency(void)
  */
 struct desc_widget *main_menu__get_source_desc(enum bl_acq_source source)
 {
-	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 	struct desc_widget *desc = NULL;
 
 	switch (mode) {
@@ -1545,7 +1582,7 @@ static struct desc_widget *main_menu__get_channel_desc_menu(
 		uint8_t channel,
 		enum channel_conv input_type)
 {
-	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 	struct desc_widget *desc = NULL;
 
 	switch (mode) {
@@ -1578,7 +1615,7 @@ static struct desc_widget *main_menu__get_channel_desc(
 		uint8_t channel,
 		enum channel_conv input_type)
 {
-	enum bl_acq_flash_mode mode = main_menu_config_get_acq_flash_mode();
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 	struct desc_widget *chan_desc = main_menu__get_channel_desc_menu(
 			channel, input_type);
 	struct desc_widget *desc = NULL;
