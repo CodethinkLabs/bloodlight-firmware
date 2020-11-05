@@ -18,6 +18,8 @@ sub-menus:
         title: 5.0 Volts
     - toggle:
         title: Temperature
+    - toggle:
+        title: External
 
   - &menu-colour
     - input:
@@ -101,6 +103,9 @@ sub-menus:
         entries: *menu-channel-setup
     - menu:
         title: Temperature
+        entries: *menu-channel-setup
+    - menu:
+        title: External
         entries: *menu-channel-setup
 
   - &menu-leds
@@ -220,6 +225,9 @@ sub-menus:
         entries: *menu-source
     - menu:
         title: Temperature
+        entries: *menu-source
+    - menu:
+        title: External
         entries: *menu-source
 
   - &menu-mode-flash
