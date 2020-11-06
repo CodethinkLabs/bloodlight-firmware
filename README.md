@@ -54,20 +54,20 @@ REVISION=2 make -C firmware/
 And the Bloodlight host tools:
 
 ```bash
-make -C tools/
+make -C host/
 ```
 
-To make the [Bloodview](bloodview/) live-view and control application, run:
+To run the [Bloodview](bloodview/) live-view, run:
 
 ```bash
-make -BC bloodview/ run
+make -BC host/ run
 ```
 
 Or to run with with a default config for a paticular hardware revision:
 
 ```bash
-make -BC bloodview/ run BV_ARGS="-c rev1-default.yaml"
-make -BC bloodview/ run BV_ARGS="-c rev2-default.yaml"
+make -BC host/ run BV_ARGS="-c rev1-default.yaml"
+make -BC host/ run BV_ARGS="-c rev2-default.yaml"
 ```
 
 More information can be found in the [Bloodview](bloodview/) documentation.
@@ -212,10 +212,10 @@ helper tool, at `tools/bl`.
 Running `bl` without any parameters will list the commands it supports:
 
 ```
-./tools/bl
+host/build/bl
 
 Usage:
-  ./tools/bl CMD [params]
+  host/build/bl CMD [params]
 
 Available CMDs:
   led       Turn LEDs on/off
@@ -229,10 +229,10 @@ Running a command will show if you need to pass any parameters to the
 command:
 
 ```
-./tools/bl led
+host/build/bl led
 
 Usage:
-  ./tools/bl led \
+  host/build/bl led \
   	<DEVICE_PATH|--auto|-a> \
   	<LED_MASK>
 ```
@@ -246,7 +246,7 @@ The LED_MASK is a 16-bit mask of the 16 LEDs on the device.  If a bit is
 set, then the corresponding LED is turned on:
 
 ```
-./tools/bl led /dev/ttyACM2 0x8000
+host/build/bl led /dev/ttyACM2 0x8000
 
 Failed to open '/dev/ttyACM2': Permission denied
 ```
@@ -255,7 +255,7 @@ This didn't work because we need to have permission to open `/dev/ttyACM2`.
 Running with `sudo` it should work:
 
 ```
-sudo tools/bl led /dev/ttyACM2 0x8000
+sudo host/build/bl led /dev/ttyACM2 0x8000
 
 - LED:
     LED Mask: 0x8000
@@ -271,7 +271,7 @@ The above command would turn on one of the LEDs.  To turn off all the LEDs,
 set all the bits to zero:
 
 ```
-sudo ./tools/bl led /dev/ttyACM2 0x0
+sudo host/build/bl led /dev/ttyACM2 0x0
 ```
 
 To run an acquisition, it is simplest to use the [run.sh](run.sh) script
@@ -384,10 +384,10 @@ turn the sample value data into a WAV file for loading into
 [Audacity](https://www.audacityteam.org/).
 
 ```
-./tools/convert 
+host/build/convert
 
 Usage:
-  ./tools/convert CMD [params]
+  host/build/convert CMD [params]
 
 Available CMDs:
   wav     Convert to WAVE format

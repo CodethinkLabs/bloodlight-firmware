@@ -29,8 +29,9 @@
 #include "common/msg.h"
 #include "common/channel.h"
 
-#include "msg.h"
-#include "sig.h"
+#include "host/common/msg.h"
+#include "host/common/sig.h"
+
 #include "fifo.h"
 
 #define FIFO_MAX 1024

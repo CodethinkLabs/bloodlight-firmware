@@ -36,8 +36,8 @@
 #include "common/msg.h"
 #include "common/channel.h"
 
-#include "../../tools/msg.h"
-#include "../../tools/device.h"
+#include "host/common/msg.h"
+#include "host/common/device.h"
 
 #include "data.h"
 #include "util.h"

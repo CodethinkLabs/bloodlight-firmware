@@ -1,0 +1,4 @@
+build/
+*-acq.yaml
+*-cal.yaml
+bloodview/config/previous.yaml

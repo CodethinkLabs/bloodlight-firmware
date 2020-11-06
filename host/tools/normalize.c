@@ -24,8 +24,9 @@
 #include "common/channel.h"
 #include "common/util.h"
 
-#include "msg.h"
-#include "sig.h"
+#include "host/common/msg.h"
+#include "host/common/sig.h"
+
 #include "fifo.h"
 #include "util.h"
 
