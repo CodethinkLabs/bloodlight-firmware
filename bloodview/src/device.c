@@ -741,6 +741,17 @@ static bool device__start(
 		const char *ctx_string,
 		bool calibrate)
 {
+	enum bl_acq_detection_mode dm;
+	enum bl_acq_flash_mode em;
+	bool enable_lights = false;
+
+	dm = main_menu_config_get_acq_detection_mode();
+	em = main_menu_config_get_acq_emission_mode();
+
+	if (dm == BL_ACQ_REFLECTIVE && em == BL_ACQ_CONTINUOUS) {
+		enable_lights = true;
+	}
+
 	if (!device__ensure_initialised(ctx_string)) {
 		return false;
 	}
@@ -749,7 +760,7 @@ static bool device__start(
 		goto error;
 	}
 
-	if (!device__queue_msg_led(true)) {
+	if (!device__queue_msg_led(enable_lights)) {
 		goto error;
 	}
 
