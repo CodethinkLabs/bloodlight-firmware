@@ -2,5 +2,5 @@
 	path = firmware/libopencm3
 	url = https://github.com/ben-brewer-codethink/libopencm3.git
 [submodule "bloodview/libcyaml"]
-	path = bloodview/libcyaml
+	path = host/bloodview/libcyaml
 	url = https://github.com/tlsa/libcyaml.git

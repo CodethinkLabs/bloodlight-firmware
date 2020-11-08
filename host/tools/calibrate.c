@@ -27,8 +27,8 @@
 #include "common/util.h"
 #include "common/msg.h"
 
-#include "msg.h"
-#include "sig.h"
+#include "host/common/msg.h"
+#include "host/common/sig.h"
 
 struct channel_conf {
 	bool     enabled;

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef BL_TOOLS_MSG_H
-#define BL_TOOLS_MSG_H
+#ifndef BL_HOST_COMMON_MSG_H
+#define BL_HOST_COMMON_MSG_H
 
 #include <stdbool.h>
 
@@ -65,4 +65,4 @@ bool bl_msg_write(
 		const char *path,
 		const union bl_msg_data *msg);
 
-#endif /* BL_TOOLS_MSG_H */
+#endif /* BL_HOST_COMMON_MSG_H */

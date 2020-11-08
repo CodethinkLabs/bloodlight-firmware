@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef BL_TOOLS_DEVICE_H
-#define BL_TOOLS_DEVICE_H
+#ifndef BL_HOST_COMMON_DEVICE_H
+#define BL_HOST_COMMON_DEVICE_H
 
 struct bl_device {
 	char *device_path;
@@ -61,4 +61,4 @@ void bl_device_list_free(
 		struct bl_device *devices,
 		unsigned count);
 
-#endif /* BL_TOOLS_DEVICE_H */
+#endif /* BL_HOST_COMMON_DEVICE_H */

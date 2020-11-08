@@ -2,12 +2,5 @@ bin/
 *.elf
 *.bin
 generated.*.ld
-tools/bl
-tools/bpm
-tools/*.o
-tools/convert
-tools/calibrate
-tools/normalize
-tools/fft
 .vscode/
 

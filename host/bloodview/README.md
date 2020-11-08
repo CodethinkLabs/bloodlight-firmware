@@ -17,7 +17,7 @@ attempting to build Bloodview, fetch the submodule:
     git submodule init
     git submodule update
 
-To build Bloodview, run:
+To build Bloodview, from the `host/` directory, run:
 
     make
 

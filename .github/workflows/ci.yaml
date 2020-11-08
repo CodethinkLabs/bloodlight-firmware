@@ -24,14 +24,10 @@ jobs:
       run: make -j4 -C firmware/libopencm3
     - name: Build firmware
       run: make -C firmware
-    - name: Build bloodview (gcc)
-      run: make -BC bloodview
-    - name: Build bloodview (clang)
-      run: CC=clang make -BC bloodview
-    - name: Build tools (gcc)
-      run: make -BC tools
-    - name: Build tools (clang)
-      run: CC=clang make -BC tools
+    - name: Build host (gcc)
+      run: make -BC host
+    - name: Build host (clang)
+      run: CC=clang make -BC host
 
   Code-quality:
     runs-on: ubuntu-latest
@@ -53,13 +49,9 @@ jobs:
                libfftw3-dev
     - name: Shellcheck
       run: shellcheck run.sh
-    - name: Clang scan-build bloodview
-      run: scan-build make -BC bloodview
-    - name: Clang scan-build tools
-      run: scan-build make -BC tools
-    - name: Cppcheck bloodview
-      run: cppcheck --enable=warning,performance,portability,information --std=c11 bloodview/
-    - name: Cppcheck tools
-      run: cppcheck --enable=warning,performance,portability,information --std=c11 tools/
+    - name: Clang scan-build host
+      run: scan-build make -BC host/
+    - name: Cppcheck host
+      run: cppcheck --enable=warning,performance,portability,information --std=c11 host/
     - name: Cppcheck firmware
       run: cppcheck --enable=warning,performance,portability,information --std=c11 firmware/src/

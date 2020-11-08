@@ -40,41 +40,41 @@ run_cal()
 	declare oversample="${OVERSAMPLE:-$DEFAULT_OVERSAMPLE}"
 
 	# Shine the lights
-	./tools/bl led     "$device" "$led_mask"
+	host/build/bl led     "$device" "$led_mask"
 
 	# srccfg <source> <gain> <offset> <sw oversample> [hw oversample] [hw shift]
-	./tools/bl srccfg "$device" 0  1 0 "$oversample" 0 0 # Photodiode 1
-	./tools/bl srccfg "$device" 1  1 0 "$oversample" 0 0 # Photodiode 2
-	./tools/bl srccfg "$device" 2  1 0 "$oversample" 0 0 # Photodiode 3
-	./tools/bl srccfg "$device" 3  1 0 "$oversample" 0 0 # Photodiode 4
-	./tools/bl srccfg "$device" 4  1 0 "$oversample" 0 0 # 3.3V
-	./tools/bl srccfg "$device" 5  1 0 "$oversample" 0 0 # 5.0V
-	./tools/bl srccfg "$device" 6  1 0 "$oversample" 0 0 # Temperature
+	host/build/bl srccfg "$device" 0  1 0 "$oversample" 0 0 # Photodiode 1
+	host/build/bl srccfg "$device" 1  1 0 "$oversample" 0 0 # Photodiode 2
+	host/build/bl srccfg "$device" 2  1 0 "$oversample" 0 0 # Photodiode 3
+	host/build/bl srccfg "$device" 3  1 0 "$oversample" 0 0 # Photodiode 4
+	host/build/bl srccfg "$device" 4  1 0 "$oversample" 0 0 # 3.3V
+	host/build/bl srccfg "$device" 5  1 0 "$oversample" 0 0 # 5.0V
+	host/build/bl srccfg "$device" 6  1 0 "$oversample" 0 0 # Temperature
 
 	# There are 19 channels including 16 LEDs plus 3.3V, 5.0V and Temperature
 	# chancfg <channel> <source> [offset] [shift] [sample32]
-	./tools/bl chancfg "$device" 0  2  0  0  1 # Photodiode 3
-	./tools/bl chancfg "$device" 1  2  0  0  1 # Photodiode 3
-	./tools/bl chancfg "$device" 2  2  0  0  1 # Photodiode 3
-	./tools/bl chancfg "$device" 3  2  0  0  1 # Photodiode 3
-	./tools/bl chancfg "$device" 4  3  0  0  1 # Photodiode 4
-	./tools/bl chancfg "$device" 5  3  0  0  1 # Photodiode 4
-	./tools/bl chancfg "$device" 6  3  0  0  1 # Photodiode 4
-	./tools/bl chancfg "$device" 7  3  0  0  1 # Photodiode 4
-	./tools/bl chancfg "$device" 8  1  0  0  1 # Photodiode 2
-	./tools/bl chancfg "$device" 9  1  0  0  1 # Photodiode 2
-	./tools/bl chancfg "$device" 10 1  0  0  1 # Photodiode 2
-	./tools/bl chancfg "$device" 11 1  0  0  1 # Photodiode 2
-	./tools/bl chancfg "$device" 12 0  0  0  1 # Photodiode 1
-	./tools/bl chancfg "$device" 13 0  0  0  1 # Photodiode 1
-	./tools/bl chancfg "$device" 14 0  0  0  1 # Photodiode 1
-	./tools/bl chancfg "$device" 15 0  0  0  1 # Photodiode 1
-	./tools/bl chancfg "$device" 16 4  0  0  1 # 3.3V
-	./tools/bl chancfg "$device" 17 5  0  0  1 # 5.0V
-	./tools/bl chancfg "$device" 18 6  0  0  1 # Temperature
+	host/build/bl chancfg "$device" 0  2  0  0  1 # Photodiode 3
+	host/build/bl chancfg "$device" 1  2  0  0  1 # Photodiode 3
+	host/build/bl chancfg "$device" 2  2  0  0  1 # Photodiode 3
+	host/build/bl chancfg "$device" 3  2  0  0  1 # Photodiode 3
+	host/build/bl chancfg "$device" 4  3  0  0  1 # Photodiode 4
+	host/build/bl chancfg "$device" 5  3  0  0  1 # Photodiode 4
+	host/build/bl chancfg "$device" 6  3  0  0  1 # Photodiode 4
+	host/build/bl chancfg "$device" 7  3  0  0  1 # Photodiode 4
+	host/build/bl chancfg "$device" 8  1  0  0  1 # Photodiode 2
+	host/build/bl chancfg "$device" 9  1  0  0  1 # Photodiode 2
+	host/build/bl chancfg "$device" 10 1  0  0  1 # Photodiode 2
+	host/build/bl chancfg "$device" 11 1  0  0  1 # Photodiode 2
+	host/build/bl chancfg "$device" 12 0  0  0  1 # Photodiode 1
+	host/build/bl chancfg "$device" 13 0  0  0  1 # Photodiode 1
+	host/build/bl chancfg "$device" 14 0  0  0  1 # Photodiode 1
+	host/build/bl chancfg "$device" 15 0  0  0  1 # Photodiode 1
+	host/build/bl chancfg "$device" 16 4  0  0  1 # 3.3V
+	host/build/bl chancfg "$device" 17 5  0  0  1 # 5.0V
+	host/build/bl chancfg "$device" 18 6  0  0  1 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$mode" "$detection" "$frequency" "$src_mask" "$led_mask"
+	host/build/bl start   "$device" "$mode" "$detection" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Run an acquisition.
@@ -87,31 +87,31 @@ run_acq()
 	declare oversample="${OVERSAMPLE:-$DEFAULT_OVERSAMPLE}"
 
 	# Shine the lights
-	./tools/bl led     "$device" "$led_mask"
+	host/build/bl led     "$device" "$led_mask"
 
 	# srccfg <source> <gain> <offset> <sw oversample> [hw oversample] [hw shift]
-	./tools/bl srccfg "$device" 0 16 0 "$oversample" 0 0 # Photodiode 1
-	./tools/bl srccfg "$device" 1  1 0 "$oversample" 0 0 # Photodiode 2
-	./tools/bl srccfg "$device" 2  1 0 "$oversample" 0 0 # Photodiode 3
-	./tools/bl srccfg "$device" 3  1 0 "$oversample" 0 0 # Photodiode 4
-	./tools/bl srccfg "$device" 4  1 0 "$oversample" 0 0 # 3.3V
-	./tools/bl srccfg "$device" 5  1 0 "$oversample" 0 0 # 5.0V
-	./tools/bl srccfg "$device" 6  1 0 "$oversample" 0 0 # Temperature
+	host/build/bl srccfg "$device" 0 16 0 "$oversample" 0 0 # Photodiode 1
+	host/build/bl srccfg "$device" 1  1 0 "$oversample" 0 0 # Photodiode 2
+	host/build/bl srccfg "$device" 2  1 0 "$oversample" 0 0 # Photodiode 3
+	host/build/bl srccfg "$device" 3  1 0 "$oversample" 0 0 # Photodiode 4
+	host/build/bl srccfg "$device" 4  1 0 "$oversample" 0 0 # 3.3V
+	host/build/bl srccfg "$device" 5  1 0 "$oversample" 0 0 # 5.0V
+	host/build/bl srccfg "$device" 6  1 0 "$oversample" 0 0 # Temperature
 
 	# TODO: this chancfg table has to change to be similar to the one
 	# in run_cal, but I've no idea where do those shift values come
 	# from, so leave it for now.
 	# chancfg <channel> <source> [offset] [shift] [sample32]
-	./tools/bl chancfg "$device" 0 0 1264480 0 # Photodiode 1
-	./tools/bl chancfg "$device" 1 1   54879 0 # Photodiode 2
-	./tools/bl chancfg "$device" 2 2  567447 0 # Photodiode 3
-	./tools/bl chancfg "$device" 3 3       0 0 # Photodiode 4
-	./tools/bl chancfg "$device" 4 4 1038856 0 # 3.3V
-	./tools/bl chancfg "$device" 5 5 1031704 0 # 5.0V
-	./tools/bl chancfg "$device" 6 6  860701 0 # Temperature
+	host/build/bl chancfg "$device" 0 0 1264480 0 # Photodiode 1
+	host/build/bl chancfg "$device" 1 1   54879 0 # Photodiode 2
+	host/build/bl chancfg "$device" 2 2  567447 0 # Photodiode 3
+	host/build/bl chancfg "$device" 3 3       0 0 # Photodiode 4
+	host/build/bl chancfg "$device" 4 4 1038856 0 # 3.3V
+	host/build/bl chancfg "$device" 5 5 1031704 0 # 5.0V
+	host/build/bl chancfg "$device" 6 6  860701 0 # Temperature
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
+	host/build/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
 }
 
 # Turn off the lights and stop any acquisition.
@@ -119,8 +119,8 @@ run_off()
 {
 	declare device="${DEVICE:-$DEFAULT_DEVICE}"
 
-	./tools/bl led     "$device" 0x0000
-	./tools/bl abort   "$device"
+	host/build/bl led     "$device" 0x0000
+	host/build/bl abort   "$device"
 }
 
 # Sequential exexute calibration and acquisition
@@ -135,7 +135,7 @@ run_cal_acq()
 	declare oversample="${OVERSAMPLE:-$DEFAULT_OVERSAMPLE}"
 
 	# Run calibration to get the config
-	run_cal | ./tools/calibrate | grep chancfg > "$TMP_CFG" &
+	run_cal | host/build/calibrate | grep chancfg > "$TMP_CFG" &
 	#echo "Wait 10s for default configuration"
 	sleep 10
 
@@ -156,7 +156,7 @@ run_cal_acq()
 	rm "$TMP_CFG"
 
 	# Start the calibration acquisition.
-	./tools/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
+	host/build/bl start   "$device" "$frequency" "$src_mask" "$led_mask"
 }
 
 if [ $# -lt 1 ]; then

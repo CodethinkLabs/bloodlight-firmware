@@ -27,9 +27,10 @@
 #include "common/msg.h"
 #include "common/acq.h"
 
-#include "device.h"
-#include "msg.h"
-#include "sig.h"
+#include "host/common/device.h"
+#include "host/common/msg.h"
+#include "host/common/sig.h"
+
 #include "util.h"
 
 typedef int (* bl_cmd_fn)(int argc, char *argv[]);

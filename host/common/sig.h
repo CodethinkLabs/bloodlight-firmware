@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef BL_TOOLS_SIG_H
-#define BL_TOOLS_SIG_H
+#ifndef BL_HOST_COMMON_SIG_H
+#define BL_HOST_COMMON_SIG_H
 
 #include <stdbool.h>
 
@@ -27,4 +27,4 @@ extern volatile bool bl_sig_killed;
  */
 bool bl_sig_init(void);
 
-#endif /* BL_TOOLS_SIG_H */
+#endif /* BL_HOST_COMMON_SIG_H */
