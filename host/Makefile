@@ -26,7 +26,7 @@ ifeq ($(VARIANT), release)
 else
 	CFLAGS += -O0 -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
 	LDFLAGS += -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
-	BLOODVIEW_ENV += LSAN_OPTIONS=suppressions=resources/lsan-suppr:print_suppressions=0
+	BLOODVIEW_ENV += LSAN_OPTIONS=suppressions=../bloodview/resources/lsan-suppr:print_suppressions=0
 endif
 
 MKDIR =	mkdir -p
