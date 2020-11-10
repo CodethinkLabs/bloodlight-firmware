@@ -373,6 +373,9 @@ enum bl_error bl_acq_start(
 		}
 	}
 
+	/* Disable status LED to avoid light pollution. */
+	bl_led_status_set(false);
+
 	/* Start timer(s) to begin acquisition. */
 	bl_acq_is_active = true;
 	bl_acq_timer_start_all();
@@ -446,6 +449,9 @@ enum bl_error bl_acq_abort(void)
 			bl_acq_channel_disable(i);
 		}
 	}
+
+	/* Re-enable status LED. */
+	bl_led_status_set(true);
 
 	return BL_ERROR_NONE;
 }
