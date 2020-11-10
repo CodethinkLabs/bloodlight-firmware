@@ -128,6 +128,10 @@ void data_cal_fini(void *pw)
 			continue;
 		}
 
+		fprintf(stderr, "Calibration: Channel %u: "
+				"Min: %"PRIu32", Max: %"PRIu32"\n",
+				src, c->sample_min, c->sample_max);
+
 		main_menu_config_set_channel_shift(i, shift);
 		main_menu_config_set_channel_offset(i, offset);
 	}
