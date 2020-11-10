@@ -227,6 +227,7 @@ static inline void bl_led__gpio_set(unsigned led)
 /* Exported function, documented in led.h */
 enum bl_error bl_led_loop(void)
 {
+	gpio_set(GPIOB, GPIO12);
 	if (bl_spi_mode == BL_ACQ_SPI_NONE) {
 		bl_led__gpio_clear(bl_led_active);
 	}
@@ -236,7 +237,12 @@ enum bl_error bl_led_loop(void)
 		bl_led_active = 0;
 
 	if (bl_spi_mode == BL_ACQ_SPI_MOTHER) {
-		bl_spi_send(bl_led_channel[bl_led_active].led);
+		unsigned led_to_send = bl_led_active + 1;
+		if (led_to_send >= bl_led_count)
+			led_to_send = 0;
+
+		bl_spi_send(bl_led_channel[led_to_send].led);
+		gpio_clear(GPIOB, GPIO12);
 	} else if (bl_spi_mode == BL_ACQ_SPI_NONE) {
 		bl_led__gpio_set(bl_led_active);
 	}
