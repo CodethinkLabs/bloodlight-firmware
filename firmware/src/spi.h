@@ -41,7 +41,7 @@ void bl_spi_init(void);
 
 /**
  * Send 8bits data through SPI
- * \param[in]  let 8bits data to be transferred
+ * \param[in]  led 8bits data to be transferred
  */
 void bl_spi_send(uint8_t led);
 
