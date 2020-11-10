@@ -132,7 +132,8 @@ static void bl_spi__setup(void)
 	spi_send_lsb_first(SPI2);
 	spi_fifo_reception_threshold_8bit(SPI2);
 	SPI_I2SCFGR(SPI2) &= ~SPI_I2SCFGR_I2SMOD;
-	if (bl_spi_mode == BL_ACQ_SPI_DAUGHTER) {
+	if (bl_spi_mode == BL_ACQ_SPI_DAUGHTER ||
+		bl_spi_mode == BL_ACQ_SPI_INIT) {
 		/* Software NSS was used for SPI, and GPIO12 is used
 		 * as generic GPIO to indicate LED flash
 		 */
@@ -141,15 +142,15 @@ static void bl_spi__setup(void)
 
 		spi_set_nss_low(SPI2);
 		spi_set_slave_mode(SPI2);
-		spi_enable(SPI2);
 	} else if (bl_spi_mode == BL_ACQ_SPI_MOTHER) {
 		gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT,
 						GPIO_PUPD_PULLDOWN, GPIO12);
 
 		spi_set_nss_high(SPI2);
 		spi_set_master_mode(SPI2);
-		spi_enable(SPI2);
 	}
+
+	spi_enable(SPI2);
 }
 
 /* Exported function, documented in spi.h */

@@ -28,7 +28,7 @@
 #include "delay.h"
 #include "spi.h"
 
-enum bl_acq_spi_mode bl_spi_mode = BL_ACQ_SPI_DAUGHTER;
+enum bl_acq_spi_mode bl_spi_mode = BL_ACQ_SPI_INIT;
 
 #if (BL_REVISION == 1)
 const struct rcc_clock_scale rcc_hse_16mhz_3v3 = {
@@ -78,10 +78,14 @@ int main(void)
 	bl_led_status_set(true);
 
 	while (true) {
-		if (bl_spi_mode == BL_ACQ_SPI_DAUGHTER) {
+		if (bl_spi_mode == BL_ACQ_SPI_INIT) {
 			bl_spi_daughter_poll();
+			bl_usb_poll();
+		} else if (bl_spi_mode == BL_ACQ_SPI_DAUGHTER) {
+			bl_spi_daughter_poll();
+		} else {
+			bl_usb_poll();
 		}
-		bl_usb_poll();
 	}
 }
 #endif

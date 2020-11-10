@@ -123,11 +123,13 @@ enum bl_error bl_acq_start(
 	/* Detection mode casting to SPI mode:
 	 * reflective   -> none SPI
 	 * transmissive -> SPI mother mode
-	 * As USB is connected, SPI daughter mode is not valid
+	 * Changing from SPI mother mode to daughter requires
+	 * reconnecting USB cable, thus power cycle, so this routine
+	 * is not valid in firmware
 	 */
 	if (bl_spi_mode != (enum bl_acq_spi_mode)detection_mode) {
 		bl_spi_mode = detection_mode;
-		if (bl_spi_mode != BL_ACQ_SPI_NONE) {
+		if (bl_spi_mode == BL_ACQ_SPI_MOTHER) {
 			bl_spi_init();
 		}
 	}
