@@ -224,11 +224,7 @@ static inline void bl_led__gpio_set(unsigned led)
 	*(volatile uint32_t *)bl_led_channel[led].gpio_bsrr = bl_led_channel[led].gpios;
 }
 
-/* Exported function, documented in led.h
- *
- * set/clear bsrr register can be further optimised by change the active
- * LED order to be grouped by GPIO ports, but we will try this first.
- */
+/* Exported function, documented in led.h */
 enum bl_error bl_led_loop(void)
 {
 	if (bl_spi_mode == BL_ACQ_SPI_NONE) {
@@ -246,4 +242,16 @@ enum bl_error bl_led_loop(void)
 	}
 
 	return BL_ERROR_NONE;
+}
+
+/* Exported function, documented in led.h */
+uint32_t bl_led_get_port(uint8_t led)
+{
+	return led_port[led_table[led].port_idx];
+}
+
+/* Exported function, documented in led.h */
+uint16_t bl_led_get_gpio(uint8_t led)
+{
+	return (1U << led_table[led].pin);
 }
