@@ -32,10 +32,14 @@
 #include "data-cal.h"
 #include "main-menu.h"
 
+/** Number of seconds to ignore at the start of calibration. */
+#define DATA_CAL_IGNORE_SECONDS 2
+
 /** Channel tracking. */
 struct channel_data {
-	uint32_t sample_min; /**< Lowest sample seen for channel. */
-	uint32_t sample_max; /**< Highest sample seen for channel. */
+	uint32_t sample_min;   /**< Lowest sample seen for channel. */
+	uint32_t sample_max;   /**< Highest sample seen for channel. */
+	uint64_t sample_count; /**< Number of samples. */
 };
 
 /** Calibration context. */
@@ -43,6 +47,7 @@ struct data_cal_ctx {
 	struct channel_data *channel; /**< Array of channels' info. */
 	unsigned count;               /**< Number of entries in channels. */
 
+	unsigned frequency;           /**< Acquisition frequency. */
 	uint32_t src_mask;            /**< Acquisition source mask. */
 };
 
@@ -149,6 +154,7 @@ static struct channel_data *data_cal__init_channel_array(
 	for (unsigned i = 0; i < count; i++) {
 		channel[i].sample_min = 0xFFFFFFFFu;
 		channel[i].sample_max = 0x00000000u;
+		channel[i].sample_count = 0;
 	}
 
 	return channel;
@@ -162,8 +168,6 @@ void *data_cal_init(
 {
 	struct data_cal_ctx *ctx;
 
-	BV_UNUSED(frequency);
-
 	ctx = calloc(1, sizeof(*ctx));
 	if (ctx == NULL) {
 		return NULL;
@@ -175,6 +179,7 @@ void *data_cal_init(
 		return NULL;
 	}
 
+	ctx->frequency = frequency;
 	ctx->src_mask = src_mask;
 	ctx->count = channels;
 	return ctx;
@@ -192,6 +197,12 @@ uint32_t data_cal_proc(
 	assert(channel < ctx->count);
 
 	c = &ctx->channel[channel];
+
+	c->sample_count++;
+	if (c->sample_count < DATA_CAL_IGNORE_SECONDS * ctx->frequency) {
+		/* Allow signal to stabilise; ignore early samples. */
+		return sample;
+	}
 
 	if (sample < c->sample_min) {
 		c->sample_min = sample;
