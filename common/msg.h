@@ -22,6 +22,8 @@
 #include "led.h"
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 /**
  * Maximum number of channels a \ref BL_MSG_SAMPLE_DATA16 message can contain.
@@ -43,6 +45,8 @@ enum bl_msg_type {
 	BL_MSG_ABORT,
 	BL_MSG_SAMPLE_DATA16,
 	BL_MSG_SAMPLE_DATA32,
+	BL_MSG_SOURCE_CAP_REQ,
+	BL_MSG_SOURCE_CAP,
 
 	BL_MSG__COUNT
 };
@@ -118,18 +122,44 @@ typedef struct {
 	};
 } bl_msg_sample_data_t;
 
+/** Data for \ref BL_MSG_SOURCE_CAP_REQ. */
+typedef struct {
+	uint8_t type;     /**< Must be \ref BL_MSG_SOURCE_CAP_REQ */
+	uint8_t source;
+} bl_msg_source_cap_req_t;
+
+/** Data for \ref BL_MSG_SOURCE_CAP. */
+typedef struct {
+	uint8_t type;     /**< Must be \ref BL_MSG_SOURCE_CAP */
+	uint8_t source;
+
+	union __attribute__((__packed__)) {
+		struct __attribute__((__packed__)) {
+			unsigned opamp_gain_cnt : 3; /* Zero if unsupported. */
+			bool     opamp_offset   : 1;
+			bool     hw_oversample  : 1;
+			unsigned reserved       : 3;
+		};
+		uint8_t flags;
+	};
+
+	uint8_t opamp_gain[6];
+} bl_msg_source_cap_t;
+
 /** Message data */
 union bl_msg_data {
 	/** Message type. */
 	uint8_t type;
 
-	bl_msg_response_t     response;
-	bl_msg_led_t          led;
-	bl_msg_source_conf_t  source_conf;
-	bl_msg_channel_conf_t channel_conf;
-	bl_msg_start_t        start;
-	bl_msg_abort_t        abort;
-	bl_msg_sample_data_t  sample_data;
+	bl_msg_response_t       response;
+	bl_msg_led_t            led;
+	bl_msg_source_conf_t    source_conf;
+	bl_msg_channel_conf_t   channel_conf;
+	bl_msg_start_t          start;
+	bl_msg_abort_t          abort;
+	bl_msg_sample_data_t    sample_data;
+	bl_msg_source_cap_req_t source_cap_req;
+	bl_msg_source_cap_t     source_cap;
 };
 
 /**
@@ -153,14 +183,16 @@ union bl_msg_data {
 static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 {
 	static const uint8_t len_table[BL_MSG__COUNT] = {
-		[BL_MSG_RESPONSE]      = BL_SIZEOF_MSG(response),
-		[BL_MSG_LED]           = BL_SIZEOF_MSG(led),
-		[BL_MSG_SOURCE_CONF]   = BL_SIZEOF_MSG(source_conf),
-		[BL_MSG_CHANNEL_CONF]  = BL_SIZEOF_MSG(channel_conf),
-		[BL_MSG_START]         = BL_SIZEOF_MSG(start),
-		[BL_MSG_ABORT]         = BL_SIZEOF_MSG(abort),
-		[BL_MSG_SAMPLE_DATA16] = BL_SIZEOF_MSG(sample_data),
-		[BL_MSG_SAMPLE_DATA32] = BL_SIZEOF_MSG(sample_data),
+		[BL_MSG_RESPONSE]       = BL_SIZEOF_MSG(response),
+		[BL_MSG_LED]            = BL_SIZEOF_MSG(led),
+		[BL_MSG_SOURCE_CONF]    = BL_SIZEOF_MSG(source_conf),
+		[BL_MSG_CHANNEL_CONF]   = BL_SIZEOF_MSG(channel_conf),
+		[BL_MSG_START]          = BL_SIZEOF_MSG(start),
+		[BL_MSG_ABORT]          = BL_SIZEOF_MSG(abort),
+		[BL_MSG_SAMPLE_DATA16]  = BL_SIZEOF_MSG(sample_data),
+		[BL_MSG_SAMPLE_DATA32]  = BL_SIZEOF_MSG(sample_data),
+		[BL_MSG_SOURCE_CAP_REQ] = BL_SIZEOF_MSG(source_cap_req),
+		[BL_MSG_SOURCE_CAP]     = BL_SIZEOF_MSG(source_cap),
 	};
 
 	if (type >= BL_MSG__COUNT) {

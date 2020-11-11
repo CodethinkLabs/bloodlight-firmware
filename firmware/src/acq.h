@@ -20,6 +20,7 @@
 #include <stdbool.h>
 
 #include "common/acq.h"
+#include "common/msg.h"
 
 #include "led.h"
 
@@ -71,6 +72,17 @@ enum bl_error bl_acq_source_conf(
 		uint16_t sw_oversample,
 		uint8_t  hw_oversample,
 		uint8_t  hw_shift);
+
+/**
+ * Get the per-source capabilities
+ *
+ * \param[in]   source    Channel (source) to get capabilites of.
+ * \param[out]  response  Response message to request.
+ * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ */
+enum bl_error bl_acq_source_cap(
+		uint8_t  source,
+		bl_msg_source_cap_t *response);
 
 /**
  * Set the per-channel configuration
