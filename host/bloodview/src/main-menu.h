@@ -237,6 +237,61 @@ bool main_menu_config_set_channel_shift(uint8_t channel, uint8_t shift);
 bool main_menu_config_set_channel_offset(uint8_t channel, uint32_t offset);
 
 /**
+ * Set the software oversample for a given source.
+ *
+ * \param[in]  source      The source update config for.
+ * \param[in]  oversample  The config value to set.
+ * \return true if the config value was successfully updated, false otherwise.
+ */
+bool main_menu_config_set_source_software_oversample(
+		uint8_t source,
+		uint32_t oversample);
+
+/**
+ * Set the opamp gain for a given source.
+ *
+ * \param[in]  source  The source update config for.
+ * \param[in]  gain    The config value to set.
+ * \return true if the config value was successfully updated, false otherwise.
+ */
+bool main_menu_config_set_source_opamp_gain(
+		uint8_t source,
+		uint32_t gain);
+
+/**
+ * Set the opamp offset for a given source.
+ *
+ * \param[in]  source  The source update config for.
+ * \param[in]  offset  The config value to set.
+ * \return true if the config value was successfully updated, false otherwise.
+ */
+bool main_menu_config_set_source_opamp_offset(
+		uint8_t source,
+		uint32_t offset);
+
+/**
+ * Set the hardware oversample for a given source.
+ *
+ * \param[in]  source      The source update config for.
+ * \param[in]  oversample  The config value to set.
+ * \return true if the config value was successfully updated, false otherwise.
+ */
+bool main_menu_config_set_source_hardware_oversample(
+		uint8_t source,
+		uint32_t oversample);
+
+/**
+ * Set the hardware shift for a given source.
+ *
+ * \param[in]  source  The source update config for.
+ * \param[in]  shift   The config value to set.
+ * \return true if the config value was successfully updated, false otherwise.
+ */
+bool main_menu_config_set_source_hardware_shift(
+		uint8_t source,
+		uint32_t shift);
+
+/**
  * Set whether acquisition is currently possible.
  *
  * \param[in]  available  Whether it is possible to start an acqusition.

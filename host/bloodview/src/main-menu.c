@@ -1883,3 +1883,86 @@ void main_menu_set_acq_available(bool available)
 	main_menu__push_update(UPDATE_TYPE_ENABLE, acq->widget, &data);
 	main_menu__push_update(UPDATE_TYPE_ENABLE, cal->widget, &data);
 }
+
+/**
+ * Set a value by name for a given source.
+ *
+ * \param[in]  source  The source update config for.
+ * \param[in]  name    The name of the config to update.
+ * \param[in]  value   The config value to set.
+ * \return true if the config value was successfully updated, false otherwise.
+ */
+static bool main_menu__config_set_source_value(
+		uint8_t source, const char *name, uint32_t value)
+{
+	union update_data data;
+	struct desc_widget *desc = main_menu__get_source_desc(source);
+	struct desc_widget *value_desc = main_menu__get_desc_fmt(desc, name);
+
+	assert(value_desc != NULL);
+	assert(value_desc->type == WIDGET_TYPE_INPUT);
+	assert(value_desc->input.value.type == INPUT_TYPE_UNSIGNED);
+
+	data.set_value.value = stringify_unsigned(value);
+	if (data.set_value.value == NULL) {
+		return false;
+	}
+
+	return main_menu__push_update(UPDATE_TYPE_SET_VALUE,
+			value_desc->widget, &data);
+}
+
+/* Exported interface, documented in main-menu.h */
+bool main_menu_config_set_source_software_oversample(
+		uint8_t source,
+		uint32_t oversample)
+{
+	return main_menu__config_set_source_value(
+			source,
+			"Software Oversample",
+			oversample);
+}
+
+/* Exported interface, documented in main-menu.h */
+bool main_menu_config_set_source_opamp_gain(
+		uint8_t source,
+		uint32_t gain)
+{
+	return main_menu__config_set_source_value(
+			source,
+			"Op-Amp Gain",
+			gain);
+}
+
+/* Exported interface, documented in main-menu.h */
+bool main_menu_config_set_source_opamp_offset(
+		uint8_t source,
+		uint32_t offset)
+{
+	return main_menu__config_set_source_value(
+			source,
+			"Op-Amp Offset",
+			offset);
+}
+
+/* Exported interface, documented in main-menu.h */
+bool main_menu_config_set_source_hardware_oversample(
+		uint8_t source,
+		uint32_t oversample)
+{
+	return main_menu__config_set_source_value(
+			source,
+			"Hardware Oversample",
+			oversample);
+}
+
+/* Exported interface, documented in main-menu.h */
+bool main_menu_config_set_source_hardware_shift(
+		uint8_t source,
+		uint32_t shift)
+{
+	return main_menu__config_set_source_value(
+			source,
+			"Hardware Shift",
+			shift);
+}
