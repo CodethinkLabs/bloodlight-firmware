@@ -407,7 +407,7 @@ static int bl_cmd_start_stream(
 			&src_mask, sizeof(msg.start.src_mask)) == false ||
 		read_sized_uint(argv[ARG_LED_MASK],
 		    &led_mask, sizeof(msg.start.led_mask)) == false ||
-	    read_sized_uint(argv[ARG_FREQUENCY],
+		read_sized_uint(argv[ARG_FREQUENCY],
 			&frequency, sizeof(msg.start.frequency)) == false) {
 		fprintf(stderr, "Failed to parse value.\n");
 		return EXIT_FAILURE;
