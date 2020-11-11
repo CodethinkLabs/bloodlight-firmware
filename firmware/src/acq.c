@@ -462,6 +462,7 @@ enum bl_error bl_acq_source_cap(
 	response->hw_oversample = true;
 #endif
 
+	response->source = source;
 	response->type = BL_MSG_SOURCE_CAP;
 	return BL_ERROR_NONE;
 }
