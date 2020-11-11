@@ -23,9 +23,10 @@
 /**
  * Handle an incomming message.
  *
- * \param[in]  msg  Incomming message to be handled.
- * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
+ * \param[in]   msg       Incoming message to be handled.
+ * \param[out]  response  Response to message.
+ * \return true if a response is prepared.
  */
-enum bl_error bl_msg_handle(const union bl_msg_data *msg);
+bool bl_msg_handle(const union bl_msg_data *msg, union bl_msg_data *response);
 
 #endif

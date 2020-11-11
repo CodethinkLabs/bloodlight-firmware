@@ -32,7 +32,6 @@
 
 #include "common/error.h"
 #include "common/util.h"
-#include "common/msg.h"
 
 #include "delay.h"
 #include "mq.h"
@@ -408,6 +407,62 @@ enum bl_error bl_acq_source_conf(
 	src_config->oversample    = hw_oversample;
 	src_config->shift         = hw_shift;
 
+	return BL_ERROR_NONE;
+}
+
+/* Exported function, documented in acq.h */
+enum bl_error bl_acq_source_cap(
+		uint8_t  source,
+		bl_msg_source_cap_t *response)
+{
+	if (source >= BL_ACQ__SRC_COUNT) {
+		return BL_ERROR_OUT_OF_RANGE;
+	}
+
+	bl_acq_opamp_t *opamp = bl_acq_source_get_opamp(source);
+	if (opamp == NULL) {
+		response->opamp_gain_cnt = 0;
+		response->opamp_offset   = false;
+	} else {
+#if (BL_REVISION == 1)
+		response->opamp_offset = false;
+
+		response->opamp_gain_cnt = 4;
+		response->opamp_gain[0] =  2;
+		response->opamp_gain[1] =  4;
+		response->opamp_gain[2] =  8;
+		response->opamp_gain[3] = 16;
+#else
+		bl_acq_dac_t *dac = bl_acq_source_get_dac(source, NULL);
+		response->opamp_offset = (dac != NULL);
+
+		if (response->opamp_offset)
+		{
+			response->opamp_gain_cnt = 5;
+			response->opamp_gain[0] =  3;
+			response->opamp_gain[1] =  7;
+			response->opamp_gain[2] = 15;
+			response->opamp_gain[3] = 31;
+			response->opamp_gain[4] = 63;
+		} else {
+			response->opamp_gain_cnt = 6;
+			response->opamp_gain[0] =  2;
+			response->opamp_gain[1] =  4;
+			response->opamp_gain[2] =  8;
+			response->opamp_gain[3] = 16;
+			response->opamp_gain[4] = 32;
+			response->opamp_gain[5] = 64;
+		}
+#endif
+	}
+
+#if (BL_REVISION == 1)
+	response->hw_oversample = false;
+#else
+	response->hw_oversample = true;
+#endif
+
+	response->type = BL_MSG_SOURCE_CAP;
 	return BL_ERROR_NONE;
 }
 
