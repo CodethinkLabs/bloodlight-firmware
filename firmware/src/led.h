@@ -63,9 +63,25 @@ enum bl_error bl_led_setup(uint16_t led_mask);
 /**
  * Flash enabled LEDs in a fixed sequence.
  *
- * \param[in]  led_mask  Mask of LEDs to enable.
  * \return \ref BL_ERROR_NONE on success, or appropriate error otherwise.
  */
 enum bl_error bl_led_loop(void);
+
+/**
+ * get the corresponding GPIO port for specified LED
+ *
+ * \param[in]   led LED index to be checked
+ * \return \ref GPIO port for specified LED
+ */
+uint32_t bl_led_get_port(uint8_t led);
+
+/**
+ * Get the corresponding GPIO pin number for specified LED
+ *
+ * \param[in]   led LED index to be checked
+ * \return \ref GPIO pin for specified LED
+ */
+uint16_t bl_led_get_gpio(uint8_t led);
+
 
 #endif

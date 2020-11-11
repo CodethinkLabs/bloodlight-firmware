@@ -132,15 +132,25 @@ static void bl_spi__setup(void)
 	spi_send_lsb_first(SPI2);
 	spi_fifo_reception_threshold_8bit(SPI2);
 	SPI_I2SCFGR(SPI2) &= ~SPI_I2SCFGR_I2SMOD;
-	if (bl_spi_mode == BL_ACQ_SPI_DAUGHTER) {
+	if (bl_spi_mode == BL_ACQ_SPI_DAUGHTER ||
+		bl_spi_mode == BL_ACQ_SPI_INIT) {
+		/* Software NSS was used for SPI, and GPIO12 is used
+		 * as generic GPIO to indicate LED flash
+		 */
+		gpio_mode_setup(GPIOB, GPIO_MODE_INPUT,
+						GPIO_PUPD_PULLDOWN, GPIO12);
+
 		spi_set_nss_low(SPI2);
 		spi_set_slave_mode(SPI2);
-		spi_enable(SPI2);
 	} else if (bl_spi_mode == BL_ACQ_SPI_MOTHER) {
+		gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT,
+						GPIO_PUPD_PULLDOWN, GPIO12);
+
 		spi_set_nss_high(SPI2);
 		spi_set_master_mode(SPI2);
-		spi_enable(SPI2);
 	}
+
+	spi_enable(SPI2);
 }
 
 /* Exported function, documented in spi.h */
@@ -210,8 +220,22 @@ uint8_t bl_spi_receive(void)
 /* Exported function, documented in spi.h */
 void bl_spi_daughter_poll(void)
 {
+	static uint32_t gpioport, old_gpioport;
+	static uint16_t gpio, old_gpio;
+	static bool to_next = false;
+
 	if (SPI_SR(SPI2) & SPI_SR_RXNE) {
+		bl_spi_mode = BL_ACQ_SPI_DAUGHTER;
 		uint8_t led = bl_spi_receive();
-		bl_led_set(1U << led);
+		gpioport = bl_led_get_port(led);
+		gpio = bl_led_get_gpio(led);
+		to_next = true;
+	}
+	if (to_next && gpio_get(GPIOB, GPIO12)) {
+		gpio_clear(old_gpioport, old_gpio);
+		gpio_set(gpioport, gpio);
+		old_gpioport = gpioport;
+		old_gpio = gpio;
+		to_next = false;
 	}
 }
