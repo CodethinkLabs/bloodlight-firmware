@@ -310,6 +310,62 @@ static int bl_cmd_source_conf(int argc, char *argv[])
 
 }
 
+static int bl_cmd_source_cap(int argc, char *argv[])
+{
+	union bl_msg_data msg = {
+		.source_conf = {
+			.type = BL_MSG_SOURCE_CAP_REQ,
+		}
+	};
+	uint32_t source = 0;
+	bool success;
+	int dev_fd;
+	int ret;
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG_SOURCE,
+		ARG__COUNT,
+	};
+
+	if (argc != ARG__COUNT) {
+		fprintf(stderr, "Usage:\n");
+		fprintf(stderr, "  %s %s \\\n"
+				"  \t<DEVICE_PATH|--auto|-a> \\\n"
+				"  \t<SOURCE>\n",
+				argv[ARG_PROG],
+				argv[ARG_CMD]);
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Get source capabilities\n");
+		return EXIT_FAILURE;
+	}
+
+	success = read_sized_uint(argv[ARG_SOURCE],
+			&source,
+			sizeof(msg.source_conf.source));
+	if (!success) {
+		fprintf(stderr, "Failed to parse source parameter.\n");
+		return EXIT_FAILURE;
+	}
+
+	msg.source_cap_req.source = source;
+
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+
+	bl_msg_yaml_print(stdout, &msg);
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
+		bl_device_close(dev_fd);
+		return EXIT_FAILURE;
+	}
+	ret = bl_cmd_read_and_print_message(dev_fd, 10000);
+	bl_device_close(dev_fd);
+	return ret;
+}
+
 static int bl_cmd__no_params_helper(
 		int argc,
 		char *argv[],
@@ -479,6 +535,11 @@ static const struct bl_cmd {
 		.name = "led",
 		.help = "Turn LEDs on/off",
 		.fn = bl_cmd_led,
+	},
+	{
+		.name = "srccap",
+		.help = "Get source capabilities",
+		.fn = bl_cmd_source_cap
 	},
 	{
 		.name = "srccfg",
