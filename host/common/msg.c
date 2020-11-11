@@ -39,15 +39,17 @@
 static char buffer[BUFFER_LEN + 1];
 
 /** Message type to string mapping, */
-static const char *msg_types[] = {
-	[BL_MSG_RESPONSE]      = "Response",
-	[BL_MSG_LED]           = "LED",
-	[BL_MSG_SOURCE_CONF]   = "Source Config",
-	[BL_MSG_CHANNEL_CONF]  = "Channel Config",
-	[BL_MSG_START]         = "Start",
-	[BL_MSG_ABORT]         = "Abort",
-	[BL_MSG_SAMPLE_DATA16] = "Sample Data 16-bit",
-	[BL_MSG_SAMPLE_DATA32] = "Sample Data 32-bit",
+static const char *msg_types[]  = {
+	[BL_MSG_RESPONSE]       = "Response",
+	[BL_MSG_LED]            = "LED",
+	[BL_MSG_SOURCE_CONF]    = "Source Config",
+	[BL_MSG_CHANNEL_CONF]   = "Channel Config",
+	[BL_MSG_START]          = "Start",
+	[BL_MSG_ABORT]          = "Abort",
+	[BL_MSG_SAMPLE_DATA16]  = "Sample Data 16-bit",
+	[BL_MSG_SAMPLE_DATA32]  = "Sample Data 32-bit",
+	[BL_MSG_SOURCE_CAP_REQ] = "Source Capability Request",
+	[BL_MSG_SOURCE_CAP]     = "Source Capability",
 };
 
 /** Message type to string mapping, */
@@ -267,6 +269,21 @@ bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 		}
 		break;
 
+	case BL_MSG_SOURCE_CAP_REQ:
+		msg->source_cap_req.source = bl_msg__yaml_read_unsigned(file, "Source", &ok);
+		break;
+
+	case BL_MSG_SOURCE_CAP:
+		msg->source_cap.source         = bl_msg__yaml_read_unsigned(file, "Source",              &ok);
+		msg->source_cap.hw_oversample  = bl_msg__yaml_read_unsigned(file, "Hardware Oversample", &ok);
+		msg->source_cap.opamp_offset   = bl_msg__yaml_read_unsigned(file, "Op-Amp Offset",       &ok);
+		msg->source_cap.opamp_gain_cnt = bl_msg__yaml_read_unsigned(file, "Op-Amp Gain Count",   &ok);
+		ok |= (fscanf(file, "    Op-Amp Gains:\n") == 0);
+		for (unsigned i = 0; i < msg->source_cap.opamp_gain_cnt; i++) {
+			msg->source_cap.opamp_gain[i] = bl_msg__yaml_read_unsigned_no_field(file, &ok);
+		}
+		break;
+
 	default:
 		break;
 	}
@@ -382,6 +399,27 @@ void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 		for (unsigned i = 0; i < msg->sample_data.count; i++) {
 			fprintf(file, "    - %"PRIu32"\n",
 					msg->sample_data.data32[i]);
+		}
+		break;
+
+	case BL_MSG_SOURCE_CAP_REQ:
+		fprintf(file, "    Source: %"PRIu8"\n",
+				msg->source_cap_req.source);
+		break;
+
+	case BL_MSG_SOURCE_CAP:
+		fprintf(file, "    Source: %"PRIu8"\n",
+				msg->source_cap.source);
+		fprintf(file, "    Hardware Oversample: %u\n",
+				(unsigned) msg->source_cap.hw_oversample);
+		fprintf(file, "    Op-Amp Offset: %u\n",
+				(unsigned) msg->source_cap.opamp_offset);
+		fprintf(file, "    Op-Amp Gain Count: %u\n",
+				(unsigned) msg->source_cap.opamp_gain_cnt);
+		fprintf(file, "    Op-Amp Gains:\n");
+		for (unsigned i = 0; i < msg->source_cap.opamp_gain_cnt; i++) {
+			fprintf(file, "    - %"PRIu8"\n",
+					msg->source_cap.opamp_gain[i]);
 		}
 		break;
 
