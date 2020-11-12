@@ -119,4 +119,6 @@ static inline unsigned util_bit_count(unsigned mask)
 	return count;
 }
 
+static inline uint32_t max_u32(uint32_t x, uint32_t y) { return (x > y ? x : y); }
+
 #endif
