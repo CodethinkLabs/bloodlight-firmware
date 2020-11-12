@@ -376,6 +376,38 @@ static enum bl_msg_type device__thread_receive_msg_response(
 	return *sent_type;
 }
 
+/** Array of device source capabilities. */
+static struct device_source_cap device_caps[BL_ACQ_SOURCE_MAX];
+
+/**
+ * Update the source capability array according to the given message.
+ */
+static void device__update_source_cap(
+		const bl_msg_source_cap_t *msg)
+{
+	struct device_source_cap *src;
+
+	assert(msg->type == BL_MSG_SOURCE_CAP);
+
+	if (msg->source >= BV_ARRAY_LEN(device_caps)) {
+		fprintf(stderr, "Bad souce in source cap msg: %u\n",
+				msg->source);
+		return;
+	}
+
+	src = &device_caps[msg->source];
+
+	src->hw_oversample    = msg->hw_oversample;
+	src->opamp_offset     = msg->opamp_offset;
+	src->opamp_gain_count = msg->opamp_gain_cnt;
+
+	for (unsigned i = 0; i < src->opamp_gain_count; i++) {
+		src->opamp_gain[i] = msg->opamp_gain[i];
+	}
+
+	src->set = true;
+}
+
 /**
  * Handle an incoming message sent from the device.
  *
@@ -395,22 +427,28 @@ static void device__thread_receive_msg(
 		case BL_MSG_RESPONSE:
 			*sent_type = device__thread_receive_msg_response(
 					sent_type, &recv_msg);
-
 			break;
+
+		case BL_MSG_SOURCE_CAP:
+			device__update_source_cap(&recv_msg.source_cap);
+			bl_msg_yaml_print(stderr, &recv_msg);
+			*sent_type = BL_MSG__COUNT;
+			break;
+
 		case BL_MSG_SAMPLE_DATA16:
 			data_handle_msg_u16(&recv_msg.sample_data);
 			if (bv_device_g.rec != NULL) {
 				bl_msg_yaml_print(bv_device_g.rec, &recv_msg);
 			}
-
 			break;
+
 		case BL_MSG_SAMPLE_DATA32:
 			data_handle_msg_u32(&recv_msg.sample_data);
 			if (bv_device_g.rec != NULL) {
 				bl_msg_yaml_print(bv_device_g.rec, &recv_msg);
 			}
-
 			break;
+
 		default:
 			fprintf(stderr, "Unexpected message from device:\n");
 			bl_msg_yaml_print(stderr, &recv_msg);
@@ -604,11 +642,13 @@ static bool device__queue_msg_channel_conf(
  *
  * The config is obtained from the main menu configuration.
  *
- * \param[in]  source  The source to configure.
+ * \param[in]  source     The source to configure.
+ * \param[in]  calibrate  Whether we're in calibration mode.
  * \return true if a message has been queued for sending to the device.
  */
 static bool device__queue_msg_source_conf(
-		enum bl_acq_source source)
+		enum bl_acq_source source,
+		bool calibrate)
 {
 	union bl_msg_data *msg;
 
@@ -620,7 +660,8 @@ static bool device__queue_msg_source_conf(
 	msg->type = BL_MSG_SOURCE_CONF;
 	msg->source_conf.source        = source;
 	msg->source_conf.opamp_gain    = main_menu_config_get_source_opamp_gain(source);
-	msg->source_conf.opamp_offset  = main_menu_config_get_source_opamp_offset(source);
+	msg->source_conf.opamp_offset  = calibrate ?
+			2048 : main_menu_config_get_source_opamp_offset(source);
 	msg->source_conf.sw_oversample = main_menu_config_get_source_sw_oversample(source);
 	msg->source_conf.hw_oversample = main_menu_config_get_source_hw_oversample(source);
 	msg->source_conf.hw_shift      = main_menu_config_get_source_hw_shift(source);
@@ -677,6 +718,29 @@ static bool device__queue_msg_abort(void)
 }
 
 /**
+ * Get source capabilities.
+ *
+ * \param[in]  source  The source to configure.
+ * \return true if a message has been queued for sending to the device.
+ */
+static bool device__queue_msg_source_cap_req(
+		enum bl_acq_source source)
+{
+	union bl_msg_data *msg;
+
+	msg = device__msg_get_next_free();
+	if (msg == NULL) {
+		return false;
+	}
+
+	msg->type = BL_MSG_SOURCE_CAP_REQ;
+	msg->source_cap_req.source = source;
+
+	device__msg_send(msg);
+	return true;
+}
+
+/**
  * Configure all enabled channels on the device.
  *
  * The config is obtained from the main menu configuration.
@@ -713,7 +777,7 @@ static bool device__queue_channel_conf_messages(bool calibrate)
 
 	for (unsigned i = 0; i < BL_ACQ_SOURCE_MAX; i++) {
 		if (source_mask & (1U << i)) {
-			if (!device__queue_msg_source_conf(i)) {
+			if (!device__queue_msg_source_conf(i, calibrate)) {
 				return false;
 			}
 		}
@@ -792,7 +856,7 @@ bool device_acquisition_start(void)
 }
 
 /* Exported function, documented in device.h */
-bool device_stop()
+bool device_stop(void)
 {
 	if (!device__is_initialised()) {
 		return false;
@@ -813,6 +877,25 @@ bool device_stop()
 
 	return true;
 }
+
+/**
+ * Get device info.
+ *
+ * This queues messages to query the device.
+ *
+ * \return true on success, or false on error.
+ */
+bool device__query(void)
+{
+	for (unsigned i = 0; i < BL_ACQ_SOURCE_MAX; i++) {
+		if (!device__queue_msg_source_cap_req(i)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 
 /* Exported function, documented in device.h */
 bool device_init(
@@ -875,6 +958,8 @@ bool device_init(
 		return false;
 	}
 
+	device__query();
+
 	return true;
 }
 
@@ -926,4 +1011,13 @@ void device_fini(void)
 	bv_device_g.dev_fd = 0;
 	bv_device_g.cb = NULL;
 	bv_device_g.pw = NULL;
+}
+
+/* Exported function, documented in device.h */
+const struct device_source_cap *device_get_source_cap(
+		enum bl_acq_source source)
+{
+	assert(source < BL_ACQ_SOURCE_MAX);
+
+	return &device_caps[source];
 }

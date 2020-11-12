@@ -32,6 +32,19 @@ typedef enum device_state {
 } device_state_t;
 
 /**
+ * Source capabilities.
+ */
+struct device_source_cap {
+	bool set;           /**< Whether the capabilties have been set. */
+
+	bool hw_oversample; /**< Whether hardware oversample is supported. */
+	bool opamp_offset;  /**< Whether opamp offsetting is supported. */
+
+	uint8_t opamp_gain_count; /**< Entry count for opamp gains. */
+	uint8_t opamp_gain[6];    /**< Array of available gains. */
+};
+
+/**
  * Callback for notification of device state changes.
  *
  * \param[in]  pw     Client private context data.
@@ -84,5 +97,16 @@ bool device_acquisition_start(
  */
 bool device_stop(
 		void);
+
+/**
+ * Get the capabilties for a given source.
+ *
+ * A valid source must be passed.
+ *
+ * \param[in]  source  The source to get the capabilties of.
+ * \return the source capabilties.
+ */
+const struct device_source_cap *device_get_source_cap(
+		enum bl_acq_source source);
 
 #endif /* BV_DEVICE_H */
