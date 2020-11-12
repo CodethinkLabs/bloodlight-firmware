@@ -690,6 +690,28 @@ void bl_acq_adc_disable(bl_acq_adc_t *adc, uint32_t ccr_flag)
 	adc->config.channel_count = 0;
 }
 
+uint32_t bl_acq_adc_channel_get_max_sample_rate(
+		const bl_acq_adc_t *adc, uint8_t channel)
+{
+	if ((adc == NULL) || (adc->group == NULL) ||
+		(channel >= adc->config.channel_count)) {
+		return 0;
+	}
+
+	uint32_t frequency = adc->group->config.frequency;
+
+#if (BL_REVISION == 1)
+	uint32_t min_smp = 1 + 13;
+#else
+	uint32_t min_smp = 2 + 13;
+#endif
+	frequency /= min_smp;
+
+	frequency /= adc->config.channel_count;
+
+	return frequency;
+}
+
 bl_acq_adc_group_t *bl_acq_adc_get_group(const bl_acq_adc_t *adc)
 {
 	return adc->group;

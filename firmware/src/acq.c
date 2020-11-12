@@ -414,7 +414,7 @@ enum bl_error bl_acq_source_conf(
 
 /* Exported function, documented in acq.h */
 enum bl_error bl_acq_source_cap(
-		uint8_t  source,
+		uint8_t source,
 		bl_msg_source_cap_t *response)
 {
 	if (source >= BL_ACQ__SRC_COUNT) {
@@ -463,6 +463,8 @@ enum bl_error bl_acq_source_cap(
 #else
 	response->hw_oversample = true;
 #endif
+
+	response->max_sample_rate = bl_acq_source_get_max_sample_rate(source);
 
 	response->source = source;
 	response->type = BL_MSG_SOURCE_CAP;

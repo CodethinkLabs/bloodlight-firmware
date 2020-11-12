@@ -67,6 +67,8 @@ bool bl_acq_source_is_enabled(enum bl_acq_source source);
 
 bl_acq_source_config_t *bl_acq_source_get_config(enum bl_acq_source source);
 
+uint32_t bl_acq_source_get_max_sample_rate(enum bl_acq_source source);
+
 #include "timer.h"
 bl_acq_timer_t *bl_acq_source_get_timer(enum bl_acq_source source);
 

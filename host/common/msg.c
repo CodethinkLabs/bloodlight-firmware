@@ -274,14 +274,15 @@ bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 		break;
 
 	case BL_MSG_SOURCE_CAP:
-		msg->source_cap.source         = bl_msg__yaml_read_unsigned(file, "Source",              &ok);
-		msg->source_cap.hw_oversample  = bl_msg__yaml_read_unsigned(file, "Hardware Oversample", &ok);
-		msg->source_cap.opamp_offset   = bl_msg__yaml_read_unsigned(file, "Op-Amp Offset",       &ok);
-		msg->source_cap.opamp_gain_cnt = bl_msg__yaml_read_unsigned(file, "Op-Amp Gain Count",   &ok);
+		msg->source_cap.source          = bl_msg__yaml_read_unsigned(file, "Source",              &ok);
+		msg->source_cap.hw_oversample   = bl_msg__yaml_read_unsigned(file, "Hardware Oversample", &ok);
+		msg->source_cap.opamp_offset    = bl_msg__yaml_read_unsigned(file, "Op-Amp Offset",       &ok);
+		msg->source_cap.opamp_gain_cnt  = bl_msg__yaml_read_unsigned(file, "Op-Amp Gain Count",   &ok);
 		ok |= (fscanf(file, "    Op-Amp Gains:\n") == 0);
 		for (unsigned i = 0; i < msg->source_cap.opamp_gain_cnt; i++) {
 			msg->source_cap.opamp_gain[i] = bl_msg__yaml_read_unsigned_no_field(file, &ok);
 		}
+		msg->source_cap.max_sample_rate = bl_msg__yaml_read_unsigned(file, "Max Sample Rate",     &ok);
 		break;
 
 	default:
@@ -421,6 +422,8 @@ void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 			fprintf(file, "    - %"PRIu8"\n",
 					msg->source_cap.opamp_gain[i]);
 		}
+		fprintf(file, "    Max Sample Rate: %"PRIu32"\n",
+				msg->source_cap.max_sample_rate);
 		break;
 
 	default:

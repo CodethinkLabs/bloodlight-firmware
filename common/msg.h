@@ -144,6 +144,8 @@ typedef struct {
 	};
 
 	uint8_t opamp_gain[6];
+
+	uint32_t max_sample_rate; /* Zero if source is not configured. */
 } bl_msg_source_cap_t;
 
 /** Message data */

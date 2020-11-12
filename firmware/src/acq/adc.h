@@ -56,6 +56,9 @@ void bl_acq_adc_flash_init(bl_acq_adc_t *adc, bool enable, bool master);
 void bl_acq_adc_enable(bl_acq_adc_t *adc, uint32_t ccr_flag);
 void bl_acq_adc_disable(bl_acq_adc_t *adc, uint32_t ccr_flag);
 
+uint32_t bl_acq_adc_channel_get_max_sample_rate(
+		const bl_acq_adc_t *adc, uint8_t channel);
+
 bl_acq_adc_group_t *bl_acq_adc_get_group(const bl_acq_adc_t *adc);
 
 #include "timer.h"
