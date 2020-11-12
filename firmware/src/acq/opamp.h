@@ -22,6 +22,9 @@
 #include "common/error.h"
 
 
+#define OPAMP_OFFSET_ZERO 2048
+
+
 typedef struct bl_acq_opamp_s bl_acq_opamp_t;
 
 #if (BL_REVISION == 1)

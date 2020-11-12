@@ -205,7 +205,7 @@ enum bl_error bl_acq_source_configure(enum bl_acq_source source)
 	bl_acq_source_config_t *config = &src->config;
 
 	bool opamp_needed = (config->opamp_gain > 1) ||
-			(config->opamp_offset != 0);
+			(config->opamp_offset != OPAMP_OFFSET_ZERO);
 	if (opamp_needed && (src->opamp == NULL)) {
 		return BL_ERROR_HARDWARE_CONFLICT;
 	}
