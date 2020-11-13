@@ -1,0 +1,559 @@
+menu:
+  title: Config
+  entries:
+  - menu:
+      title: Acquisition
+      entries:
+      - input: {title: Frequency (Hz), value: {unsigned: 48000}}
+      - menu:
+          title: Continuous
+          entries:
+          - menu:
+              title: Sources
+              entries:
+              - toggle: {title: Photodiode 1, value: true}
+              - toggle: {title: Photodiode 2, value: false}
+              - toggle: {title: Photodiode 3, value: false}
+              - toggle: {title: Photodiode 4, value: false}
+              - toggle: {title: 3.3 Volts, value: false}
+              - toggle: {title: 5.0 Volts, value: false}
+              - toggle: {title: Temperature, value: false}
+          - menu:
+              title: Channels
+              entries:
+              - menu:
+                  title: Photodiode 1
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 0}}
+                          - input: {title: Saturation, value: {unsigned: 0}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Photodiode 2
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 280}}
+                          - input: {title: Saturation, value: {unsigned: 85}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Photodiode 3
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 300}}
+                          - input: {title: Saturation, value: {unsigned: 90}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Photodiode 4
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 325}}
+                          - input: {title: Saturation, value: {unsigned: 95}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: 3.3 Volts
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 0}}
+                          - input: {title: Saturation, value: {unsigned: 0}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: 5.0 Volts
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 0}}
+                          - input: {title: Saturation, value: {unsigned: 0}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Temperature
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 0}}
+                          - input: {title: Saturation, value: {unsigned: 0}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: External
+                  entries:
+                  - menu:
+                      title: Channel
+                      entries:
+                      - input: {title: Software Offset, value: {unsigned: 0}}
+                      - input: {title: Software Shift, value: {unsigned: 0}}
+                      - toggle: {title: 32-bit samples, value: false}
+                      - toggle: {title: Invert data, value: false}
+                      - menu:
+                          title: Colour
+                          entries:
+                          - input: {title: Hue, value: {unsigned: 0}}
+                          - input: {title: Saturation, value: {unsigned: 0}}
+                          - input: {title: Value, value: {unsigned: 100}}
+                  - menu:
+                      title: Source
+                      entries:
+                      - input: {title: Software Oversample, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                      - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                      - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                      - input: {title: Hardware Shift, value: {unsigned: 0}}
+          - menu:
+              title: LEDs
+              entries:
+              - toggle: {title: Blue (470nm), value: false}
+              - toggle: {title: Green (528nm), value: false}
+              - toggle: {title: Yellow (570nm), value: false}
+              - toggle: {title: Orange (590nm), value: true}
+              - toggle: {title: Orange (612nm), value: false}
+              - toggle: {title: Red (638nm), value: false}
+              - toggle: {title: Red (660nm), value: false}
+              - toggle: {title: Red (740nm), value: false}
+              - toggle: {title: Infrared (850nm), value: false}
+              - toggle: {title: Infrared (880nm), value: false}
+              - toggle: {title: Infrared (940nm), value: false}
+              - toggle: {title: Infrared (1040nm), value: false}
+              - toggle: {title: Infrared (1200nm), value: false}
+              - toggle: {title: Infrared (1450nm), value: false}
+              - toggle: {title: Infrared (1550nm), value: false}
+              - toggle: {title: Infrared (1650nm), value: false}
+      - menu:
+          title: Flash
+          entries:
+          - menu:
+              title: Sources
+              entries:
+              - toggle: {title: Photodiode 1, value: true}
+              - toggle: {title: Photodiode 2, value: false}
+              - toggle: {title: Photodiode 3, value: false}
+              - toggle: {title: Photodiode 4, value: false}
+              - toggle: {title: 3.3 Volts, value: false}
+              - toggle: {title: 5.0 Volts, value: false}
+              - toggle: {title: Temperature, value: false}
+          - menu:
+              title: Source setup
+              entries:
+              - menu:
+                  title: Photodiode 1
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Photodiode 2
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Photodiode 3
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Photodiode 4
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: 3.3 Volts
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: 5.0 Volts
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: Temperature
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+              - menu:
+                  title: External
+                  entries:
+                  - input: {title: Software Oversample, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Gain, value: {unsigned: 1}}
+                  - input: {title: Op-Amp Offset, value: {unsigned: 2048}}
+                  - input: {title: Hardware Oversample, value: {unsigned: 4}}
+                  - input: {title: Hardware Shift, value: {unsigned: 0}}
+          - menu:
+              title: Channels
+              entries:
+              - menu:
+                  title: Blue (470nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 245}}
+                      - input: {title: Saturation, value: {unsigned: 85}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Green (528nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 125}}
+                      - input: {title: Saturation, value: {unsigned: 90}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Yellow (570nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 60}}
+                      - input: {title: Saturation, value: {unsigned: 90}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Orange (590nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 45}}
+                      - input: {title: Saturation, value: {unsigned: 95}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Orange (612nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 35}}
+                      - input: {title: Saturation, value: {unsigned: 95}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Red (638nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 20}}
+                      - input: {title: Saturation, value: {unsigned: 100}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Red (660nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 10}}
+                      - input: {title: Saturation, value: {unsigned: 100}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Red (740nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 100}}
+                      - input: {title: Value, value: {unsigned: 100}}
+              - menu:
+                  title: Infrared (850nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 95}}
+                      - input: {title: Value, value: {unsigned: 95}}
+              - menu:
+                  title: Infrared (880nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 90}}
+                      - input: {title: Value, value: {unsigned: 90}}
+              - menu:
+                  title: Infrared (940nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 85}}
+                      - input: {title: Value, value: {unsigned: 85}}
+              - menu:
+                  title: Infrared (1040nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 80}}
+                      - input: {title: Value, value: {unsigned: 80}}
+              - menu:
+                  title: Infrared (1200nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 75}}
+                      - input: {title: Value, value: {unsigned: 75}}
+              - menu:
+                  title: Infrared (1450nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 70}}
+                      - input: {title: Value, value: {unsigned: 70}}
+              - menu:
+                  title: Infrared (1550nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 65}}
+                      - input: {title: Value, value: {unsigned: 65}}
+              - menu:
+                  title: Infrared (1650nm)
+                  entries:
+                  - input: {title: Software Offset, value: {unsigned: 0}}
+                  - input: {title: Software Shift, value: {unsigned: 0}}
+                  - toggle: {title: 32-bit samples, value: false}
+                  - toggle: {title: Invert data, value: false}
+                  - menu:
+                      title: Colour
+                      entries:
+                      - input: {title: Hue, value: {unsigned: 0}}
+                      - input: {title: Saturation, value: {unsigned: 60}}
+                      - input: {title: Value, value: {unsigned: 60}}
+          - menu:
+              title: LEDs
+              entries:
+              - toggle: {title: Blue (470nm), value: false}
+              - toggle: {title: Green (528nm), value: true}
+              - toggle: {title: Yellow (570nm), value: true}
+              - toggle: {title: Orange (590nm), value: true}
+              - toggle: {title: Orange (612nm), value: false}
+              - toggle: {title: Red (638nm), value: false}
+              - toggle: {title: Red (660nm), value: false}
+              - toggle: {title: Red (740nm), value: false}
+              - toggle: {title: Infrared (850nm), value: false}
+              - toggle: {title: Infrared (880nm), value: false}
+              - toggle: {title: Infrared (940nm), value: false}
+              - toggle: {title: Infrared (1040nm), value: false}
+              - toggle: {title: Infrared (1200nm), value: false}
+              - toggle: {title: Infrared (1450nm), value: false}
+              - toggle: {title: Infrared (1550nm), value: false}
+              - toggle: {title: Infrared (1650nm), value: false}
+      - select:
+          title: Emission mode
+          value:
+            emission-mode: Continuous
+      - select:
+          title: Detection mode
+          value:
+            detection-mode: Reflective
+  - menu:
+      title: Filtering
+      entries:
+      - input: {title: Normalisation frequency (Hz), value: {double: 5.0000000000000000e-01}}
+      - input: {title: AC denoise frequency (Hz), value: {double: 5.0000000000000000e+01}}
+      - toggle: {title: Normalisation, value: true}
+      - toggle: {title: AC denoise, value: true}
