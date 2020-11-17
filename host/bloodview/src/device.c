@@ -45,10 +45,10 @@
 #include "locked.h"
 #include "main-menu.h"
 
-/** Special code for indicating the start of an acquisition. */
+/** Special code for indicating the start of a calibration. */
 #define MSG_START_SPECIAL_CAL ((enum bl_msg_type) 255)
 
-/** Special code for indicating the start of a calibration. */
+/** Special code for indicating the start of an acquisition. */
 #define MSG_START_SPECIAL_ACQ ((enum bl_msg_type) 254)
 
 /** Maximum number of messages that can be queued for sending. */

@@ -57,6 +57,7 @@ struct data_cal_ctx {
  *
  * \param[in]  sample_min                Minumum sample value recorded.
  * \param[in]  sample_max                Maximum sample value recorded.
+ * \param[in]  source                    Acq source for this channel.
  * \param[out] out_channel_shift         Returns shift to set for channel.
  * \param[out] out_channel_offset        Returns offset to set for channel.
  * \param[out] out_source_opamp_gain     Returns opamp gain to set for source.

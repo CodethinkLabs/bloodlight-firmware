@@ -192,13 +192,13 @@ static bool data__handle_sample(
 	unsigned index = channel->sample_count & DATA_MASKS_MASK;
 
 	if (data_g.sample_masks[index] & (1u << acq_channel)) {
-		fprintf(stderr, "Data error: Channel %u sample overrnun\n",
+		fprintf(stderr, "Data error: Channel %u sample overrun\n",
 				acq_channel);
 		return false;
 	}
 
 	if (!fifo_write(channel->samples, &sample)) {
-		fprintf(stderr, "Data error: Channel %u fifo overrnun\n",
+		fprintf(stderr, "Data error: Channel %u fifo overrun\n",
 				acq_channel);
 		return false;
 	}
