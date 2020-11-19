@@ -7,6 +7,10 @@ CFLAGS = -Wall -Wextra -pedantic --std=gnu11 -I..
 CFLAGS += $(shell pkg-config libudev --cflags)
 LDFLAGS += $(shell pkg-config libudev --libs)
 
+REVISION ?= 1
+CFLAGS += -DBL_REVISION=$(REVISION)
+CFLAGS += -DBL_COMMIT_SHA=\"$(shell git rev-parse --verify HEAD)\"
+
 BV_CFLAGS = -Ibloodview/sdl-tk/include
 BV_LDFLAGS = -pthread
 

@@ -34,4 +34,12 @@
 #define BL_ARRAY_LEN(_a) \
 	((sizeof(_a)) / (sizeof(*_a)))
 
+#define BL_STATIC_ASSERT(e) \
+{ \
+	enum { \
+		bl_static_assert_check = 1 / (!!(e)) \
+	}; \
+}
+
 #endif
+

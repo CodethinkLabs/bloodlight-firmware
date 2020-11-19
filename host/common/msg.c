@@ -50,6 +50,8 @@ static const char *msg_types[]  = {
 	[BL_MSG_SAMPLE_DATA32]  = "Sample Data 32-bit",
 	[BL_MSG_SOURCE_CAP_REQ] = "Source Capability Request",
 	[BL_MSG_SOURCE_CAP]     = "Source Capability",
+	[BL_MSG_VERSION_REQ]    = "Version Request",
+	[BL_MSG_VERSION]        = "Version",
 };
 
 /** Message type to string mapping, */
@@ -208,6 +210,32 @@ static uint32_t bl_msg__yaml_read_unsigned_no_field(FILE *file, bool *success)
 	return 0;
 }
 
+static void bl_msg__yaml_read_sha(FILE *file, const char *field, bool *success, uint32_t *dst)
+{
+	unsigned value;
+	int ret;
+
+	ret = fscanf(file, "%"BUFFER_LEN_STR"[A-Za-z0-9 -]:", buffer);
+	if (ret == 1) {
+		if (strcmp(buffer, field) != 0) {
+			*success = false;
+		}
+	}
+	for (unsigned i = 0; i < COMMIT_SHA_LENGTH; i++) {
+		ret = fscanf(file, "%08"SCNx32, &value);
+		if (ret == 1) {
+			dst[i] = value;
+		} else {
+			*success = false;
+		}
+	}
+	/* check that's the end of the line */
+	ret = fgetc(file);
+	if (ret != '\n') {
+		*success = false;
+	}
+}
+
 bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 {
 	bool ok = true;
@@ -282,6 +310,14 @@ bool bl_msg_yaml_parse(FILE *file, union bl_msg_data *msg)
 		for (unsigned i = 0; i < msg->source_cap.opamp_gain_cnt; i++) {
 			msg->source_cap.opamp_gain[i] = bl_msg__yaml_read_unsigned_no_field(file, &ok);
 		}
+		break;
+
+	case BL_MSG_VERSION_REQ:
+		break;
+
+	case BL_MSG_VERSION:
+		msg->version.revision = bl_msg__yaml_read_unsigned(file, "Revision", &ok);
+		bl_msg__yaml_read_sha(file, "Commit Sha", &ok, msg->version.commit_sha);
 		break;
 
 	default:
@@ -422,6 +458,17 @@ void bl_msg_yaml_print(FILE *file, const union bl_msg_data *msg)
 					msg->source_cap.opamp_gain[i]);
 		}
 		break;
+
+	case BL_MSG_VERSION_REQ:
+		break;
+
+	case BL_MSG_VERSION:
+		fprintf(file, "    Revision: %"PRIu8"\n", msg->version.revision);
+		fprintf(file, "    Commit Sha: ");
+		for (unsigned i = 0; i < COMMIT_SHA_LENGTH; i++) {
+			fprintf(file, "%08"PRIx32, msg->version.commit_sha[i]);
+		}
+		fprintf(file, "\n");
 
 	default:
 		break;

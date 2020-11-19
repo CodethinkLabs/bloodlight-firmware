@@ -24,6 +24,15 @@
 #include "led.h"
 #include "acq.h"
 
+static int hex_to_int(char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return -1;
+}
+
 /**
  * Handle the LED message.
  *
@@ -91,6 +100,32 @@ static enum bl_error bl_msg_source_cap(
 			msg->source_cap_req.source, &response->source_cap);
 }
 
+static enum bl_error bl_msg_version(
+		const union bl_msg_data *msg,
+		union bl_msg_data *response)
+{
+	BL_STATIC_ASSERT(sizeof(BL_COMMIT_SHA) - 1 == COMMIT_SHA_LENGTH * 8);
+	/* commit sha needs to be interpreted as a string then stored in a buffer to be interpreted as hex */
+	char commit_sha[COMMIT_SHA_LENGTH * 8] = BL_COMMIT_SHA;
+	BL_UNUSED(msg);
+
+	response->version.type = BL_MSG_VERSION;
+	response->version.revision = BL_REVISION;
+	for (unsigned i = 0; i < COMMIT_SHA_LENGTH; i++) {
+		response->version.commit_sha[i] = 0;
+		/* Convert 8-character hex string into uint32 */
+		for (unsigned j = 0; j < 8; j++) {
+			int v = hex_to_int(BL_COMMIT_SHA[i * 8 + j]);
+			if (v < 0) {
+				/* If this happens, BL_COMMIT_SHA is probably malformed */
+				return BL_ERROR_OUT_OF_RANGE;
+			}
+			response->version.commit_sha[i] |= v << 4 * (7 - j);
+		}
+	}
+	return BL_ERROR_NONE;
+}
+
 /**
  * Handle the Acquisition Start message.
  *
@@ -145,6 +180,7 @@ bool bl_msg_handle(const union bl_msg_data *msg, union bl_msg_data *response)
 		[BL_MSG_SOURCE_CONF]    = bl_msg_source_conf,
 		[BL_MSG_CHANNEL_CONF]   = bl_msg_channel_conf,
 		[BL_MSG_SOURCE_CAP_REQ] = bl_msg_source_cap,
+		[BL_MSG_VERSION_REQ]    = bl_msg_version,
 	};
 
 	if (msg->type >= BL_ARRAY_LEN(fns) || fns[msg->type] == NULL) {

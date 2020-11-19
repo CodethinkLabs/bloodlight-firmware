@@ -22,6 +22,7 @@ CFILES = \
 
 REVISION ?= 1
 CFLAGS += -DBL_REVISION=$(REVISION)
+CFLAGS += -DBL_COMMIT_SHA=\"$(shell git rev-parse --verify HEAD)\"
 
 ifeq ($(REVISION),1)
 	DEVICE         = stm32f303CCT6
