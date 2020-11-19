@@ -281,8 +281,7 @@ static struct channel_data *data_cal__init_channel_array(
 /* Exported interface, documented in data-cal.h */
 void *data_cal_init(
 		unsigned frequency,
-		unsigned channels,
-		uint32_t src_mask)
+		unsigned channel_mask)
 {
 	struct data_cal_ctx *ctx;
 
@@ -291,15 +290,17 @@ void *data_cal_init(
 		return NULL;
 	}
 
-	ctx->channel = data_cal__init_channel_array(channels);
+	unsigned channel_count = util_bit_count(channel_mask);
+
+	ctx->channel = data_cal__init_channel_array(channel_count);
 	if (ctx->channel == NULL) {
 		free(ctx);
 		return NULL;
 	}
 
 	ctx->frequency = frequency;
-	ctx->src_mask = src_mask;
-	ctx->count = channels;
+	ctx->src_mask = main_menu_config_get_source_mask();
+	ctx->count = channel_count;
 	return ctx;
 }
 
