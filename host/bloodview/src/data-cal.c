@@ -55,27 +55,23 @@ struct data_cal_ctx {
 };
 
 /**
- * Get the shift and offset for a given channel.
+ * Get the gain and offset for a given source.
  *
  * \param[in]  sample_min                Minumum sample value recorded.
  * \param[in]  sample_max                Maximum sample value recorded.
+ * \param[in]  hw_scale                  The scale of hardware configs
  * \param[in]  source                    Acq source for this channel.
- * \param[out] out_channel_shift         Returns shift to set for channel.
- * \param[out] out_channel_offset        Returns offset to set for channel.
  * \param[out] out_source_opamp_gain     Returns opamp gain to set for source.
  * \param[out] out_source_opamp_offset   Returns opamp offset to set for source.
  */
-static void data_cal__calibrate_channel(
+static void data_cal__calibrate_analog(
 		uint32_t  sample_min,
 		uint32_t  sample_max,
+		uint32_t  hw_scale,
 		enum bl_acq_source source,
-		uint32_t *out_channel_shift,
-		uint32_t *out_channel_offset,
 		uint32_t *out_source_opamp_gain,
 		uint32_t *out_source_opamp_offset)
 {
-	uint32_t ch_shift;
-	uint32_t ch_offset;
 	uint32_t opamp_gain;
 	uint32_t opamp_offset;
 
@@ -84,11 +80,7 @@ static void data_cal__calibrate_channel(
 	uint32_t sample_mid;
 	uint32_t sample_pos, sample_neg;
 	uint32_t source_range;
-	uint32_t target_max;
 
-	uint32_t source_hw_shift = main_menu_config_get_source_hw_shift(source);
-	uint32_t source_hw_oversample = main_menu_config_get_source_hw_oversample(source);
-	uint32_t source_sw_oversample = main_menu_config_get_source_sw_oversample(source);
 	const struct device_source_cap *source_cap = device_get_source_cap(source);
 
 	/* Add some margin to calculations. */
@@ -96,8 +88,7 @@ static void data_cal__calibrate_channel(
 	margin = sample_range / 10;
 
 	sample_max_range = 0xFFF;
-	sample_max_range <<= (source_hw_oversample - source_hw_shift);
-	sample_max_range *= source_sw_oversample;
+	sample_max_range <<= hw_scale;
 
 	sample_min = (margin > sample_min ? 0 : sample_min - margin);
 
@@ -110,8 +101,7 @@ static void data_cal__calibrate_channel(
 
 	if (source_cap->opamp_offset == true) {
 		opamp_offset = sample_mid;
-		opamp_offset >>= (source_hw_oversample - source_hw_shift);
-		opamp_offset /= source_sw_oversample;
+		opamp_offset >>= hw_scale;
 
 		/* opamp_offset is inverted. */
 		opamp_offset = 4095 - opamp_offset;
@@ -124,8 +114,7 @@ static void data_cal__calibrate_channel(
 	sample_neg = sample_mid - sample_min;
 
 	source_range = max_u32(sample_pos, sample_neg);
-	source_range >>= (source_hw_oversample - source_hw_shift);
-	source_range /= source_sw_oversample;
+	source_range >>= hw_scale;
 
 	opamp_gain = 1;
 	for (unsigned i = 0; i < source_cap->opamp_gain_count; i++) {
@@ -137,11 +126,64 @@ static void data_cal__calibrate_channel(
 
 	*out_source_opamp_gain   = opamp_gain;
 	*out_source_opamp_offset = opamp_offset;
+}
+
+/**
+ * Get the shift and offset for a given channel.
+ *
+ * \param[in]  sample_min                Minumum sample value recorded.
+ * \param[in]  sample_max                Maximum sample value recorded.
+ * \param[in]  opamp_gain                opamp gain for source.
+ * \param[in]  hw_scale                  The scale of hardware configs
+ * \param[in]  source                    Acq source for this channel.
+ * \param[out] out_channel_shift         Returns shift to set for channel.
+ * \param[out] out_channel_offset        Returns offset to set for channel.
+ */
+static void data_cal__calibrate_digital(
+		uint32_t  sample_min,
+		uint32_t  sample_max,
+		uint32_t  opamp_gain,
+		uint32_t  hw_scale,
+		enum bl_acq_source source,
+		uint32_t *out_channel_shift,
+		uint32_t *out_channel_offset)
+{
+	uint32_t ch_shift;
+	uint32_t ch_offset;
+
+	uint32_t sample_range, sample_max_range;
+	uint32_t margin;
+	uint32_t sample_mid;
+	uint32_t sample_pos, sample_neg;
+	uint32_t target_max;
+
+	uint32_t source_sw_oversample = main_menu_config_get_source_sw_oversample(source);
+	const struct device_source_cap *source_cap = device_get_source_cap(source);
+
+	/* Add some margin to calculations. */
+	sample_range = sample_max - sample_min;
+	margin = sample_range / 10;
+
+	sample_max_range = 0xFFF;
+	sample_max_range <<= hw_scale;
+	sample_max_range *= source_sw_oversample;
+
+	sample_min = (margin > sample_min ? 0 : sample_min - margin);
+
+	sample_max += margin;
+	if (sample_max > sample_max_range) {
+		sample_max = sample_max_range;
+	}
+
+	sample_mid = (sample_min + sample_max + 1) / 2;
+
+	sample_pos = sample_max - sample_mid;
+	sample_neg = sample_mid - sample_min;
 
 	target_max = sample_max;
 	if (source_cap->opamp_offset == true) {
 		uint32_t sample_mid_offset = 2048;
-		sample_mid_offset <<= (source_hw_oversample - source_hw_shift);
+		sample_mid_offset <<= hw_scale;
 		sample_mid_offset *= source_sw_oversample;
 
 		target_max = sample_mid_offset + (sample_pos * opamp_gain);
@@ -211,45 +253,55 @@ static uint32_t data_cal__data_channel_to_acq_channel(
 void data_cal_fini(void *pw)
 {
 	struct data_cal_ctx *ctx = pw;
+	struct {
+		uint32_t gain;
+		uint32_t offset;
+		bool     set;
+	} source_opamp[BL_ACQ_SOURCE_MAX] = {{0, 0, false}};
 
-	/* TODO: This assumes channels == sources, which means
-	 *       calibration does not yet work with flash mode.
-	 *
-	 * To do calibration correctly, we should split it into digital
-	 * and analogue calibration separatly:
-	 *
-	 * 1. Analog calibration for opamp offset and amplification (where available).
-	 *    We disable software oversampling and sample 16-bits for this calibration.
-	 *
-	 * 2. Apply analog calibration values.
-	 *
-	 * 3. Digital calibration for software offset and shift.
-	 *    We apply the user specified software oversample and collect 32-bit
-	 *    samples to determine the optimal shift and offset values.
-	 *
-	 * 4. Apply digital calibration values.
+	/* As there might be multiple channels sharing the
+	 * same source, only the first channel is going to
+	 * set the opamp gain/offset for the source
 	 */
 	for (unsigned i = 0; i < ctx->count; i++) {
 		struct channel_data *c = &ctx->channel[i];
+		enum bl_acq_source src;
 		uint32_t channel;
 		uint32_t channel_shift;
 		uint32_t channel_offset;
-		uint32_t source_opamp_gain;
-		uint32_t source_opamp_offset;
 
 		channel = data_cal__data_channel_to_acq_channel(i);
 		if (channel == UINT32_MAX) {
 			continue;
 		}
 
-		data_cal__calibrate_channel(
+		src = c->src;
+		if (src >= BL_ACQ_SOURCE_MAX) {
+			continue;
+		}
+
+		uint32_t hw_scale = main_menu_config_get_source_hw_oversample(src) -
+                            main_menu_config_get_source_hw_shift(src);
+
+		if (!source_opamp[src].set) {
+			source_opamp[src].set = true;
+			data_cal__calibrate_analog(
 				c->sample_min,
 				c->sample_max,
-				channel,
+				hw_scale,
+				src,
+				&source_opamp[src].gain,
+				&source_opamp[src].offset);
+		}
+
+		data_cal__calibrate_digital(
+				c->sample_min,
+				c->sample_max,
+				source_opamp[src].gain,
+				hw_scale,
+				src,
 				&channel_shift,
-				&channel_offset,
-				&source_opamp_gain,
-				&source_opamp_offset);
+				&channel_offset);
 
 		fprintf(stderr, "Calibration: Channel %"PRIu32": "
 				"Min: %"PRIu32", Max: %"PRIu32"\n",
@@ -258,8 +310,8 @@ void data_cal_fini(void *pw)
 		main_menu_config_set_channel_shift(channel, channel_shift);
 		main_menu_config_set_channel_offset(channel, channel_offset);
 
-		main_menu_config_set_source_opamp_gain(channel, source_opamp_gain);
-		main_menu_config_set_source_opamp_offset(channel, source_opamp_offset);
+		main_menu_config_set_source_opamp_gain(src, source_opamp[src].gain);
+		main_menu_config_set_source_opamp_offset(src, source_opamp[src].offset);
 	}
 
 	free(ctx->channel);
