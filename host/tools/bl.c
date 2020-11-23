@@ -516,6 +516,63 @@ static int bl_cmd_start_stream(
 
 }
 
+int bl_cmd_version(int argc, char *argv[])
+{
+	union bl_msg_data msg = {
+		.version_req = {
+			.type = BL_MSG_VERSION_REQ,
+		}
+	};
+	enum {
+		ARG_PROG,
+		ARG_CMD,
+		ARG_DEV_PATH,
+		ARG__COUNT,
+	};
+	int dev_fd;
+	int ret = EXIT_SUCCESS;
+
+	if (argc != ARG__COUNT) {
+		fprintf(stderr, "Usage:\n");
+		fprintf(stderr, "  %s %s \\\n"
+				"  \t<DEVICE_PATH|--auto|-a> \\\n",
+				argv[ARG_PROG],
+				argv[ARG_CMD]);
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Get the commit and revision of the device's firmware\n");
+		return EXIT_FAILURE;
+	}
+
+	dev_fd = bl_device_open(argv[ARG_DEV_PATH]);
+	if (dev_fd == -1) {
+		return EXIT_FAILURE;
+	}
+
+	if (!bl_msg_write(dev_fd, argv[ARG_DEV_PATH], &msg)) {
+		bl_device_close(dev_fd);
+		return EXIT_FAILURE;
+	}
+	if (bl_msg_read(dev_fd, 10000, &msg)) {
+		if (msg.type == BL_MSG_VERSION) {
+			printf("Host tool revision %u, commit sha %s\n",
+					BL_REVISION, BL_COMMIT_SHA);
+			printf("Firmware  revision %u, commit sha ", msg.version.revision);
+			for (unsigned i = 0; i < COMMIT_SHA_LENGTH; i++) {
+				printf("%08"PRIx32, msg.version.commit_sha[i]);
+			}
+			printf("\n");
+		} else {
+			fprintf(stderr, "Reply was not a version message\n");
+			bl_msg_yaml_print(stderr, &msg);
+			ret = EXIT_FAILURE;
+		}
+	} else {
+		ret = EXIT_FAILURE;
+	}
+	bl_device_close(dev_fd);
+	return ret;
+}
+
 int bl_cmd_start(int argc, char *argv[])
 {
 	return bl_cmd_start_stream(argc, argv);
@@ -550,6 +607,11 @@ static const struct bl_cmd {
 		.name = "chancfg",
 		.help = "Set configuration for a given channel",
 		.fn = bl_cmd_channel_conf
+	},
+	{
+		.name = "version",
+		.help = "Get the commit and revision of the device's firmware",
+		.fn = bl_cmd_version
 	},
 	{
 		.name = "start",

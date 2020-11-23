@@ -35,6 +35,11 @@
  */
 #define MSG_SAMPLE_DATA32_MAX 15
 
+/**
+ * Number of 32-bit unsigned integers to store the version in
+ */
+#define COMMIT_SHA_LENGTH 5
+
 /** Message type. */
 enum bl_msg_type {
 	BL_MSG_RESPONSE,
@@ -47,6 +52,8 @@ enum bl_msg_type {
 	BL_MSG_SAMPLE_DATA32,
 	BL_MSG_SOURCE_CAP_REQ,
 	BL_MSG_SOURCE_CAP,
+	BL_MSG_VERSION_REQ,
+	BL_MSG_VERSION,
 
 	BL_MSG__COUNT
 };
@@ -146,6 +153,18 @@ typedef struct {
 	uint8_t opamp_gain[6];
 } bl_msg_source_cap_t;
 
+/** Data for \ref BL_MSG_VERSION_REQ. */
+typedef struct {
+	uint8_t type;    /**< Must be \ref BL_MSG_VERSION_REQ */
+} bl_msg_version_req_t;
+
+/** Data for \ref BL_MSG_VERSION. */
+typedef struct {
+	uint8_t type;                           /**< Must be \ref BL_MSG_VERSION */
+	uint8_t revision;                       /**< The REVISION bloodlight was built with */
+	uint32_t commit_sha[COMMIT_SHA_LENGTH]; /**< The sha of the commit the device was built with */
+} bl_msg_version_t;
+
 /** Message data */
 union bl_msg_data {
 	/** Message type. */
@@ -160,6 +179,8 @@ union bl_msg_data {
 	bl_msg_sample_data_t    sample_data;
 	bl_msg_source_cap_req_t source_cap_req;
 	bl_msg_source_cap_t     source_cap;
+	bl_msg_version_req_t    version_req;
+	bl_msg_version_t        version;
 };
 
 /**
@@ -193,6 +214,8 @@ static inline uint8_t bl_msg_type_to_len(enum bl_msg_type type)
 		[BL_MSG_SAMPLE_DATA32]  = BL_SIZEOF_MSG(sample_data),
 		[BL_MSG_SOURCE_CAP_REQ] = BL_SIZEOF_MSG(source_cap_req),
 		[BL_MSG_SOURCE_CAP]     = BL_SIZEOF_MSG(source_cap),
+		[BL_MSG_VERSION_REQ]    = BL_SIZEOF_MSG(version_req),
+		[BL_MSG_VERSION]        = BL_SIZEOF_MSG(version),
 	};
 
 	if (type >= BL_MSG__COUNT) {
