@@ -21,13 +21,13 @@
 #include <string.h>
 
 #include "common/msg.h"
-#include "common/channel.h"
 #include "common/util.h"
+#include "common/channel.h"
 
 #include "host/common/msg.h"
 #include "host/common/sig.h"
+#include "host/common/fifo.h"
 
-#include "fifo.h"
 #include "util.h"
 
 // DEFAULT_AVERAGE_WIDTH, the number of milliseconds to average over
@@ -65,7 +65,7 @@ int add_sample(long average_width,
 		uint32_t sample)
 {
 	// Add a sample to the fifo
-	if (!fifo_write(channel->samples, sample)) {
+	if (!fifo_write(channel->samples, &sample)) {
 		fprintf(stderr, "FIFO overflow\n");
 		return -ERANGE;
 	}
@@ -76,7 +76,7 @@ int add_sample(long average_width,
 		uint32_t normalized_sample;
 
 		// Calculate the normalized sample
-	   	if (!fifo_peek_back(channel->samples,
+		if (!fifo_peek_back(channel->samples,
 					average_width / 2,
 					&new_sample)) {
 			fprintf(stderr, "FIFO underflow\n");
@@ -140,7 +140,8 @@ int read_stream(FILE *stream, long average_width)
 
 			// Create all the channels' fifos now
 			for (unsigned i = 0; i < BL_ARRAY_LEN(channels); i++) {
-				channels[i].samples = fifo_create(average_width_samples);
+				channels[i].samples = fifo_create(average_width_samples,
+						sizeof(uint32_t));
 				if (channels[i].samples == NULL) {
 					return -errno;
 				}

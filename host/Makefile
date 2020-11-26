@@ -55,6 +55,7 @@ BV_DEPS = \
 
 COMMON_SRC = \
 	common/device.c \
+	common/fifo.c \
 	common/msg.c \
 	common/sig.c
 
@@ -64,7 +65,6 @@ TOOLS_SRC = \
 	tools/bl.c \
 	tools/bpm.c \
 	tools/fft.c \
-	tools/fifo.c \
 	tools/util.c \
 	tools/convert.c \
 	tools/calibrate.c \
@@ -109,16 +109,16 @@ $(TOOLS_OBJ): $(BUILDDIR)/%.o : %.c
 build/bl: $(BUILDDIR)/tools/bl.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-build/convert: $(BUILDDIR)/tools/convert.o $(BUILDDIR)/tools/fifo.o $(COMMON_OBJ)
+build/convert: $(BUILDDIR)/tools/convert.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 build/calibrate: $(BUILDDIR)/tools/calibrate.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-build/normalize: $(BUILDDIR)/tools/normalize.o $(BUILDDIR)/tools/fifo.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
+build/normalize: $(BUILDDIR)/tools/normalize.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-build/fft: $(BUILDDIR)/tools/fft.o $(BUILDDIR)/tools/util.o $(BUILDDIR)/tools/fifo.o $(COMMON_OBJ)
+build/fft: $(BUILDDIR)/tools/fft.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) -lfftw3 -lm
 
 build/bpm: $(BUILDDIR)/tools/bpm.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
@@ -132,7 +132,7 @@ run: build/bloodview
 			$(BV_ARGS)
 
 docs:
-	$(MKDIR) build/bloodview/docs
+	$(MKDIR) build/docs
 	doxygen bloodview/docs/doxygen.conf
 
 .PHONY: all clean docs

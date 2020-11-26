@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * \file
+ * \brief Interface to the message data.
+ */
+
 #ifndef BL_COMMON_MSG_H
 #define BL_COMMON_MSG_H
 
@@ -42,20 +47,20 @@
 
 /** Message type. */
 enum bl_msg_type {
-	BL_MSG_RESPONSE,
-	BL_MSG_LED,
-	BL_MSG_SOURCE_CONF,
-	BL_MSG_CHANNEL_CONF,
-	BL_MSG_START,
-	BL_MSG_ABORT,
-	BL_MSG_SAMPLE_DATA16,
-	BL_MSG_SAMPLE_DATA32,
-	BL_MSG_SOURCE_CAP_REQ,
-	BL_MSG_SOURCE_CAP,
-	BL_MSG_VERSION_REQ,
-	BL_MSG_VERSION,
+	BL_MSG_RESPONSE,       /**< Response message. */
+	BL_MSG_LED,            /**< LED message. */
+	BL_MSG_SOURCE_CONF,    /**< Source configuration message. */
+	BL_MSG_CHANNEL_CONF,   /**< Channel configuration message. */
+	BL_MSG_START,          /**< Acquisition start message. */
+	BL_MSG_ABORT,          /**< Acquisition abort message. */
+	BL_MSG_SAMPLE_DATA16,  /**< 16-bit sample data message. */
+	BL_MSG_SAMPLE_DATA32,  /**< 32-bit sample data message. */
+	BL_MSG_SOURCE_CAP_REQ, /**< Request source capabilities message. */
+	BL_MSG_SOURCE_CAP,     /**< Source capabilities message. */
+	BL_MSG_VERSION_REQ,    /**< Request bloodlight version message. */
+	BL_MSG_VERSION,        /**< Bloodlight version message. */
 
-	BL_MSG__COUNT
+	BL_MSG__COUNT          /**< Count of message types. */
 };
 
 /** Data for \ref BL_MSG_RESPONSE. */
@@ -80,6 +85,9 @@ typedef struct {
 	uint16_t led_mask; /**< One bit per LED. */
 } bl_msg_led_t;
 
+/**
+ * Data for \ref BL_MSG_SOURCE_CONF.
+ */
 typedef struct {
 	uint8_t  type;
 	uint8_t  source;
@@ -90,6 +98,9 @@ typedef struct {
 	uint8_t  hw_shift;
 } bl_msg_source_conf_t;
 
+/**
+ * Data for \ref BL_MSG_CHANNEL_CONF.
+ */
 typedef struct {
 	uint8_t  type;
 	uint8_t  channel;
@@ -104,8 +115,8 @@ typedef struct {
  */
 typedef struct {
 	uint8_t  type;           /**< Must be \ref BL_MSG_START */
-	uint8_t  detection_mode; /**< See \ref enum bl_acq_detection_mode */
-	uint8_t  flash_mode;     /**< See \ref enum bl_acq_flash_mode */
+	uint8_t  detection_mode; /**< See \ref bl_acq_detection_mode */
+	uint8_t  flash_mode;     /**< See \ref bl_acq_flash_mode */
 	uint16_t frequency;      /**< Sampling rate in Hz. */
 	uint16_t led_mask;       /**< Mask of LEDs to use. */
 	uint16_t src_mask;       /**< Mask of sources to enable. */

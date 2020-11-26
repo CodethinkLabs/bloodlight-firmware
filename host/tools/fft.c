@@ -22,14 +22,14 @@
 #include <assert.h>
 
 #include "common/msg.h"
-#include "common/channel.h"
 #include "common/util.h"
+#include "common/channel.h"
 
 #include "host/common/msg.h"
 #include "host/common/sig.h"
+#include "host/common/fifo.h"
 
 #include "util.h"
-#include "fifo.h"
 
 uint32_t DEFAULT_WINDOW_LENGTH = 1000; // measured in milliseconds
 // Decided to have a fixed window interval of half the sample window.
@@ -47,7 +47,7 @@ struct sample_window {
 
 struct channel_data {
 	uint16_t channel;
-	struct pfifo *windows;
+	struct fifo *windows;
 	uint32_t welch_window_count;
 	uint32_t windows_capacity;
 	uint32_t window_length;
@@ -161,7 +161,7 @@ static void welch_method(struct channel_data *channel)
 		channel->welch_output = calloc(out_length,
 				sizeof(*channel->welch_output));
 
-		for (unsigned i = 0; pfifo_peek_back(channel->windows, i,
+		for (unsigned i = 0; fifo_peek_back(channel->windows, i,
 					(void**) &window); i++) {
 			if (window_is_full(window)) {
 				add_to_welch_average(channel, window_value, window);
@@ -169,7 +169,7 @@ static void welch_method(struct channel_data *channel)
 		}
 	} else {
 		// Get the most recent full window
-		for (unsigned i = 0; pfifo_peek_back(channel->windows, i,
+		for (unsigned i = 0; fifo_peek_back(channel->windows, i,
 					(void**) &window); i++) {
 			if (window_is_full(window)) {
 				break;
@@ -199,13 +199,13 @@ static int add_sample_to_channel(struct channel_data *channel, double sample)
 		if (w == NULL) {
 			return -errno;
 		}
-		if (!pfifo_write(channel->windows, w)) {
+		if (!fifo_write(channel->windows, &w)) {
 			return -1;
 		}
 		channel->sample_index = 0;
 	}
 
-	for (unsigned i = 0; pfifo_peek_back(channel->windows, i,
+	for (unsigned i = 0; fifo_peek_back(channel->windows, i,
 				(void**) &window); i++) {
 		full_windows += add_sample_to_window(window, sample);
 	}
@@ -214,7 +214,7 @@ static int add_sample_to_channel(struct channel_data *channel, double sample)
 		welch_method(channel);
 		print_welch_output(channel);
 
-		if (!pfifo_read(channel->windows, (void**) &window)) {
+		if (!fifo_read(channel->windows, (void**) &window)) {
 			return -1;
 		}
 		// TODO: centralise calculation of window_value
@@ -240,7 +240,8 @@ static int init_channel(struct channel_data *channel,
 	 */
 	channel->windows_capacity = window_count + 2;
 	channel->welch_window_count = window_count;
-	channel->windows = pfifo_create(channel->windows_capacity);
+	channel->windows = fifo_create(channel->windows_capacity,
+			sizeof(struct sample_window *));
 	if (channel->windows == NULL) {
 		return -errno;
 	}
@@ -263,7 +264,7 @@ static int init_channel_samples(struct channel_data *channel,
 	if (window == NULL) {
 		return -errno;
 	}
-	if (!pfifo_write(channel->windows, window)) {
+	if (!fifo_write(channel->windows, &window)) {
 		return -1;
 	}
 	return 0;
@@ -277,10 +278,10 @@ static void destroy_channel(struct channel_data *channel)
 	}
 	// Destroy all existing windows
 	if (channel->windows != NULL) {
-		while (pfifo_read(channel->windows, (void**) &window)) {
+		while (fifo_read(channel->windows, (void**) &window)) {
 			destroy_sample_window(window);
 		}
-		pfifo_destroy(channel->windows);
+		fifo_destroy(channel->windows);
 	}
 }
 
