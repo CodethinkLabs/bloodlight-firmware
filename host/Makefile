@@ -132,7 +132,7 @@ run: build/bloodview
 			$(BV_ARGS)
 
 docs:
-	$(MKDIR) build/bloodview/docs
+	$(MKDIR) build/docs
 	doxygen bloodview/docs/doxygen.conf
 
 .PHONY: all clean docs
