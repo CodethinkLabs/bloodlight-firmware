@@ -119,7 +119,7 @@ build/calibrate: $(BUILDDIR)/tools/calibrate.o $(COMMON_OBJ)
 build/normalize: $(BUILDDIR)/tools/normalize.o $(BUILDDIR)/tools/fifo.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-build/fft: $(BUILDDIR)/tools/fft.o $(BUILDDIR)/tools/util.o $(BUILDDIR)/tools/fifo.o $(COMMON_OBJ)
+build/fft: $(BUILDDIR)/tools/fft.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) -lfftw3 -lm
 
 build/bpm: $(BUILDDIR)/tools/bpm.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
