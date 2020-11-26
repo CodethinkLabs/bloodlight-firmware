@@ -65,7 +65,6 @@ TOOLS_SRC = \
 	tools/bl.c \
 	tools/bpm.c \
 	tools/fft.c \
-	tools/fifo.c \
 	tools/util.c \
 	tools/convert.c \
 	tools/calibrate.c \
