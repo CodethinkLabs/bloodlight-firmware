@@ -24,6 +24,8 @@
 #ifndef BV_DEVICE_H
 #define BV_DEVICE_H
 
+#include <common/acq.h>
+
 /** List of device states. */
 typedef enum device_state {
 	DEVICE_STATE_NONE,
