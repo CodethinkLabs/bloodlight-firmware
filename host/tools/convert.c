@@ -24,15 +24,14 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "common/channel.h"
 #include "common/error.h"
 #include "common/util.h"
 #include "common/msg.h"
-#include "common/channel.h"
 
 #include "host/common/msg.h"
 #include "host/common/sig.h"
-
-#include "fifo.h"
+#include "host/common/fifo.h"
 
 #define FIFO_MAX 1024
 
@@ -187,7 +186,7 @@ static int bl_sample_msg_to_file(
 			value = (uint32_t)bl_sample_to_signed(value);
 		}
 
-		if (!fifo_write(fifos[chan[msg->sample_data.channel]], value)) {
+		if (!fifo_write(fifos[chan[msg->sample_data.channel]], &value)) {
 			fprintf(stderr, "FIFO overflow\n");
 			return EXIT_FAILURE;
 		}
@@ -263,7 +262,7 @@ static int bl_samples_to_file(int argc, char *argv[], enum bl_format format)
 	}
 
 	for (unsigned i = 0; i < BL_ARRAY_LEN(fifos); i++) {
-		fifos[i] = fifo_create(FIFO_MAX);
+		fifos[i] = fifo_create(FIFO_MAX, sizeof(uint32_t));
 		if (fifos[i] == NULL) {
 			fprintf(stderr, "Failed to create fifo: %s\n",
 					strerror(errno));

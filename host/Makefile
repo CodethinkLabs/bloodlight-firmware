@@ -110,7 +110,7 @@ $(TOOLS_OBJ): $(BUILDDIR)/%.o : %.c
 build/bl: $(BUILDDIR)/tools/bl.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-build/convert: $(BUILDDIR)/tools/convert.o $(BUILDDIR)/tools/fifo.o $(COMMON_OBJ)
+build/convert: $(BUILDDIR)/tools/convert.o $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 build/calibrate: $(BUILDDIR)/tools/calibrate.o $(COMMON_OBJ)
