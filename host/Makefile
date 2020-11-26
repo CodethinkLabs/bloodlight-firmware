@@ -55,6 +55,7 @@ BV_DEPS = \
 
 COMMON_SRC = \
 	common/device.c \
+	common/fifo.c \
 	common/msg.c \
 	common/sig.c
 
