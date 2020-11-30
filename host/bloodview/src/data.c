@@ -27,6 +27,8 @@
 
 #include "common/msg.h"
 
+#include "host/common/fifo.h"
+
 #include "data.h"
 #include "util.h"
 #include "graph.h"
@@ -51,6 +53,13 @@ struct data_filter {
 			uint32_t sample);
 };
 
+/** Data channel */
+struct data_channel {
+	unsigned index; /**< Acquisition channel index. */
+
+	struct fifo *samples; /**< FIFO for the channel's samples. */
+};
+
 /** Data module global data. */
 static struct {
 	/** Whether the data module has been initialised. */
@@ -59,12 +68,73 @@ static struct {
 	/** Acquisition channel to data channel. */
 	unsigned mapping[sizeof(unsigned) * CHAR_BIT];
 
+	/** Array of data channels. */
+	struct data_channel *channel;
+	unsigned channel_count; /**< Number of channels in channel array. */
+
 	/** Array of registered filters. */
 	struct data_filter *filter;
 
 	/** Number of entries in \ref filter. */
 	unsigned count;
 } data_g;
+
+/**
+ * Destroy channels.
+ */
+static void data__destroy_channels(void)
+{
+	if (data_g.channel != NULL) {
+		for (unsigned i = 0; i < data_g.channel_count; i++) {
+			fifo_destroy(data_g.channel[i].samples);
+		}
+		free(data_g.channel);
+		data_g.channel = NULL;
+	}
+
+	data_g.channel_count = 0;
+}
+
+/**
+ * Create channels.
+ *
+ * \param[in]  channel_mask  Acquition channel mask.
+ * \return true on success or false on error.
+ */
+static bool data__create_channels(unsigned channel_mask)
+{
+	unsigned channels = util_bit_count(channel_mask);
+	unsigned n;
+
+	data_g.channel = calloc(channels, sizeof(*data_g.channel));
+	if (data_g.channel == NULL) {
+		return false;
+	}
+	data_g.channel_count = channels;
+
+	n = 0;
+	for (unsigned i = 0; i < sizeof(channel_mask) * CHAR_BIT; i++) {
+		if (channel_mask & (1u << i)) {
+			data_g.channel[n].index = i;
+			data_g.channel[n].samples = fifo_create(
+					MSG_SAMPLE_DATA16_MAX * 4,
+					sizeof(uint32_t));
+			if (data_g.channel[n].samples == NULL) {
+				goto error;
+			}
+
+			data_g.mapping[i] = n++;
+		} else {
+			data_g.mapping[i] = UINT_MAX;
+			continue;
+		}
+	}
+
+	return true;
+error:
+	data__destroy_channels();
+	return false;
+}
 
 /**
  * Filter and graph a sample.
@@ -147,6 +217,8 @@ void data_finish(void)
 	data_g.count = 0;
 
 	graph_fini();
+
+	data__destroy_channels();
 }
 
 /**
@@ -452,20 +524,15 @@ static bool data__register_filters(
 bool data_start(bool calibrate, unsigned frequency, unsigned channel_mask)
 {
 	unsigned channels = util_bit_count(channel_mask);
-	unsigned n;
 
 	assert(data_g.enabled == false);
 
-	n = 0;
-	for (unsigned i = 0; i < BV_ARRAY_LEN(data_g.mapping); i++) {
-		if (channel_mask & (1u << i)) {
-			data_g.mapping[i] = n++;
-		} else {
-			data_g.mapping[i] = UINT_MAX;
-		}
+	if (!data__create_channels(channel_mask)) {
+		return false;
 	}
 
 	if (!graph_init()) {
+		data_finish();
 		return false;
 	}
 
