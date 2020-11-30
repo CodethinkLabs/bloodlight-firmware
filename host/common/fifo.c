@@ -123,8 +123,10 @@ struct fifo *fifo_create(
 void fifo_destroy(
 		struct fifo *fifo)
 {
-	free(fifo->values);
-	free(fifo);
+	if (fifo != NULL) {
+		free(fifo->values);
+		free(fifo);
+	}
 }
 
 /* Exported interface, documented in fifo.h */
