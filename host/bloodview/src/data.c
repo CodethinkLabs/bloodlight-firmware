@@ -38,6 +38,12 @@
 #include "derivative.h"
 #include "data-invert.h"
 
+/** Number of samples to store channel masks for. */
+#define DATA_MASKS_COUNT (1 << 7)
+
+/** Mask into sample_masks array. */
+#define DATA_MASKS_MASK  (DATA_MASKS_COUNT - 1)
+
 /** Data filter details. */
 struct data_filter {
 	void *ctx; /**< The filter context. */
@@ -58,6 +64,8 @@ struct data_channel {
 	unsigned index; /**< Acquisition channel index. */
 
 	struct fifo *samples; /**< FIFO for the channel's samples. */
+
+	uint64_t sample_count; /**< Channel's sample count. */
 };
 
 /** Data module global data. */
@@ -71,6 +79,9 @@ static struct {
 	/** Array of data channels. */
 	struct data_channel *channel;
 	unsigned channel_count; /**< Number of channels in channel array. */
+	unsigned channel_mask;
+
+	unsigned sample_masks[DATA_MASKS_COUNT];
 
 	/** Array of registered filters. */
 	struct data_filter *filter;
@@ -93,6 +104,7 @@ static void data__destroy_channels(void)
 	}
 
 	data_g.channel_count = 0;
+	data_g.channel_mask = 0;
 }
 
 /**
@@ -111,6 +123,7 @@ static bool data__create_channels(unsigned channel_mask)
 		return false;
 	}
 	data_g.channel_count = channels;
+	data_g.channel_mask = channel_mask;
 
 	n = 0;
 	for (unsigned i = 0; i < sizeof(channel_mask) * CHAR_BIT; i++) {
@@ -159,10 +172,65 @@ static bool data__process_sample(
 	return true;
 }
 
+/**
+ * Handle a sample.
+ *
+ * This stashes the sample in the channel's fifo, and once all channels
+ * have got a given sample, the sample is read out of all the channel fifos
+ * and processed.
+ *
+ * \param[in]  acq_channel  Acqusition channel for sample.
+ * \param[in]  sample       Sample to handle.
+ * \return true on success, false on error.
+ */
+static bool data__handle_sample(
+		unsigned acq_channel,
+		uint32_t sample)
+{
+	unsigned data_channel = data_g.mapping[acq_channel];
+	struct data_channel *channel = &data_g.channel[data_channel];
+	unsigned index = channel->sample_count & DATA_MASKS_MASK;
+
+	if (data_g.sample_masks[index] & (1u << acq_channel)) {
+		fprintf(stderr, "Data error: Channel %u sample overrnun\n",
+				acq_channel);
+		return false;
+	}
+
+	if (!fifo_write(channel->samples, &sample)) {
+		fprintf(stderr, "Data error: Channel %u fifo overrnun\n",
+				acq_channel);
+		return false;
+	}
+	channel->sample_count++;
+
+	data_g.sample_masks[index] |= (1u << acq_channel);
+	if (data_g.sample_masks[index] == data_g.channel_mask) {
+
+		for (unsigned i = 0; i < data_g.channel_count; i++) {
+			uint32_t ready_sample;
+			if (!fifo_read(data_g.channel[i].samples,
+					&ready_sample)) {
+				fprintf(stderr, "Data error: "
+						"Channel %u fifo underrun\n",
+						i);
+				return false;
+			}
+
+			if (!data__process_sample(i, ready_sample)) {
+				return false;
+			}
+		}
+		data_g.sample_masks[index] = 0;
+	}
+
+	return true;
+}
+
 /* Exported interface, documented in data.h */
 bool data_handle_msg_u16(const bl_msg_sample_data_t *msg)
 {
-	unsigned index = msg->channel;
+	unsigned acq_channel = msg->channel;
 
 	if (data_g.enabled == false) {
 		return true;
@@ -171,8 +239,8 @@ bool data_handle_msg_u16(const bl_msg_sample_data_t *msg)
 	assert(msg->type == BL_MSG_SAMPLE_DATA16);
 
 	for (unsigned i = 0; i < msg->count; i++) {
-		if (!data__process_sample(
-				data_g.mapping[index],
+		if (!data__handle_sample(
+				acq_channel,
 				msg->data16[i])) {
 			return false;
 		}
@@ -184,7 +252,7 @@ bool data_handle_msg_u16(const bl_msg_sample_data_t *msg)
 /* Exported interface, documented in data.h */
 bool data_handle_msg_u32(const bl_msg_sample_data_t *msg)
 {
-	unsigned index = msg->channel;
+	unsigned acq_channel = msg->channel;
 
 	if (data_g.enabled == false) {
 		return true;
@@ -193,8 +261,8 @@ bool data_handle_msg_u32(const bl_msg_sample_data_t *msg)
 	assert(msg->type == BL_MSG_SAMPLE_DATA32);
 
 	for (unsigned i = 0; i < msg->count; i++) {
-		if (!data__process_sample(
-				data_g.mapping[index],
+		if (!data__handle_sample(
+				acq_channel,
 				msg->data32[i])) {
 			return false;
 		}
