@@ -27,6 +27,7 @@
 #include <stdbool.h>
 
 #include "common/acq.h"
+#include "common/led.h"
 
 #include "util.h"
 #include "device.h"
@@ -41,6 +42,7 @@ struct channel_data {
 	uint32_t sample_min;   /**< Lowest sample seen for channel. */
 	uint32_t sample_max;   /**< Highest sample seen for channel. */
 	uint64_t sample_count; /**< Number of samples. */
+	uint16_t src;          /**< Source of the channel. */
 };
 
 /** Calibration context. */
@@ -175,16 +177,26 @@ static void data_cal__calibrate_channel(
 /**
  * Convert a data channel to an acquisition channel.
  *
- * \param[in]  ctx      The calibration context.
  * \param[in]  channel  The channel to find the acquition for.
  * \return the channel's acquisition channel.
  */
 static uint32_t data_cal__data_channel_to_acq_channel(
-		const struct data_cal_ctx *ctx,
 		unsigned channel)
 {
+	unsigned channel_mask;
+	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
+
+	switch (mode) {
+	case BL_ACQ_FLASH:
+		channel_mask = main_menu_config_get_led_mask();
+		break;
+	case BL_ACQ_CONTINUOUS:
+		channel_mask = main_menu_config_get_source_mask();
+		break;
+	}
+
 	for (unsigned i = 0; i < 32; i++) {
-		if (ctx->src_mask & (1u << i)) {
+		if (channel_mask & (1u << i)) {
 			if (channel == 0) {
 				return i;
 			}
@@ -225,7 +237,7 @@ void data_cal_fini(void *pw)
 		uint32_t source_opamp_gain;
 		uint32_t source_opamp_offset;
 
-		channel = data_cal__data_channel_to_acq_channel(ctx, i);
+		channel = data_cal__data_channel_to_acq_channel(i);
 		if (channel == UINT32_MAX) {
 			continue;
 		}
@@ -257,10 +269,11 @@ void data_cal_fini(void *pw)
 /**
  * Allocate the channel array.
  *
- * \param[in]  count     The number of channels.
+ * \param[in]   mask      The mask of channels.
+ * \param[in]   count     The number of channels.
  */
 static struct channel_data *data_cal__init_channel_array(
-		unsigned count)
+				unsigned count)
 {
 	struct channel_data *channel;
 
@@ -270,9 +283,11 @@ static struct channel_data *data_cal__init_channel_array(
 	}
 
 	for (unsigned i = 0; i < count; i++) {
+		unsigned acq_channel = data_cal__data_channel_to_acq_channel(i);
 		channel[i].sample_min = 0xFFFFFFFFu;
 		channel[i].sample_max = 0x00000000u;
 		channel[i].sample_count = 0;
+		channel[i].src = device_get_channel_source(acq_channel);
 	}
 
 	return channel;
