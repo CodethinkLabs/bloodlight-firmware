@@ -659,7 +659,8 @@ static bool device__queue_msg_source_conf(
 
 	msg->type = BL_MSG_SOURCE_CONF;
 	msg->source_conf.source        = source;
-	msg->source_conf.opamp_gain    = main_menu_config_get_source_opamp_gain(source);
+	msg->source_conf.opamp_gain    = calibrate ?
+			1 : main_menu_config_get_source_opamp_gain(source);
 	msg->source_conf.opamp_offset  = calibrate ?
 			2048 : main_menu_config_get_source_opamp_offset(source);
 	msg->source_conf.sw_oversample = main_menu_config_get_source_sw_oversample(source);
