@@ -172,13 +172,13 @@ static void data_cal__calibrate_channel(
 }
 
 /**
- * Convert a data channel to an acquisition source.
+ * Convert a data channel to an acquisition channel.
  *
  * \param[in]  ctx      The calibration context.
- * \param[in]  channel  The channel to find the source for.
- * \return the channel's acquisition source.
+ * \param[in]  channel  The channel to find the acquition for.
+ * \return the channel's acquisition channel.
  */
-static enum bl_acq_source data_cal__channel_to_source(
+static uint32_t data_cal__data_channel_to_acq_channel(
 		const struct data_cal_ctx *ctx,
 		unsigned channel)
 {
@@ -191,7 +191,7 @@ static enum bl_acq_source data_cal__channel_to_source(
 		}
 	}
 
-	return BL_ACQ_SOURCE_MAX;
+	return UINT32_MAX;
 }
 
 /* Exported interface, documented in data-cal.h */
@@ -218,35 +218,35 @@ void data_cal_fini(void *pw)
 	 */
 	for (unsigned i = 0; i < ctx->count; i++) {
 		struct channel_data *c = &ctx->channel[i];
-		enum bl_acq_source src;
+		uint32_t channel;
 		uint32_t channel_shift;
 		uint32_t channel_offset;
 		uint32_t source_opamp_gain;
 		uint32_t source_opamp_offset;
 
-		src = data_cal__channel_to_source(ctx, i);
-		if (src >= BL_ACQ_SOURCE_MAX) {
+		channel = data_cal__data_channel_to_acq_channel(ctx, i);
+		if (channel == UINT32_MAX) {
 			continue;
 		}
 
 		data_cal__calibrate_channel(
 				c->sample_min,
 				c->sample_max,
-				src,
+				channel,
 				&channel_shift,
 				&channel_offset,
 				&source_opamp_gain,
 				&source_opamp_offset);
 
-		fprintf(stderr, "Calibration: Channel %u: "
+		fprintf(stderr, "Calibration: Channel %"PRIu32": "
 				"Min: %"PRIu32", Max: %"PRIu32"\n",
-				src, c->sample_min, c->sample_max);
+				channel, c->sample_min, c->sample_max);
 
-		main_menu_config_set_channel_shift(i, channel_shift);
-		main_menu_config_set_channel_offset(i, channel_offset);
+		main_menu_config_set_channel_shift(channel, channel_shift);
+		main_menu_config_set_channel_offset(channel, channel_offset);
 
-		main_menu_config_set_source_opamp_gain(i, source_opamp_gain);
-		main_menu_config_set_source_opamp_offset(i, source_opamp_offset);
+		main_menu_config_set_source_opamp_gain(channel, source_opamp_gain);
+		main_menu_config_set_source_opamp_offset(channel, source_opamp_offset);
 	}
 
 	free(ctx->channel);
