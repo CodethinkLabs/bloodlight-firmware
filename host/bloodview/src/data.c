@@ -287,6 +287,7 @@ void data_finish(void)
 	graph_fini();
 
 	data__destroy_channels();
+	memset(data_g.sample_masks, 0, sizeof(data_g.sample_masks));
 }
 
 /**
