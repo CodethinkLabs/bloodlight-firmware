@@ -225,7 +225,7 @@ static void data_cal__calibrate_digital(
 static uint32_t data_cal__data_channel_to_acq_channel(
 		unsigned channel)
 {
-	unsigned channel_mask;
+	unsigned channel_mask = 0;
 	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 
 	switch (mode) {
@@ -280,8 +280,9 @@ void data_cal_fini(void *pw)
 			continue;
 		}
 
-		uint32_t hw_scale = main_menu_config_get_source_hw_oversample(src) -
-                            main_menu_config_get_source_hw_shift(src);
+		uint32_t hw_scale =
+				main_menu_config_get_source_hw_oversample(src) -
+				main_menu_config_get_source_hw_shift(src);
 
 		if (!source_opamp[src].set) {
 			source_opamp[src].set = true;
