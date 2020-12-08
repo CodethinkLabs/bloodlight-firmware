@@ -192,13 +192,13 @@ static bool data__handle_sample(
 	unsigned index = channel->sample_count & DATA_MASKS_MASK;
 
 	if (data_g.sample_masks[index] & (1u << acq_channel)) {
-		fprintf(stderr, "Data error: Channel %u sample overrnun\n",
+		fprintf(stderr, "Data error: Channel %u sample overrun\n",
 				acq_channel);
 		return false;
 	}
 
 	if (!fifo_write(channel->samples, &sample)) {
-		fprintf(stderr, "Data error: Channel %u fifo overrnun\n",
+		fprintf(stderr, "Data error: Channel %u fifo overrun\n",
 				acq_channel);
 		return false;
 	}
@@ -319,14 +319,12 @@ static struct data_filter *data__allocate_filter(void)
  * Resister the calibration filter, if enabled.
  *
  * \param[in]  frequency     The sampling frequency.
- * \param[in]  channels      The number of channels.
  * \param[in]  channel_mask  Mask of enabled channels.
  * \return true on success, or false on error.
  */
 static bool data__register_calibrate(
 		unsigned frequency,
-		unsigned channels,
-		uint32_t channel_mask)
+		unsigned channel_mask)
 {
 	struct data_filter *filter;
 
@@ -335,7 +333,7 @@ static bool data__register_calibrate(
 		return false;
 	}
 
-	filter->ctx = data_cal_init(frequency, channels, channel_mask);
+	filter->ctx = data_cal_init(frequency, channel_mask);
 	if (filter->ctx == NULL) {
 		/* No need to free the filter, it's already owned by the
 		 * global state. */
@@ -547,7 +545,7 @@ static bool data__register_filters(
 {
 	if (calibrate) {
 		if (!data__register_calibrate(
-				frequency, channels, channel_mask)) {
+				frequency, channel_mask)) {
 			return false;
 		}
 	} else {

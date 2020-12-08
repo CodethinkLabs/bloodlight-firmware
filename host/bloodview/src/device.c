@@ -45,10 +45,10 @@
 #include "locked.h"
 #include "main-menu.h"
 
-/** Special code for indicating the start of an acquisition. */
+/** Special code for indicating the start of a calibration. */
 #define MSG_START_SPECIAL_CAL ((enum bl_msg_type) 255)
 
-/** Special code for indicating the start of a calibration. */
+/** Special code for indicating the start of an acquisition. */
 #define MSG_START_SPECIAL_ACQ ((enum bl_msg_type) 254)
 
 /** Maximum number of messages that can be queued for sending. */
@@ -557,13 +557,8 @@ static bool device__queue_msg_led(bool enable_lights)
 	return true;
 }
 
-/**
- * Get the appropriate source for a given channel, according to acq mode.
- *
- * \param[in]  channel  The channel to find the source for.
- * \return source for the channel.
- */
-static enum bl_acq_source device__get_channel_source(uint8_t channel)
+/* Exported function, documented in device.h */
+enum bl_acq_source device_get_channel_source(uint8_t channel)
 {
 	enum bl_acq_flash_mode mode = main_menu_config_get_acq_emission_mode();
 
@@ -628,7 +623,7 @@ static bool device__queue_msg_channel_conf(
 
 	msg->type = BL_MSG_CHANNEL_CONF;
 	msg->channel_conf.channel  = channel;
-	msg->channel_conf.source   = device__get_channel_source(channel);
+	msg->channel_conf.source   = device_get_channel_source(channel);
 	msg->channel_conf.shift    = main_menu_config_get_channel_shift(channel);
 	msg->channel_conf.offset   = main_menu_config_get_channel_offset(channel);
 	msg->channel_conf.sample32 = sample32;
@@ -769,7 +764,7 @@ static bool device__queue_channel_conf_messages(bool calibrate)
 		for (unsigned i = 0; i < BL_LED_COUNT; i++) {
 			if (led_mask & (1U << i)) {
 				source_mask |= 1U <<
-						device__get_channel_source(i);
+						device_get_channel_source(i);
 			}
 		}
 		channel_mask = led_mask | (source_mask & 0xF0) << 16;

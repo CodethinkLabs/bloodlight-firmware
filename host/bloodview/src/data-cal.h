@@ -34,15 +34,13 @@ void data_cal_fini(void *pw);
 /**
  * Create a data calibration filter session.
  *
- * \param[in]  frequency  The sampling frequency.
- * \param[in]  channels   The number of channels.
- * \param[in]  src_mask   Mask of enabled sources.
+ * \param[in]  frequency       The sampling frequency.
+ * \param[in]  channel_masks   The mask of channels.
  * \return a context pointer on success, or NULL on error.
  */
 void *data_cal_init(
 		unsigned frequency,
-		unsigned channels,
-		uint32_t src_mask);
+		unsigned channel_mask);
 
 /**
  * Handle a sample for a given channel.
