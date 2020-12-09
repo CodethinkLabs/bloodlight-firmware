@@ -1040,49 +1040,6 @@ static struct sdl_tk_widget *main_menu__create_from_desc(
 }
 
 /**
- * Turn filename and directory path in into full path.
- *
- * \param[in] dir_path  The directory to add filename to, or NULL.
- * \param[in] filename  The filename to add to dir_path.
- * \return Combined path, or NULL on error.
- */
-static char *main_menu__create_path(
-		const char *dir_path,
-		const char *filename)
-{
-	int n = 0;
-	size_t size = 0;
-	char *str = NULL;
-
-	assert(filename != NULL);
-
-	if (dir_path == NULL) {
-		return strdup(filename);
-	}
-
-	/* Determine required size */
-	n = snprintf(NULL, 0, "%s/%s", dir_path, filename);
-	if (n < 0) {
-		return NULL;
-	}
-
-	size = (size_t) n + 1;
-
-	str = malloc(size);
-	if (str == NULL) {
-		return NULL;
-	}
-
-	n = snprintf(str, size, "%s/%s", dir_path, filename);
-	if (n < 0) {
-		free(str);
-		return NULL;
-	}
-
-	return str;
-}
-
-/**
  * Save the current config to given filename.
  *
  * \param[in] filename  The filename to save the current config as.
@@ -1096,7 +1053,7 @@ static bool main_menu_save_config(
 	bool ret = false;
 	const struct desc_widget *desc;
 
-	path = main_menu__create_path(bv_config_dir_path, filename);
+	path = util_create_path(bv_config_dir_path, filename);
 	if (path == NULL) {
 		goto error;
 	}
@@ -1230,7 +1187,7 @@ static bool main_menu__load_config(
 	cyaml_err_t err;
 	char *path;
 
-	path = main_menu__create_path(bv_config_dir_path, config_file);
+	path = util_create_path(bv_config_dir_path, config_file);
 	if (path == NULL) {
 		goto cleanup;
 	}
@@ -1273,7 +1230,7 @@ struct sdl_tk_widget *main_menu_create(
 
 	bv_config_dir_path = config_dir_path;
 
-	path = main_menu__create_path(resources_dir_path, "main-menu.yaml");
+	path = util_create_path(resources_dir_path, "main-menu.yaml");
 	if (path == NULL) {
 		goto error;
 	}

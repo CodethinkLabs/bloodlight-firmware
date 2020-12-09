@@ -44,6 +44,7 @@ BV_SRC = \
 	bloodview/src/data-cal.c \
 	bloodview/src/device.c \
 	bloodview/src/graph.c \
+	bloodview/src/util.c \
 	bloodview/src/data.c \
 	bloodview/src/sdl.c
 

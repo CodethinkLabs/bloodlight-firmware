@@ -26,6 +26,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -118,6 +119,17 @@ static inline unsigned util_bit_count(unsigned mask)
 
 	return count;
 }
+
+/**
+ * Turn filename and directory path in into full path.
+ *
+ * \param[in] dir_path  The directory to add filename to, or NULL.
+ * \param[in] filename  The filename to add to dir_path.
+ * \return Combined path, or NULL on error.
+ */
+char *util_create_path(
+		const char *dir_path,
+		const char *filename);
 
 static inline uint32_t max_u32(uint32_t x, uint32_t y) { return (x > y ? x : y); }
 
