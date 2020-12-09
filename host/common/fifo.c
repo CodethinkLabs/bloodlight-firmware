@@ -173,7 +173,7 @@ bool fifo_peek_back(
 		return false;
 	}
 
-	peek_pos = fifo__pos_seek(fifo, fifo->write - 1, -steps);
+	peek_pos = fifo__pos_seek(fifo, fifo->write, - (steps + 1));
 	fifo__copy_from(fifo, peek_pos, value);
 	return true;
 }
