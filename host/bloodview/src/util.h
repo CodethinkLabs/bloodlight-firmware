@@ -48,6 +48,16 @@
 	((sizeof(_a)) / (sizeof(*_a)))
 
 /**
+ * Free a string vector.
+ *
+ * \param[in]  strings  Array of strings to free.
+ * \param[in]  count    Number of strings in array.
+ */
+void util_free_string_vector(
+		char **strings,
+		unsigned count);
+
+/**
  * Parse an unsigned value from a string.
  *
  * \param[in]  string  String to be parsed.

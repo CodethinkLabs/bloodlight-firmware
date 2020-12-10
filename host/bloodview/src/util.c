@@ -29,6 +29,19 @@
 #include "util.h"
 
 /* Exported interface, documented in util.c */
+void util_free_string_vector(
+		char **strings,
+		unsigned count)
+{
+	if (strings != NULL) {
+		for (unsigned i = 0; i < count; i++) {
+			free(strings[i]);
+		}
+		free(strings);
+	}
+}
+
+/* Exported interface, documented in util.c */
 char *util_create_path(
 		const char *dir_path,
 		const char *filename)
