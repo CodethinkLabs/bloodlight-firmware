@@ -1,0 +1,124 @@
+# This defines all the available filters.
+#
+# It specifies:
+# * input/ouptut endpoints
+#   - Names
+#   - Ordering
+# * Parameter arguments
+#   - Names
+#   - Types
+filters:
+  - name: Average
+    parameters:
+    - name: frequency
+      kind: double
+    - name: normalise
+      kind: bool
+    input:
+    - name: samples
+      kind: stream
+    output:
+    - name: averaged
+      kind: stream
+  - name: Derivative
+    input:
+    - name: in
+      kind: stream
+    output:
+    - name: out
+      kind: stream
+  - name: Subtract
+    input:
+    - name: in_1
+      kind: stream
+    - name: in_2
+      kind: stream
+    output:
+    - name: out
+      kind: stream
+
+# Pipelines are defined as a series of stages.
+#
+# Labeled filters are referenced in the pipeline stages, and the labeled
+# filters have parameter values set.
+pipelines:
+- name: Cleanup
+  filters:
+  - label: F1
+    filter: Average
+    parameters:
+    - name: normalise
+      value:
+        bool: true
+    - name: frequency
+      value:
+        double: 0.5
+  - label: F2
+    filter: Average
+    parameters:
+    - name: normalise
+      value:
+        bool: false
+    - name: frequency
+      value:
+        double: 50
+  stages:
+  - from:
+      channel:
+        label: C1
+    to:
+      filter:
+        label: F1
+        endpoint: samples
+  - from:
+      filter:
+        label: F1
+        endpoint: averaged
+    to:
+      filter:
+        label: F2
+        endpoint: samples
+  - from:
+      filter:
+        label: F2
+        endpoint: averaged
+    to:
+      graph:
+        label: G1
+
+# Data processing pipeline setups.
+#
+# These describe how pipelines are applied to the data.  Any channel or
+# graph labels referenced in a used pipeline must be defined here.
+setup:
+- name: Four photodiodes
+  mode: Continuous
+  contexts:
+  - pipeline: Cleanup
+    channels:
+    - label: C1
+      channel: 0
+    graphs:
+    - label: G1
+      name: Photodiode 1
+  - pipeline: Cleanup
+    channels:
+    - label: C1
+      channel: 1
+    graphs:
+    - label: G1
+      name: Photodiode 2
+  - pipeline: Cleanup
+    channels:
+    - label: C1
+      channel: 2
+    graphs:
+    - label: G1
+      name: Photodiode 3
+  - pipeline: Cleanup
+    channels:
+    - label: C1
+      channel: 3
+    graphs:
+    - label: G1
+      name: Photodiode 4
