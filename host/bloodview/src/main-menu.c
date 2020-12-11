@@ -842,24 +842,6 @@ static unsigned main_menu__select_value(
 }
 
 /**
- * Free a string vector.
- *
- * \param[in]  strings  String array to free.
- * \param[in]  count    Number of entries in `strings`.
- */
-static void main_menu__free_string_vector(
-		char **strings,
-		unsigned count)
-{
-	if (strings != NULL) {
-		for (unsigned i = 0; i < count; i++) {
-			free(strings[i]);
-		}
-		free(strings);
-	}
-}
-
-/**
  * Get select options.
  *
  * \param[in]  val            Value to get select options for.
@@ -917,7 +899,7 @@ static bool main_menu__get_select_options(
 	return true;
 
 error:
-	main_menu__free_string_vector(strings, count);
+	util_free_string_vector(strings, count);
 	return false;
 }
 
@@ -1007,7 +989,7 @@ static struct sdl_tk_widget *main_menu__create_from_desc(
 				main_menu__select_value(&desc->select.value),
 				main_menu_select_cb,
 				desc);
-		main_menu__free_string_vector(options, options_count);
+		util_free_string_vector(options, options_count);
 		if (widget == NULL) {
 			fprintf(stderr, "Failed to create select widget\n");
 			return NULL;
