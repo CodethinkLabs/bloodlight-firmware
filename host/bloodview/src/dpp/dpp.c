@@ -34,6 +34,7 @@
 #include "filter.h"
 
 #include "filter/average.h"
+#include "filter/derivative.h"
 
 /** Internal representation of channels. */
 struct dpp_channel {
@@ -152,6 +153,10 @@ static bool dpp__init_filter(void)
 	}
 
 	if (!filter_average_register()) {
+		return false;
+	}
+
+	if (!filter_derivative_register()) {
 		return false;
 	}
 
