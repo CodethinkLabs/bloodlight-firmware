@@ -103,6 +103,8 @@ static void data_cal__calibrate_analog(
 		opamp_offset = sample_mid;
 		opamp_offset >>= hw_scale;
 
+		assert(opamp_offset < 4096);
+
 		/* opamp_offset is inverted. */
 		opamp_offset = 4095 - opamp_offset;
 	} else {
