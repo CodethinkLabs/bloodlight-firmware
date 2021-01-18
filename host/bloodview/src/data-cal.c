@@ -304,9 +304,16 @@ void data_cal_fini(void *pw)
 				&channel_shift,
 				&channel_offset);
 
-		fprintf(stderr, "Calibration: Channel %"PRIu32": "
-				"Min: %"PRIu32", Max: %"PRIu32"\n",
-				channel, c->sample_min, c->sample_max);
+		fprintf(stderr, "Calibration: "
+				"Channel %"PRIu32" (src %"PRIu16"): "
+				"Min: %8.8"PRIx32", Max: %8.8"PRIx32", "
+				"Chan: (shift: %u, offset: %u), "
+				"Src: (gain: %"PRIu32", offset: %"PRIu32")\n",
+				channel, c->src,
+				c->sample_min, c->sample_max,
+				channel_shift, channel_offset,
+				source_opamp[src].gain,
+				source_opamp[src].offset);
 
 		main_menu_config_set_channel_shift(channel, channel_shift);
 		main_menu_config_set_channel_offset(channel, channel_offset);
