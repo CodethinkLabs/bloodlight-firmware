@@ -35,7 +35,15 @@ endif
 
 MKDIR =	mkdir -p
 
-BV_SRC = \
+BV_DPP_SRC = \
+	bloodview/src/dpp/filter/derivative.c \
+	bloodview/src/dpp/filter/average.c \
+	bloodview/src/dpp/filter.c \
+	bloodview/src/dpp/param.c \
+	bloodview/src/dpp/file.c \
+	bloodview/src/dpp/dpp.c
+
+BV_SRC = $(BV_DPP_SRC) \
 	bloodview/src/data-invert.c \
 	bloodview/src/derivative.c \
 	bloodview/src/bloodview.c \
@@ -96,7 +104,7 @@ build/bloodview: $(BV_OBJ) $(BV_DEPS) $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS) $(BV_LDFLAGS)
 
 $(BV_OBJ): $(BUILDDIR)/%.o : %.c
-	@$(MKDIR) $(BUILDDIR)/bloodview/src
+	@$(MKDIR) $(BUILDDIR)/bloodview/src/dpp/filter
 	$(CC) $(CFLAGS) $(BV_CFLAGS) -c -o $@ $<
 
 $(COMMON_OBJ): $(BUILDDIR)/%.o : %.c
