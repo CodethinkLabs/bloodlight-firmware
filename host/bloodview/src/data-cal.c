@@ -74,7 +74,7 @@ static void data_cal__calibrate_analog(
 {
 	uint32_t opamp_gain;
 	uint32_t opamp_offset;
-
+	uint32_t sw_oversample;
 	uint32_t sample_range, sample_max_range;
 	uint32_t margin;
 	uint32_t sample_mid;
@@ -83,12 +83,15 @@ static void data_cal__calibrate_analog(
 
 	const struct device_source_cap *source_cap = device_get_source_cap(source);
 
+	sw_oversample = main_menu_config_get_source_sw_oversample(source);
+
 	/* Add some margin to calculations. */
 	sample_range = sample_max - sample_min;
 	margin = sample_range / 10;
 
 	sample_max_range = 0xFFF;
 	sample_max_range <<= hw_scale;
+	sample_max_range *= sw_oversample;
 
 	sample_min = (margin > sample_min ? 0 : sample_min - margin);
 
@@ -102,6 +105,7 @@ static void data_cal__calibrate_analog(
 	if (source_cap->opamp_offset == true) {
 		opamp_offset = sample_mid;
 		opamp_offset >>= hw_scale;
+		opamp_offset /= sw_oversample;
 
 		assert(opamp_offset < 4096);
 
@@ -117,6 +121,7 @@ static void data_cal__calibrate_analog(
 
 	source_range = max_u32(sample_pos, sample_neg);
 	source_range >>= hw_scale;
+	source_range /= sw_oversample;
 
 	opamp_gain = 1;
 	for (unsigned i = 0; i < source_cap->opamp_gain_count; i++) {
