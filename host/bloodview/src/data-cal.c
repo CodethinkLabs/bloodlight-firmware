@@ -74,7 +74,7 @@ static void data_cal__calibrate_analog(
 {
 	uint32_t opamp_gain;
 	uint32_t opamp_offset;
-
+	uint32_t sw_oversample;
 	uint32_t sample_range, sample_max_range;
 	uint32_t margin;
 	uint32_t sample_mid;
@@ -83,12 +83,15 @@ static void data_cal__calibrate_analog(
 
 	const struct device_source_cap *source_cap = device_get_source_cap(source);
 
+	sw_oversample = main_menu_config_get_source_sw_oversample(source);
+
 	/* Add some margin to calculations. */
 	sample_range = sample_max - sample_min;
 	margin = sample_range / 10;
 
 	sample_max_range = 0xFFF;
 	sample_max_range <<= hw_scale;
+	sample_max_range *= sw_oversample;
 
 	sample_min = (margin > sample_min ? 0 : sample_min - margin);
 
@@ -102,6 +105,9 @@ static void data_cal__calibrate_analog(
 	if (source_cap->opamp_offset == true) {
 		opamp_offset = sample_mid;
 		opamp_offset >>= hw_scale;
+		opamp_offset /= sw_oversample;
+
+		assert(opamp_offset < 4096);
 
 		/* opamp_offset is inverted. */
 		opamp_offset = 4095 - opamp_offset;
@@ -115,6 +121,7 @@ static void data_cal__calibrate_analog(
 
 	source_range = max_u32(sample_pos, sample_neg);
 	source_range >>= hw_scale;
+	source_range /= sw_oversample;
 
 	opamp_gain = 1;
 	for (unsigned i = 0; i < source_cap->opamp_gain_count; i++) {
@@ -304,9 +311,16 @@ void data_cal_fini(void *pw)
 				&channel_shift,
 				&channel_offset);
 
-		fprintf(stderr, "Calibration: Channel %"PRIu32": "
-				"Min: %"PRIu32", Max: %"PRIu32"\n",
-				channel, c->sample_min, c->sample_max);
+		fprintf(stderr, "Calibration: "
+				"Channel %"PRIu32" (src %"PRIu16"): "
+				"Min: %8.8"PRIx32", Max: %8.8"PRIx32", "
+				"Chan: (shift: %u, offset: %u), "
+				"Src: (gain: %"PRIu32", offset: %"PRIu32")\n",
+				channel, c->src,
+				c->sample_min, c->sample_max,
+				channel_shift, channel_offset,
+				source_opamp[src].gain,
+				source_opamp[src].offset);
 
 		main_menu_config_set_channel_shift(channel, channel_shift);
 		main_menu_config_set_channel_offset(channel, channel_offset);
