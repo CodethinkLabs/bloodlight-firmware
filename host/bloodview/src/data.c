@@ -613,7 +613,9 @@ bool data_start(bool calibrate, unsigned frequency, unsigned channel_mask)
 		if (data_g.mapping[i] == UINT_MAX) {
 			continue;
 		}
-		if (!graph_create(data_g.mapping[i], frequency, i)) {
+		if (!graph_create(data_g.mapping[i], frequency,
+				main_menu_config_get_channel_name(i),
+				main_menu_config_get_channel_colour(i))) {
 			data_finish();
 			return false;
 		}
