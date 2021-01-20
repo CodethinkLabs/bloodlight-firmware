@@ -32,7 +32,6 @@
 
 #include "util.h"
 #include "graph.h"
-#include "main-menu.h"
 
 /** Extra sample slots per graph */
 #define GRAPH_EXCESS 1024
@@ -59,7 +58,7 @@ struct graph {
 	uint64_t scale;  /**< The vertical scale. */
 	bool invert;     /**< Whether to invert the magnitudes. */
 
-	uint8_t channel_idx; /**< The acquisition channel index. */
+	const char *legend; /**< The graph legend text. */
 	SDL_Color colour;    /**< Graph render colour. */
 };
 
@@ -127,7 +126,8 @@ bool graph_init(void)
 }
 
 /* Exported function, documented in graph.h */
-bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
+bool graph_create(unsigned idx, unsigned freq,
+		const char *legend, SDL_Color colour)
 {
 	struct graph *g;
 
@@ -156,8 +156,8 @@ bool graph_create(unsigned idx, unsigned freq, uint8_t channel)
 		g->max = max;
 		g->x_step = freq / 500 + 1;
 		g->scale = Y_SCALE_DATUM / (Y_SCALE_STEP_DEN * 2);
-		g->channel_idx = channel;
-		g->colour = main_menu_config_get_channel_colour(channel);
+		g->legend = legend;
+		g->colour = colour;
 
 		g->data = calloc(max, sizeof(*g->data));
 		if (g->data == NULL) {
@@ -264,23 +264,17 @@ static inline int32_t graph__data(const struct graph *g, unsigned pos)
 /**
  * Helper for creating channel label texture.
  *
- * \param[in]  channel  The channel index.
+ * \param[in]  label    The channel label.
  * \param[in]  colour   The channel colour.
  * \return new text label, or NULL on error.
  */
 static struct sdl_tk_text *graph__create_label(
-		uint8_t   channel,
+		const char *label,
 		SDL_Color colour)
 {
 	struct sdl_tk_text *text;
-	const char *string;
 
-	string = main_menu_config_get_channel_name(channel);
-	if (string == NULL) {
-		return NULL;
-	}
-
-	text = sdl_tk_text_create(string, colour, SDL_TK_TEXT_SIZE_NORMAL);
+	text = sdl_tk_text_create(label, colour, SDL_TK_TEXT_SIZE_NORMAL);
 	if (text == NULL) {
 		return NULL;
 	}
@@ -355,7 +349,7 @@ static void graph__render_label(
 	render = graph_g.render + idx;
 
 	if (render->label == NULL) {
-		render->label = graph__create_label(g->channel_idx, g->colour);
+		render->label = graph__create_label(g->legend, g->colour);
 		if (render->label == NULL) {
 			return;
 		}

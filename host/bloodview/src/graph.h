@@ -41,12 +41,16 @@ void graph_fini(void);
 /**
  * Create a graph at given index.
  *
+ * The graph legend text must remain available until \ref graph_fini is called.
+ *
  * \param[in]  idx      Graph index to create.
  * \param[in]  freq     The sampling frequency used for the graph.
- * \param[in]  channel  The graph's acquisition channel.
+ * \param[in]  legend   The graph's legend text.
+ * \param[in]  colour   The graph's render colour.
  * \return true on success, or false on errer.
  */
-bool graph_create(unsigned idx, unsigned freq, uint8_t channel);
+bool graph_create(unsigned idx, unsigned freq,
+		const char *legend, SDL_Color colour);
 
 /**
  * Add a sample to a graph.
