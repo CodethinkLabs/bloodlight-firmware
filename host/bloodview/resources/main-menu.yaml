@@ -291,6 +291,14 @@ sub-menus:
     - menu:
         title: Filtering
         entries: *menu-filtering
+    - select:
+        title: Data processing pipeline
+        value:
+          unsigned: 0
+    - select:
+        title: Setup mode
+        value:
+          setup-mode: Custom
 
 menu:
   title: Bloodlight viewer

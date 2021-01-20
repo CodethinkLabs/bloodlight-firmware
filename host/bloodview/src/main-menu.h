@@ -35,6 +35,12 @@ enum bv_derivative {
 	BV_DERIVATIVE_SECOND,
 };
 
+/** Bloodview setup modes. */
+enum bv_setup_mode {
+	BV_SETUP_CUSTOM,
+	BV_SETUP_DPP,
+};
+
 /**
  * Create the bloodlight main menu widget set.
  *
@@ -59,6 +65,20 @@ void main_menu_destroy(struct sdl_tk_widget *main_menu);
  * Update the main menu state.
  */
 void main_menu_update(void);
+
+/**
+ * Get the setup mode.
+ *
+ * \return the configured setup mode.
+ */
+enum bv_setup_mode main_menu_get_setup_mode(void);
+
+/**
+ * Get the selected data processing pipeline.
+ *
+ * \return the configured data processing pipeline index.
+ */
+unsigned main_menu_get_data_proccessing_pipeline_index(void);
 
 /**
  * Get the acquisition emission mode.
