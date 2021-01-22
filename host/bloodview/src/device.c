@@ -310,6 +310,7 @@ static bool device__thread_send_msg(
 			if (!data_start(calibrating,
 					send_msg->start.frequency,
 					channel_mask)) {
+				fprintf(stderr, "Error in data_start\n");
 				/* TODO: If this fails, we'll block on
 				 * never clearing this message. */
 				return false;
