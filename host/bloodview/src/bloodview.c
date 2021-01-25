@@ -28,6 +28,8 @@
 
 #include <getopt.h>
 
+#include "dpp/dpp.h"
+
 #include "sdl.h"
 #include "util.h"
 #include "device.h"
@@ -207,10 +209,15 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	if (!dpp_init(options.path_resources)) {
+		return EXIT_FAILURE;
+	}
+
 	if (!sdl_init(options.path_resources,
 			options.path_config,
 			options.file_config,
 			options.path_font)) {
+		dpp_fini();
 		return EXIT_FAILURE;
 	}
 
@@ -227,6 +234,7 @@ int main(int argc, char *argv[])
 cleanup:
 	device_fini();
 	sdl_fini();
+	dpp_fini();
 
 	return ret;
 }

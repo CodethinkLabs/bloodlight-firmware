@@ -29,6 +29,8 @@
 
 #include "host/common/fifo.h"
 
+#include "dpp/dpp.h"
+
 #include "data.h"
 #include "util.h"
 #include "graph.h"
@@ -88,6 +90,9 @@ static struct {
 
 	/** Number of entries in \ref filter. */
 	unsigned count;
+
+	/** Data processing pipeline, if enabled. */
+	struct bv_value *pipeline;
 } data_g;
 
 /**
@@ -165,8 +170,13 @@ static bool data__process_sample(
 		sample = filter->proc(filter->ctx, channel, sample);
 	}
 
-	if (!graph_data_add(channel, sample - INT32_MAX)) {
-		return false;
+	if (data_g.pipeline == NULL) {
+		if (!graph_data_add(channel, sample - INT32_MAX)) {
+			return false;
+		}
+	} else {
+		data_g.pipeline[channel].type = BV_VALUE_UNSIGNED;
+		data_g.pipeline[channel].type_unsigned = sample;
 	}
 
 	return true;
@@ -222,6 +232,12 @@ static bool data__handle_sample(
 			}
 		}
 		data_g.sample_masks[index] = 0;
+
+		if (data_g.pipeline != NULL) {
+			if (!dpp_process(data_g.pipeline)) {
+				return false;
+			}
+		}
 	}
 
 	return true;
@@ -279,6 +295,9 @@ void data_finish(void)
 	for (unsigned i = 0; i < data_g.count; i++) {
 		data_g.filter[i].fini(data_g.filter[i].ctx);
 	}
+
+	dpp_stop(data_g.pipeline);
+	data_g.pipeline = NULL;
 
 	free(data_g.filter);
 	data_g.filter = NULL;
@@ -543,45 +562,64 @@ static bool data__register_filters(
 		unsigned channels,
 		uint32_t channel_mask)
 {
+	enum bv_derivative derivative_mode;
+
+	derivative_mode = main_menu_config_get_derivative_mode();
+
 	if (calibrate) {
 		if (!data__register_calibrate(
 				frequency, channel_mask)) {
 			return false;
 		}
 	} else {
-		if (!data__register_recover(
-				frequency, channels, channel_mask)) {
+		if (!data__register_recover(frequency,
+				channels, channel_mask)) {
 			return false;
 		}
 	}
 
+	if (main_menu_get_setup_mode() == BV_SETUP_DPP) {
+		unsigned dpp = main_menu_get_data_proccessing_pipeline_index();
+		unsigned count;
 
-	if (!data__register_invert(frequency, channels, channel_mask)) {
-		return false;
-	}
+		if (!dpp_start(frequency, dpp, &data_g.pipeline, &count)) {
+			return false;
+		}
 
-	if (main_menu_config_get_filter_normalise_enabled() &&
-			!data__register_normalise(
-					frequency, channels, channel_mask)) {
-		return false;
-	}
+		if (count != data_g.channel_count) {
+			return false;
+		}
+	} else {
+		data_g.pipeline = NULL;
 
-	if (main_menu_config_get_filter_ac_denoise_enabled() &&
-			!data__register_ac_denoise(
-					frequency, channels, channel_mask)) {
-		return false;
-	}
+		if (!data__register_invert(frequency,
+				channels, channel_mask)) {
+			return false;
+		}
 
-	if (main_menu_config_get_derivative_mode() > BV_DERIVATIVE_NONE &&
-			!data__register_derivative(
-					frequency, channels, channel_mask)) {
-		return false;
-	}
+		if (main_menu_config_get_filter_normalise_enabled() &&
+				!data__register_normalise(frequency,
+						channels, channel_mask)) {
+			return false;
+		}
 
-	if (main_menu_config_get_derivative_mode() > BV_DERIVATIVE_FIRST &&
-			!data__register_derivative(
-					frequency, channels, channel_mask)) {
-		return false;
+		if (main_menu_config_get_filter_ac_denoise_enabled() &&
+				!data__register_ac_denoise(frequency,
+						channels, channel_mask)) {
+			return false;
+		}
+
+		if (derivative_mode > BV_DERIVATIVE_NONE &&
+				!data__register_derivative(frequency,
+						channels, channel_mask)) {
+			return false;
+		}
+
+		if (derivative_mode > BV_DERIVATIVE_FIRST &&
+				!data__register_derivative(frequency,
+						channels, channel_mask)) {
+			return false;
+		}
 	}
 
 	return true;
@@ -595,16 +633,19 @@ bool data_start(bool calibrate, unsigned frequency, unsigned channel_mask)
 	assert(data_g.enabled == false);
 
 	if (!data__create_channels(channel_mask)) {
+		fprintf(stderr, "Error: data__create_channels failed\n");
 		return false;
 	}
 
 	if (!graph_init()) {
+		fprintf(stderr, "Error: graph_init failed\n");
 		data_finish();
 		return false;
 	}
 
 	if (!data__register_filters(calibrate, frequency,
 			channels, channel_mask)) {
+		fprintf(stderr, "Error: data__register_filters failed\n");
 		data_finish();
 		return false;
 	}
@@ -613,11 +654,14 @@ bool data_start(bool calibrate, unsigned frequency, unsigned channel_mask)
 		if (data_g.mapping[i] == UINT_MAX) {
 			continue;
 		}
-		if (!graph_create(data_g.mapping[i], frequency,
-				main_menu_config_get_channel_name(i),
-				main_menu_config_get_channel_colour(i))) {
-			data_finish();
-			return false;
+		if (data_g.pipeline == NULL) {
+			if (!graph_create(data_g.mapping[i], frequency,
+					main_menu_config_get_channel_name(i),
+					main_menu_config_get_channel_colour(i))) {
+				fprintf(stderr, "Error: graph_create failed\n");
+				data_finish();
+				return false;
+			}
 		}
 	}
 

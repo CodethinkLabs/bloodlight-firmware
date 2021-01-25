@@ -187,7 +187,6 @@ static void data_cal__calibrate_digital(
 	sample_pos = sample_max - sample_mid;
 	sample_neg = sample_mid - sample_min;
 
-	target_max = sample_max;
 	if (source_cap->opamp_offset == true) {
 		uint32_t sample_mid_offset = 2048;
 		sample_mid_offset <<= hw_scale;
@@ -207,7 +206,6 @@ static void data_cal__calibrate_digital(
 		ch_offset = 0;
 	} else if ((target_max - ch_offset) < 65535) {
 		ch_offset = (target_max - 65535) / 2;
-		target_max -= ch_offset;
 	} else {
 		target_max -= ch_offset;
 

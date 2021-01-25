@@ -44,6 +44,8 @@
 #include "bloodview.h"
 #include "main-menu.h"
 
+#include "dpp/dpp.h"
+
 /** Directory to load/save config files to/from. */
 static const char *bv_config_dir_path;
 
@@ -72,6 +74,7 @@ struct desc_widget_value {
 	enum {
 		INPUT_TYPE_DOUBLE,
 		INPUT_TYPE_UNSIGNED,
+		INPUT_TYPE_SETUP_MODE,
 		INPUT_TYPE_ACQ_EMISSION_MODE,
 		INPUT_TYPE_ACQ_DETECTION_MODE,
 		INPUT_TYPE_DERIVATIVE,
@@ -79,6 +82,7 @@ struct desc_widget_value {
 	union {
 		double             type_double;     /**< Data for double values */
 		unsigned           type_unsigned;   /**< Data for unsigned values */
+		enum bv_setup_mode         type_setup_mode;         /**< Data for emission modes */
 		enum bl_acq_flash_mode     type_acq_emission_mode;  /**< Data for emission modes */
 		enum bl_acq_detection_mode type_acq_detection_mode; /**< Data for detection modes */
 		enum bv_derivative type_derivative; /**< Data for derivative modes */
@@ -228,8 +232,8 @@ static struct desc_widget *main_menu__get_desc_child(
 				return base->menu.entry[i];
 			}
 		}
-		fprintf(stderr, "Config path component not found: %*s\n",
-				(int)(pos - path), pos);
+		fprintf(stderr, "Config path component '%*s' not found in %s\n",
+				(int)(pos - path), pos, path);
 		return NULL;
 
 	} else if (*pos == ']') {
@@ -412,6 +416,7 @@ static struct desc_widget *bl_main_menu;
 static const cyaml_strval_t widget_input_type[] = {
 	{ .val = INPUT_TYPE_DOUBLE,             .str = "double" },
 	{ .val = INPUT_TYPE_UNSIGNED,           .str = "unsigned" },
+	{ .val = INPUT_TYPE_SETUP_MODE,         .str = "setup-mode" },
 	{ .val = INPUT_TYPE_ACQ_EMISSION_MODE,  .str = "emission-mode" },
 	{ .val = INPUT_TYPE_ACQ_DETECTION_MODE, .str = "detection-mode" },
 	{ .val = INPUT_TYPE_DERIVATIVE,         .str = "derivative" },
@@ -432,6 +437,12 @@ static const cyaml_strval_t bv_action_type[] = {
 	{ .val = BV_ACTION_ACQ,  .str = "bv_action_acq" },
 	{ .val = BV_ACTION_STOP, .str = "bv_action_stop" },
 	{ .val = BV_ACTION_QUIT, .str = "bv_action_quit" },
+};
+
+/** CYAML schema: Valid setup mode mapping. */
+static const cyaml_strval_t bv_setup_mode[] = {
+	{ .val = BV_SETUP_CUSTOM, .str = "Custom" },
+	{ .val = BV_SETUP_DPP,    .str = "Data Processing Pipeline" },
 };
 
 /** CYAML schema: Valid acquisition emission mode mapping. */
@@ -507,6 +518,9 @@ static const cyaml_schema_field_t schema_main_menu_widget_select_value_mapping[]
 	CYAML_FIELD_ENUM("kind", CYAML_FLAG_OPTIONAL,
 			struct desc_widget_value, type,
 			widget_input_type, CYAML_ARRAY_LEN(widget_input_type)),
+	CYAML_FIELD_ENUM("setup-mode", CYAML_FLAG_DEFAULT,
+			struct desc_widget_value, type_setup_mode,
+			bv_setup_mode, CYAML_ARRAY_LEN(bv_setup_mode)),
 	CYAML_FIELD_ENUM("emission-mode", CYAML_FLAG_DEFAULT,
 			struct desc_widget_value, type_acq_emission_mode,
 			bv_acq_emission_mode, CYAML_ARRAY_LEN(bv_acq_emission_mode)),
@@ -516,6 +530,8 @@ static const cyaml_schema_field_t schema_main_menu_widget_select_value_mapping[]
 	CYAML_FIELD_ENUM("derivative", CYAML_FLAG_DEFAULT,
 			struct desc_widget_value, type_derivative,
 			bv_derivative, CYAML_ARRAY_LEN(bv_derivative)),
+	CYAML_FIELD_UINT("unsigned", CYAML_FLAG_DEFAULT,
+			struct desc_widget_value, type_unsigned),
 	CYAML_FIELD_END
 };
 
@@ -637,6 +653,7 @@ static void main_menu_select_cb(
 {
 	struct desc_widget *desc_continuous;
 	struct desc_widget *desc_flash;
+	struct desc_widget *desc_dpp;
 	struct desc_widget *value = pw;
 
 	assert(value->type == WIDGET_TYPE_SELECT);
@@ -649,6 +666,9 @@ static void main_menu_select_cb(
 
 	desc_flash = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Flash");
+
+	desc_dpp = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Data processing pipeline");
 
 	assert(desc_continuous != NULL);
 	assert(desc_flash != NULL);
@@ -663,12 +683,23 @@ static void main_menu_select_cb(
 				new_value == BL_ACQ_FLASH);
 		break;
 
+	case INPUT_TYPE_SETUP_MODE:
+		value->select.value.type_setup_mode = new_value;
+
+		sdl_tk_widget_enable(desc_dpp->widget,
+				new_value == BV_SETUP_DPP);
+		break;
+
 	case INPUT_TYPE_ACQ_DETECTION_MODE:
 		value->select.value.type_acq_detection_mode = new_value;
 		break;
 
 	case INPUT_TYPE_DERIVATIVE:
 		value->select.value.type_derivative = new_value;
+		break;
+
+	case INPUT_TYPE_UNSIGNED:
+		value->select.value.type_unsigned = new_value;
 		break;
 
 	default:
@@ -830,8 +861,16 @@ static unsigned main_menu__select_value(
 		value = val->type_acq_detection_mode;
 		break;
 
+	case INPUT_TYPE_SETUP_MODE:
+		value = val->type_setup_mode;
+		break;
+
 	case INPUT_TYPE_DERIVATIVE:
 		value = val->type_derivative;
+		break;
+
+	case INPUT_TYPE_UNSIGNED:
+		value = val->type_unsigned;
 		break;
 
 	default:
@@ -842,32 +881,29 @@ static unsigned main_menu__select_value(
 }
 
 /**
- * Free a string vector.
+ * Check whether the given widget descriptor is for the DPP selector widget.
  *
- * \param[in]  strings  String array to free.
- * \param[in]  count    Number of entries in `strings`.
+ * \param[in]  desc  The widget descriptor to check.
+ * \return true on match, false otherwise.
  */
-static void main_menu__free_string_vector(
-		char **strings,
-		unsigned count)
+static bool main_menu__desc_is_dpp_selector(
+		const struct desc_widget *desc)
 {
-	if (strings != NULL) {
-		for (unsigned i = 0; i < count; i++) {
-			free(strings[i]);
-		}
-		free(strings);
-	}
+	return (desc == main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Data processing pipeline"));
 }
 
 /**
  * Get select options.
  *
+ * \param[in]  desc           The widget descriptor for the select widget.
  * \param[in]  val            Value to get select options for.
  * \param[out] options        Returns select widget options on success.
  * \param[out] options_count  Returns number of options entries on success.
  * \return true on success, false on error.
  */
 static bool main_menu__get_select_options(
+		struct desc_widget *desc,
 		struct desc_widget_value *val,
 		char ***options,
 		unsigned *options_count)
@@ -887,9 +923,25 @@ static bool main_menu__get_select_options(
 		count = CYAML_ARRAY_LEN(bv_acq_detection_mode);
 		break;
 
+	case INPUT_TYPE_SETUP_MODE:
+		strval = bv_setup_mode;
+		count = CYAML_ARRAY_LEN(bv_setup_mode);
+		break;
+
 	case INPUT_TYPE_DERIVATIVE:
 		strval = bv_derivative;
 		count = CYAML_ARRAY_LEN(bv_derivative);
+		break;
+
+	case INPUT_TYPE_UNSIGNED:
+		strval = NULL;
+		count = 0;
+		if (main_menu__desc_is_dpp_selector(desc)) {
+			if (!dpp_get_dpp_list(options, options_count)) {
+				goto error;
+			}
+			return true;
+		}
 		break;
 
 	default:
@@ -917,7 +969,7 @@ static bool main_menu__get_select_options(
 	return true;
 
 error:
-	main_menu__free_string_vector(strings, count);
+	util_free_string_vector(strings, count);
 	return false;
 }
 
@@ -994,7 +1046,8 @@ static struct sdl_tk_widget *main_menu__create_from_desc(
 	case WIDGET_TYPE_SELECT: {
 		char **options;
 		unsigned options_count;
-		if (!main_menu__get_select_options(&desc->select.value,
+		if (!main_menu__get_select_options(desc,
+				&desc->select.value,
 				&options, &options_count)) {
 			fprintf(stderr, "Failed to get select options\n");
 			return NULL;
@@ -1007,7 +1060,7 @@ static struct sdl_tk_widget *main_menu__create_from_desc(
 				main_menu__select_value(&desc->select.value),
 				main_menu_select_cb,
 				desc);
-		main_menu__free_string_vector(options, options_count);
+		util_free_string_vector(options, options_count);
 		if (widget == NULL) {
 			fprintf(stderr, "Failed to create select widget\n");
 			return NULL;
@@ -1040,49 +1093,6 @@ static struct sdl_tk_widget *main_menu__create_from_desc(
 }
 
 /**
- * Turn filename and directory path in into full path.
- *
- * \param[in] dir_path  The directory to add filename to, or NULL.
- * \param[in] filename  The filename to add to dir_path.
- * \return Combined path, or NULL on error.
- */
-static char *main_menu__create_path(
-		const char *dir_path,
-		const char *filename)
-{
-	int n = 0;
-	size_t size = 0;
-	char *str = NULL;
-
-	assert(filename != NULL);
-
-	if (dir_path == NULL) {
-		return strdup(filename);
-	}
-
-	/* Determine required size */
-	n = snprintf(NULL, 0, "%s/%s", dir_path, filename);
-	if (n < 0) {
-		return NULL;
-	}
-
-	size = (size_t) n + 1;
-
-	str = malloc(size);
-	if (str == NULL) {
-		return NULL;
-	}
-
-	n = snprintf(str, size, "%s/%s", dir_path, filename);
-	if (n < 0) {
-		free(str);
-		return NULL;
-	}
-
-	return str;
-}
-
-/**
  * Save the current config to given filename.
  *
  * \param[in] filename  The filename to save the current config as.
@@ -1096,7 +1106,7 @@ static bool main_menu_save_config(
 	bool ret = false;
 	const struct desc_widget *desc;
 
-	path = main_menu__create_path(bv_config_dir_path, filename);
+	path = util_create_path(bv_config_dir_path, filename);
 	if (path == NULL) {
 		goto error;
 	}
@@ -1230,7 +1240,7 @@ static bool main_menu__load_config(
 	cyaml_err_t err;
 	char *path;
 
-	path = main_menu__create_path(bv_config_dir_path, config_file);
+	path = util_create_path(bv_config_dir_path, config_file);
 	if (path == NULL) {
 		goto cleanup;
 	}
@@ -1273,7 +1283,7 @@ struct sdl_tk_widget *main_menu_create(
 
 	bv_config_dir_path = config_dir_path;
 
-	path = main_menu__create_path(resources_dir_path, "main-menu.yaml");
+	path = util_create_path(resources_dir_path, "main-menu.yaml");
 	if (path == NULL) {
 		goto error;
 	}
@@ -1374,6 +1384,30 @@ static uint16_t main_menu__config_get_led_mask_helper(
 }
 
 /* Exported interface, documented in main-menu.h */
+enum bv_setup_mode main_menu_get_setup_mode(void)
+{
+	struct desc_widget *desc = main_menu__get_desc_fmt(
+			bl_main_menu, "Config/Setup mode");
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_SELECT);
+
+	return main_menu__select_value(&desc->select.value);
+}
+
+/* Exported interface, documented in main-menu.h */
+unsigned main_menu_get_data_proccessing_pipeline_index(void)
+{
+	struct desc_widget *desc = main_menu__get_desc_fmt(
+			bl_main_menu, "Config/Data processing pipeline");
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_SELECT);
+
+	return main_menu__select_value(&desc->select.value);
+}
+
+/* Exported interface, documented in main-menu.h */
 enum bl_acq_flash_mode main_menu_config_get_acq_emission_mode(void)
 {
 	struct desc_widget *desc = main_menu__get_desc_fmt(
@@ -1427,8 +1461,12 @@ uint16_t main_menu_config_get_led_mask(void)
 	return main_menu__config_get_led_mask_helper(desc);
 }
 
-/* Exported interface, documented in main-menu.h */
-uint16_t main_menu_config_get_source_mask(void)
+/**
+ * Get the source mask.
+ *
+ * \return the configured source mask.
+ */
+uint16_t main_menu__config_get_source_mask_internal(void)
 {
 	struct desc_widget *sources = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/%s/Sources",
@@ -1449,6 +1487,20 @@ uint16_t main_menu_config_get_source_mask(void)
 	}
 
 	return src_mask;
+}
+
+/* Exported interface, documented in main-menu.h */
+uint16_t main_menu_config_get_source_mask(void)
+{
+	enum bv_setup_mode setup = main_menu_get_setup_mode();
+
+	if (setup == BV_SETUP_DPP) {
+		unsigned dpp = main_menu_get_data_proccessing_pipeline_index();
+
+		return dpp_get_source_mask(dpp);
+	}
+
+	return main_menu__config_get_source_mask_internal();
 }
 
 /* Exported interface, documented in main-menu.h */

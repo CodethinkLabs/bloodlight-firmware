@@ -26,6 +26,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -45,6 +46,16 @@
  */
 #define BV_ARRAY_LEN(_a) \
 	((sizeof(_a)) / (sizeof(*_a)))
+
+/**
+ * Free a string vector.
+ *
+ * \param[in]  strings  Array of strings to free.
+ * \param[in]  count    Number of strings in array.
+ */
+void util_free_string_vector(
+		char **strings,
+		unsigned count);
 
 /**
  * Parse an unsigned value from a string.
@@ -118,6 +129,17 @@ static inline unsigned util_bit_count(unsigned mask)
 
 	return count;
 }
+
+/**
+ * Turn filename and directory path in into full path.
+ *
+ * \param[in] dir_path  The directory to add filename to, or NULL.
+ * \param[in] filename  The filename to add to dir_path.
+ * \return Combined path, or NULL on error.
+ */
+char *util_create_path(
+		const char *dir_path,
+		const char *filename);
 
 static inline uint32_t max_u32(uint32_t x, uint32_t y) { return (x > y ? x : y); }
 
