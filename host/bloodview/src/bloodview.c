@@ -103,6 +103,7 @@ static void bloodview_device_state_change_cb(
 /** Bloodview commandline options. */
 struct bv_options {
 	const char *path_resources; /**< Directory to load resources from. */
+	const char *path_device;    /**< Path to Bloodlight device. */
 	const char *path_config;    /**< Directory where configs are stored. */
 	const char *file_config;    /**< Config filename to load on startup. */
 	const char *path_font;      /**< Path to font file to use. */
@@ -127,15 +128,21 @@ static bool bloodview__parse_cli(
 	};
 	enum options {
 		BV_OPTTION_PATH_RESOURCES_DIR = 'R',
+		BV_OPTTION_PATH_DEVICE_PATH   = 'D',
 		BV_OPTTION_PATH_CONFIG_DIR    = 'C',
 		BV_OPTTION_FILE_CONFIG        = 'c',
 		BV_OPTTION_PATH_FONT          = 'f',
 	};
-	static const char optstr[] = "R:C:c:f:";
+	static const char optstr[] = "R:C:c:f:D:";
 	static struct option options[] = {
 		{
 			.val = BV_OPTTION_PATH_RESOURCES_DIR,
 			.name = "resources-dir",
+			.has_arg = required_argument,
+		},
+		{
+			.val = BV_OPTTION_PATH_DEVICE_PATH,
+			.name = "device-path",
 			.has_arg = required_argument,
 		},
 		{
@@ -174,6 +181,10 @@ static bool bloodview__parse_cli(
 		switch (option) {
 		case BV_OPTTION_PATH_RESOURCES_DIR:
 			opt.path_resources = optarg;
+			break;
+
+		case BV_OPTTION_PATH_DEVICE_PATH:
+			opt.path_device = optarg;
 			break;
 
 		case BV_OPTTION_PATH_CONFIG_DIR:
@@ -219,7 +230,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!device_init(NULL, bloodview_device_state_change_cb, NULL)) {
+	if (!device_init(options.path_device,
+			bloodview_device_state_change_cb, NULL)) {
 		dpp_fini();
 		return EXIT_FAILURE;
 	}
