@@ -75,6 +75,8 @@ static struct {
 	 */
 	volatile unsigned failed_reads;
 
+	uint8_t revision; /**< Device revision.  Zero means unset. */
+
 	FILE *rec; /**< File for acquisition recordings. */
 } bv_device_g;
 
@@ -451,6 +453,7 @@ static void device__thread_receive_msg(
 			break;
 
 		case BL_MSG_VERSION:
+			bv_device_g.revision = recv_msg.version.revision;
 			bl_msg_yaml_print(stderr, &recv_msg);
 			*sent_type = BL_MSG__COUNT;
 			break;
