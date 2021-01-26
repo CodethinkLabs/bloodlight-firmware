@@ -75,7 +75,7 @@ static struct {
 	 */
 	volatile unsigned failed_reads;
 
-	uint8_t revision; /**< Device revision.  Zero means unset. */
+	volatile uint8_t revision; /**< Device revision.  Zero means unset. */
 
 	FILE *rec; /**< File for acquisition recordings. */
 } bv_device_g;
@@ -904,6 +904,43 @@ bool device_stop(void)
 }
 
 /**
+ * Await device version response.
+ *
+ * \return true on success, false otherwise.
+ */
+static bool device__await_revision(void)
+{
+	struct timespec time_start;
+	struct timespec time_check;
+	int ret;
+
+	ret = clock_gettime(CLOCK_MONOTONIC, &time_start);
+	if (ret == -1) {
+		fprintf(stderr, "Error: clock_gettime error: %s.\n",
+				strerror(errno));
+		return false;
+	}
+
+	/* Device revision is initialised to zero, and zero is an invalid
+	 * revision number, so we wait for it to become non-zero. */
+	while (bv_device_g.revision == 0) {
+		ret = clock_gettime(CLOCK_MONOTONIC, &time_check);
+		if (ret == -1) {
+			fprintf(stderr, "Error: clock_gettime error: %s.\n",
+					strerror(errno));
+			return false;
+		}
+
+		if (util_time_diff_ms(&time_start, &time_check) > 2000) {
+			fprintf(stderr, "Error: Timed out awaiting device revision.\n");
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
  * Get device info.
  *
  * This queues messages to query the device.
@@ -922,9 +959,12 @@ bool device__query(void)
 		}
 	}
 
+	if (!device__await_revision()) {
+		return false;
+	}
+
 	return true;
 }
-
 
 /* Exported function, documented in device.h */
 bool device_init(
