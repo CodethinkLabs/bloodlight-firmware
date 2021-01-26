@@ -130,49 +130,49 @@ static bool bloodview__parse_cli(
 		.path_config    = "config",
 	};
 	enum options {
-		BV_OPTTION_PATH_RESOURCES_DIR = 'R',
-		BV_OPTTION_PATH_DEVICE_PATH   = 'D',
-		BV_OPTTION_PATH_CONFIG_DIR    = 'C',
-		BV_OPTIION_CONFIG_PREVIOUS    = 'p',
-		BV_OPTIION_CONFIG_DEFAULT     = 'd',
-		BV_OPTTION_FILE_CONFIG        = 'c',
-		BV_OPTTION_PATH_FONT          = 'f',
+		BV_OPTION_PATH_RESOURCES_DIR = 'R',
+		BV_OPTION_PATH_DEVICE_PATH   = 'D',
+		BV_OPTION_PATH_CONFIG_DIR    = 'C',
+		BV_OPTION_CONFIG_PREVIOUS    = 'p',
+		BV_OPTION_CONFIG_DEFAULT     = 'd',
+		BV_OPTION_FILE_CONFIG        = 'c',
+		BV_OPTION_PATH_FONT          = 'f',
 
 	};
 	static const char optstr[] = "R:C:pdc:f:D:";
 	static struct option options[] = {
 		{
-			.val = BV_OPTTION_PATH_RESOURCES_DIR,
+			.val = BV_OPTION_PATH_RESOURCES_DIR,
 			.name = "resources-dir",
 			.has_arg = required_argument,
 		},
 		{
-			.val = BV_OPTTION_PATH_DEVICE_PATH,
+			.val = BV_OPTION_PATH_DEVICE_PATH,
 			.name = "device-path",
 			.has_arg = required_argument,
 		},
 		{
-			.val = BV_OPTTION_PATH_CONFIG_DIR,
+			.val = BV_OPTION_PATH_CONFIG_DIR,
 			.name = "config-dir",
 			.has_arg = required_argument,
 		},
 		{
-			.val = BV_OPTIION_CONFIG_PREVIOUS,
+			.val = BV_OPTION_CONFIG_PREVIOUS,
 			.name = "previous-config",
 			.has_arg = no_argument,
 		},
 		{
-			.val = BV_OPTIION_CONFIG_DEFAULT,
+			.val = BV_OPTION_CONFIG_DEFAULT,
 			.name = "default-config",
 			.has_arg = no_argument,
 		},
 		{
-			.val = BV_OPTTION_FILE_CONFIG,
+			.val = BV_OPTION_FILE_CONFIG,
 			.name = "config",
 			.has_arg = required_argument,
 		},
 		{
-			.val = BV_OPTTION_PATH_FONT,
+			.val = BV_OPTION_PATH_FONT,
 			.name = "font",
 			.has_arg = required_argument,
 		},
@@ -195,31 +195,31 @@ static bool bloodview__parse_cli(
 		}
 		enum options option = c;
 		switch (option) {
-		case BV_OPTTION_PATH_RESOURCES_DIR:
+		case BV_OPTION_PATH_RESOURCES_DIR:
 			opt.path_resources = optarg;
 			break;
 
-		case BV_OPTTION_PATH_DEVICE_PATH:
+		case BV_OPTION_PATH_DEVICE_PATH:
 			opt.path_device = optarg;
 			break;
 
-		case BV_OPTTION_PATH_CONFIG_DIR:
+		case BV_OPTION_PATH_CONFIG_DIR:
 			opt.path_config = optarg;
 			break;
 
-		case BV_OPTIION_CONFIG_PREVIOUS:
+		case BV_OPTION_CONFIG_PREVIOUS:
 			opt.config_previous = true;
 			break;
 
-		case BV_OPTIION_CONFIG_DEFAULT:
+		case BV_OPTION_CONFIG_DEFAULT:
 			opt.config_default = true;
 			break;
 
-		case BV_OPTTION_FILE_CONFIG:
+		case BV_OPTION_FILE_CONFIG:
 			opt.file_config = optarg;
 			break;
 
-		case BV_OPTTION_PATH_FONT:
+		case BV_OPTION_PATH_FONT:
 			opt.path_font = optarg;
 			break;
 		}
