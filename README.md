@@ -216,7 +216,7 @@ and we need to know this in order to communicate with the device.
 The device comes up as a Communications Device Class (CDC) device.
 It is controlled by sending messages to it over a USB serial connection.
 
-The message protocol is defined in [src/msg.h](src/msg.h).
+The message protocol is defined in [common/msg.h](common/msg.h).
 
 To control the device, either use [Bloodview](host/bloodview/) or the `bl` host
 helper tool, at `tools/bl`.
@@ -360,7 +360,7 @@ Sources are things that we sample with the ADCs on the device.  They
 include the four photodiodes, and also other sources which may be useful
 for debug or reference.
 
-See the `enum bl_acq_source` in [src/acq.h](src/acq.h) for a complete
+See the `enum bl_acq_source` in [common/acq.h](common/acq.h) for a complete
 list of acquisition sources.
 
 If an acquisition is set up with a SOURCE_MASK of `0x1` only the first
@@ -373,11 +373,11 @@ would be enabled.
 Note that there are four ADCs on the device, and each one can have
 multiple sources connected to it.
 
-To see which sources are connected to which ADCs, see `acq_source_table[]`
-in [src/acq.c](src/acq.c).
+To see which sources are connected to which ADCs, see `bl_acq_source[]`
+in [firmware/src/acq/source.c](firmware/src/acq/source.c).
 
 Of particular note is that the `sample_data` message
-(see [src/msg.h](src/msg.h)) contains a `src_mask` field.
+(see [common/msg.h](common/msg.h)) contains a `src_mask` field.
 This is because the way the firmware works is that each of
 the ADCs builds its sample data messages separately, and sends
 them when they are filled.
