@@ -26,6 +26,8 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
+#include "sdl-tk/colour.h"
+
 #include "../util.h"
 #include "../graph.h"
 
@@ -945,6 +947,45 @@ static bool dpp__get_dpp_graph(
 }
 
 /**
+ * Convert a bloodview RGB colour to an SDL colour.
+ *
+ * \param[in] colour  The RGB colour to convert.
+ * \return An SDL colour.
+ */
+static SDL_Color dpp__get_sdl_colour_rgb(const struct bv_colour_rgb *colour_rgb)
+{
+	SDL_Color c = {
+		.r = colour_rgb->r,
+		.g = colour_rgb->g,
+		.b = colour_rgb->b,
+	};
+	return c;
+}
+
+/**
+ * Convert a bloodview colour to an SDL colour.
+ *
+ * \param[in] colour  The colour to convert.
+ * \return An SDL colour.
+ */
+static SDL_Color dpp__get_sdl_colour(const struct bv_colour *colour)
+{
+	switch (colour->type) {
+	case BV_COLOUR_RGB:
+		return dpp__get_sdl_colour_rgb(&colour->rgb);
+
+	case BV_COLOUR_HSV:
+		return sdl_tk_colour_get_hsv(
+				colour->hsv.h,
+				colour->hsv.s,
+				colour->hsv.v);
+	}
+
+	/* Fall back to magenta. */
+	return (SDL_Color){ .r = 255, .b = 255, };
+}
+
+/**
  * Build internal representation for a graph node.
  *
  * \param[in]  ctx    Context in which the graph is instantiated.
@@ -975,9 +1016,8 @@ static bool dpp__add_graph(
 		return false;
 	}
 
-	/* TODO: How to choose graph colour? */
 	if (!graph_create(dpp_g.graph_count - 1, dpp_g.frequency,
-			graph->name, (SDL_Color){ .r = 255, .b = 255, })) {
+			graph->name, dpp__get_sdl_colour(&graph->colour))) {
 
 	}
 
