@@ -107,6 +107,9 @@ struct bv_options {
 	const char *path_config;    /**< Directory where configs are stored. */
 	const char *file_config;    /**< Config filename to load on startup. */
 	const char *path_font;      /**< Path to font file to use. */
+
+	bool config_previous; /**< "Previous" config file. (Saved on exit.) */
+	bool config_default;  /**< Default config file for the revision. */
 };
 
 /**
@@ -130,10 +133,13 @@ static bool bloodview__parse_cli(
 		BV_OPTTION_PATH_RESOURCES_DIR = 'R',
 		BV_OPTTION_PATH_DEVICE_PATH   = 'D',
 		BV_OPTTION_PATH_CONFIG_DIR    = 'C',
+		BV_OPTIION_CONFIG_PREVIOUS    = 'p',
+		BV_OPTIION_CONFIG_DEFAULT     = 'd',
 		BV_OPTTION_FILE_CONFIG        = 'c',
 		BV_OPTTION_PATH_FONT          = 'f',
+
 	};
-	static const char optstr[] = "R:C:c:f:D:";
+	static const char optstr[] = "R:C:pdc:f:D:";
 	static struct option options[] = {
 		{
 			.val = BV_OPTTION_PATH_RESOURCES_DIR,
@@ -149,6 +155,16 @@ static bool bloodview__parse_cli(
 			.val = BV_OPTTION_PATH_CONFIG_DIR,
 			.name = "config-dir",
 			.has_arg = required_argument,
+		},
+		{
+			.val = BV_OPTIION_CONFIG_PREVIOUS,
+			.name = "previous-config",
+			.has_arg = no_argument,
+		},
+		{
+			.val = BV_OPTIION_CONFIG_DEFAULT,
+			.name = "default-config",
+			.has_arg = no_argument,
 		},
 		{
 			.val = BV_OPTTION_FILE_CONFIG,
@@ -189,6 +205,14 @@ static bool bloodview__parse_cli(
 
 		case BV_OPTTION_PATH_CONFIG_DIR:
 			opt.path_config = optarg;
+			break;
+
+		case BV_OPTIION_CONFIG_PREVIOUS:
+			opt.config_previous = true;
+			break;
+
+		case BV_OPTIION_CONFIG_DEFAULT:
+			opt.config_default = true;
 			break;
 
 		case BV_OPTTION_FILE_CONFIG:
@@ -234,6 +258,20 @@ int main(int argc, char *argv[])
 			bloodview_device_state_change_cb, NULL)) {
 		dpp_fini();
 		return EXIT_FAILURE;
+	}
+
+	if (options.file_config == NULL) {
+		if (options.config_default) {
+			static char s[64];
+			int ret = snprintf(s, sizeof(s), "rev%u-default.yaml",
+					device_get_revision());
+			if (ret > 0 || (unsigned)ret < sizeof(s)) {
+				options.file_config = s;
+			}
+		}
+		if (options.config_previous) {
+			options.file_config = "previous.yaml";
+		}
 	}
 
 	if (!sdl_init(options.path_resources,
