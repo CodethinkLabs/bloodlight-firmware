@@ -77,3 +77,18 @@ char *util_create_path(
 
 	return str;
 }
+
+/**
+ * Get change in time in ms.
+ *
+ * \param[in]  time_start  The start time.
+ * \param[in]  time_check  The time to check the change to.
+ * \return change in time in ms.
+ */
+int64_t util_time_diff_ms(
+		struct timespec *time_start,
+		struct timespec *time_check)
+{
+	return ((time_check->tv_sec  - time_start->tv_sec) * 1000 +
+		(time_check->tv_nsec - time_start->tv_nsec) / 1000000);
+}

@@ -24,6 +24,7 @@
 #ifndef BV_UTIL_H
 #define BV_UTIL_H
 
+#include <time.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
@@ -142,5 +143,16 @@ char *util_create_path(
 		const char *filename);
 
 static inline uint32_t max_u32(uint32_t x, uint32_t y) { return (x > y ? x : y); }
+
+/**
+ * Get change in time in ms.
+ *
+ * \param[in]  time_start  The start time.
+ * \param[in]  time_check  The time to check the change to.
+ * \return change in time in ms.
+ */
+int64_t util_time_diff_ms(
+		struct timespec *time_start,
+		struct timespec *time_check);
 
 #endif
