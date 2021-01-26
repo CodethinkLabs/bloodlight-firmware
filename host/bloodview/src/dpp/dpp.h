@@ -92,9 +92,30 @@ struct bv_channel {
 	unsigned channel;
 };
 
+/** Bloodview colour. */
+struct bv_colour {
+	enum bv_colour_e {
+		BV_COLOUR_RGB, /**< Colour type: RGB. */
+		BV_COLOUR_HSV, /**< Colour type: HSV. */
+	} type; /**< Colour type. */
+	union {
+		struct bv_colour_rgb {
+			uint8_t r; /**< Red. */
+			uint8_t g; /**< Green. */
+			uint8_t b; /**< Blue. */
+		} rgb; /**< RGB colour type specification. */
+		struct bv_colour_hsv {
+			uint16_t h; /**< Hue. Range 0-360. */
+			uint8_t  s; /**< Saturation. Range: 0-100. */
+			uint8_t  v; /**< Value.  Range: 0-100. */
+		} hsv; /**< HSV colour type specification. */
+	};
+};
+
 struct bv_graph {
 	char *label;
 	char *name;
+	struct bv_colour colour;
 };
 
 struct bv_context {
