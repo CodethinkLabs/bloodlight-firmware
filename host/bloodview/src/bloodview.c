@@ -37,7 +37,9 @@
 
 /** Bloodview global context data. */
 static struct {
-	bool quit;
+	volatile bool quit;
+	volatile bool started;
+	volatile device_state_t device_state;
 } bloodview_g;
 
 /* Exported interface, documented in bloodview.h */
@@ -91,15 +93,23 @@ static void bloodview_device_state_change_cb(
 {
 	BV_UNUSED(pw);
 
-	main_menu_set_acq_available(state != DEVICE_STATE_ACTIVE);
+	bloodview_g.device_state = state;
+
+	if (bloodview_g.started == true) {
+		main_menu_set_acq_available(state != DEVICE_STATE_ACTIVE);
+	}
 }
 
 /** Bloodview commandline options. */
 struct bv_options {
 	const char *path_resources; /**< Directory to load resources from. */
+	const char *path_device;    /**< Path to Bloodlight device. */
 	const char *path_config;    /**< Directory where configs are stored. */
 	const char *file_config;    /**< Config filename to load on startup. */
 	const char *path_font;      /**< Path to font file to use. */
+
+	bool config_previous; /**< "Previous" config file. (Saved on exit.) */
+	bool config_default;  /**< Default config file for the revision. */
 };
 
 /**
@@ -120,30 +130,49 @@ static bool bloodview__parse_cli(
 		.path_config    = "config",
 	};
 	enum options {
-		BV_OPTTION_PATH_RESOURCES_DIR = 'R',
-		BV_OPTTION_PATH_CONFIG_DIR    = 'C',
-		BV_OPTTION_FILE_CONFIG        = 'c',
-		BV_OPTTION_PATH_FONT          = 'f',
+		BV_OPTION_PATH_RESOURCES_DIR = 'R',
+		BV_OPTION_PATH_DEVICE_PATH   = 'D',
+		BV_OPTION_PATH_CONFIG_DIR    = 'C',
+		BV_OPTION_CONFIG_PREVIOUS    = 'p',
+		BV_OPTION_CONFIG_DEFAULT     = 'd',
+		BV_OPTION_FILE_CONFIG        = 'c',
+		BV_OPTION_PATH_FONT          = 'f',
+
 	};
-	static const char optstr[] = "R:C:c:f:";
+	static const char optstr[] = "R:C:pdc:f:D:";
 	static struct option options[] = {
 		{
-			.val = BV_OPTTION_PATH_RESOURCES_DIR,
+			.val = BV_OPTION_PATH_RESOURCES_DIR,
 			.name = "resources-dir",
 			.has_arg = required_argument,
 		},
 		{
-			.val = BV_OPTTION_PATH_CONFIG_DIR,
+			.val = BV_OPTION_PATH_DEVICE_PATH,
+			.name = "device-path",
+			.has_arg = required_argument,
+		},
+		{
+			.val = BV_OPTION_PATH_CONFIG_DIR,
 			.name = "config-dir",
 			.has_arg = required_argument,
 		},
 		{
-			.val = BV_OPTTION_FILE_CONFIG,
+			.val = BV_OPTION_CONFIG_PREVIOUS,
+			.name = "previous-config",
+			.has_arg = no_argument,
+		},
+		{
+			.val = BV_OPTION_CONFIG_DEFAULT,
+			.name = "default-config",
+			.has_arg = no_argument,
+		},
+		{
+			.val = BV_OPTION_FILE_CONFIG,
 			.name = "config",
 			.has_arg = required_argument,
 		},
 		{
-			.val = BV_OPTTION_PATH_FONT,
+			.val = BV_OPTION_PATH_FONT,
 			.name = "font",
 			.has_arg = required_argument,
 		},
@@ -166,19 +195,31 @@ static bool bloodview__parse_cli(
 		}
 		enum options option = c;
 		switch (option) {
-		case BV_OPTTION_PATH_RESOURCES_DIR:
+		case BV_OPTION_PATH_RESOURCES_DIR:
 			opt.path_resources = optarg;
 			break;
 
-		case BV_OPTTION_PATH_CONFIG_DIR:
+		case BV_OPTION_PATH_DEVICE_PATH:
+			opt.path_device = optarg;
+			break;
+
+		case BV_OPTION_PATH_CONFIG_DIR:
 			opt.path_config = optarg;
 			break;
 
-		case BV_OPTTION_FILE_CONFIG:
+		case BV_OPTION_CONFIG_PREVIOUS:
+			opt.config_previous = true;
+			break;
+
+		case BV_OPTION_CONFIG_DEFAULT:
+			opt.config_default = true;
+			break;
+
+		case BV_OPTION_FILE_CONFIG:
 			opt.file_config = optarg;
 			break;
 
-		case BV_OPTTION_PATH_FONT:
+		case BV_OPTION_PATH_FONT:
 			opt.path_font = optarg;
 			break;
 		}
@@ -213,17 +254,38 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!sdl_init(options.path_resources,
-			options.path_config,
-			options.file_config,
-			options.path_font)) {
+	if (!device_init(options.path_device,
+			bloodview_device_state_change_cb, NULL)) {
 		dpp_fini();
 		return EXIT_FAILURE;
 	}
 
-	if (!device_init(NULL, bloodview_device_state_change_cb, NULL)) {
-		goto cleanup;
+	if (options.file_config == NULL) {
+		if (options.config_default) {
+			static char s[64];
+			int ret = snprintf(s, sizeof(s), "rev%u-default.yaml",
+					device_get_revision());
+			if (ret > 0 || (unsigned)ret < sizeof(s)) {
+				options.file_config = s;
+			}
+		}
+		if (options.config_previous) {
+			options.file_config = "previous.yaml";
+		}
 	}
+
+	if (!sdl_init(options.path_resources,
+			options.path_config,
+			options.file_config,
+			options.path_font)) {
+		device_fini();
+		dpp_fini();
+		return EXIT_FAILURE;
+	}
+
+	bloodview_g.started = true;
+	main_menu_set_acq_available(
+			bloodview_g.device_state != DEVICE_STATE_ACTIVE);
 
 	while (!bloodview_g.quit && sdl_handle_input()) {
 		sdl_present();
@@ -231,7 +293,6 @@ int main(int argc, char *argv[])
 
 	ret = EXIT_SUCCESS;
 
-cleanup:
 	device_fini();
 	sdl_fini();
 	dpp_fini();

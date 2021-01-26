@@ -118,4 +118,12 @@ const struct device_source_cap *device_get_source_cap(
  * \return source for the channel.
  */
 enum bl_acq_source device_get_channel_source(uint8_t channel);
+
+/**
+ * Get the hardware revision.
+ *
+ * \return the hardware revision.
+ */
+unsigned device_get_revision(void);
+
 #endif /* BV_DEVICE_H */
