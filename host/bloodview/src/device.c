@@ -450,6 +450,11 @@ static void device__thread_receive_msg(
 			}
 			break;
 
+		case BL_MSG_VERSION:
+			bl_msg_yaml_print(stderr, &recv_msg);
+			*sent_type = BL_MSG__COUNT;
+			break;
+
 		default:
 			fprintf(stderr, "Unexpected message from device:\n");
 			bl_msg_yaml_print(stderr, &recv_msg);
@@ -715,6 +720,26 @@ static bool device__queue_msg_abort(void)
 }
 
 /**
+ * Get device version.
+ *
+ * \return true if a message has been queued for sending to the device.
+ */
+static bool device__queue_msg_version_req(void)
+{
+	union bl_msg_data *msg;
+
+	msg = device__msg_get_next_free();
+	if (msg == NULL) {
+		return false;
+	}
+
+	msg->type = BL_MSG_VERSION_REQ;
+
+	device__msg_send(msg);
+	return true;
+}
+
+/**
  * Get source capabilities.
  *
  * \param[in]  source  The source to configure.
@@ -884,6 +909,10 @@ bool device_stop(void)
  */
 bool device__query(void)
 {
+	if (!device__queue_msg_version_req()) {
+		return false;
+	}
+
 	for (unsigned i = 0; i < BL_ACQ_SOURCE_MAX; i++) {
 		if (!device__queue_msg_source_cap_req(i)) {
 			return false;
