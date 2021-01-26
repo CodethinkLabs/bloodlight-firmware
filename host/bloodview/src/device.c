@@ -1090,3 +1090,9 @@ const struct device_source_cap *device_get_source_cap(
 
 	return &device_caps[source];
 }
+
+/* Exported function, documented in device.h */
+unsigned device_get_revision(void)
+{
+	return bv_device_g.revision;
+}
