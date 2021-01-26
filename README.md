@@ -57,7 +57,7 @@ And the Bloodlight host tools:
 make -C host/
 ```
 
-To run the [Bloodview](bloodview/) live-view, run:
+To run the [Bloodview](host/bloodview/) live-view, run:
 
 ```bash
 make -BC host/ run
@@ -82,7 +82,7 @@ Or use the `rund` target as a shorthand:
 make -BC host/ rund
 ```
 
-More information can be found in the [Bloodview](bloodview/) documentation.
+More information can be found in the [Bloodview](host/bloodview/) documentation.
 
 Installation
 ------------
@@ -218,7 +218,7 @@ It is controlled by sending messages to it over a USB serial connection.
 
 The message protocol is defined in [src/msg.h](src/msg.h).
 
-To control the device, either use [Bloodview](bloodview/) or the `bl` host
+To control the device, either use [Bloodview](host/bloodview/) or the `bl` host
 helper tool, at `tools/bl`.
 
 Running `bl` without any parameters will list the commands it supports:
