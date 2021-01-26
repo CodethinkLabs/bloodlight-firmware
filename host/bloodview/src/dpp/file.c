@@ -209,6 +209,48 @@ static const cyaml_schema_value_t bv_channel = {
 			bv_channel_fields),
 };
 
+/** CYAML schema: Pipeline stage node types. */
+static const cyaml_strval_t bv_colour_kind[] = {
+	{ .val = BV_COLOUR_RGB, .str = "rgb" },
+	{ .val = BV_COLOUR_HSV, .str = "hsv" },
+};
+
+/** CYAML schema: Colour RGB fields. */
+static const cyaml_schema_field_t bv_colour_rgb_fields[] = {
+	CYAML_FIELD_UINT("r", CYAML_FLAG_DEFAULT,
+			struct bv_colour_rgb, r),
+	CYAML_FIELD_UINT("g", CYAML_FLAG_DEFAULT,
+			struct bv_colour_rgb, g),
+	CYAML_FIELD_UINT("b", CYAML_FLAG_DEFAULT,
+			struct bv_colour_rgb, b),
+	CYAML_FIELD_END
+};
+
+/** CYAML schema: Colour HSV fields. */
+static const cyaml_schema_field_t bv_colour_hsv_fields[] = {
+	CYAML_FIELD_UINT("h", CYAML_FLAG_DEFAULT,
+			struct bv_colour_hsv, h),
+	CYAML_FIELD_UINT("s", CYAML_FLAG_DEFAULT,
+			struct bv_colour_hsv, s),
+	CYAML_FIELD_UINT("v", CYAML_FLAG_DEFAULT,
+			struct bv_colour_hsv, v),
+	CYAML_FIELD_END
+};
+
+/** CYAML schema: Colour fields. */
+static const cyaml_schema_field_t bv_colour_fields[] = {
+	CYAML_FIELD_ENUM("kind", CYAML_FLAG_OPTIONAL,
+			struct bv_colour, type,
+			bv_colour_kind, CYAML_ARRAY_LEN(bv_colour_kind)),
+	CYAML_FIELD_MAPPING("rgb", CYAML_FLAG_DEFAULT,
+			struct bv_colour, rgb,
+			bv_colour_rgb_fields),
+	CYAML_FIELD_MAPPING("hsv", CYAML_FLAG_DEFAULT,
+			struct bv_colour, hsv,
+			bv_colour_hsv_fields),
+	CYAML_FIELD_END
+};
+
 /** CYAML schema: Graph structure fields. */
 static const cyaml_schema_field_t bv_graph_fields[] = {
 	CYAML_FIELD_STRING_PTR("label", CYAML_FLAG_POINTER,
@@ -217,6 +259,10 @@ static const cyaml_schema_field_t bv_graph_fields[] = {
 	CYAML_FIELD_STRING_PTR("name", CYAML_FLAG_POINTER,
 			struct bv_graph, name,
 			0, CYAML_UNLIMITED),
+	CYAML_FIELD_UNION("colour", CYAML_FLAG_DEFAULT,
+			struct bv_graph, colour,
+			bv_colour_fields,
+			"kind"),
 	CYAML_FIELD_END
 };
 
