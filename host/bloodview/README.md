@@ -34,11 +34,23 @@ the config saved last time Bloodview was run with:
 
     make run BV_ARGS="-c previous.yaml"
 
+Or use the `runp` target as a shorthand:
+
+    make runp
+
 Some [default configs](config/) are provided for each of the hardware revisions,
 for example:
 
     make run BV_ARGS="-c rev1-default.yaml"
     make run BV_ARGS="-c rev2-default.yaml"
+
+Pass `-d` to automatically select the correct default config for the device:
+
+    make run BV_ARGS="-d"
+
+Or use the `rund` target as a shorthand:
+
+    make rund
 
 The main menu
 -------------

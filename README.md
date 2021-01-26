@@ -70,6 +70,18 @@ make -BC host/ run BV_ARGS="-c rev1-default.yaml"
 make -BC host/ run BV_ARGS="-c rev2-default.yaml"
 ```
 
+Pass `-d` to automatically select the correct default config for the device:
+
+```bash
+make -BC host/ run BV_ARGS="-d"
+```
+
+Or use the `rund` target as a shorthand:
+
+```bash
+make -BC host/ rund
+```
+
 More information can be found in the [Bloodview](bloodview/) documentation.
 
 Installation
