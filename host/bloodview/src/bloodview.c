@@ -37,7 +37,9 @@
 
 /** Bloodview global context data. */
 static struct {
-	bool quit;
+	volatile bool quit;
+	volatile bool started;
+	volatile device_state_t device_state;
 } bloodview_g;
 
 /* Exported interface, documented in bloodview.h */
@@ -91,7 +93,11 @@ static void bloodview_device_state_change_cb(
 {
 	BV_UNUSED(pw);
 
-	main_menu_set_acq_available(state != DEVICE_STATE_ACTIVE);
+	bloodview_g.device_state = state;
+
+	if (bloodview_g.started == true) {
+		main_menu_set_acq_available(state != DEVICE_STATE_ACTIVE);
+	}
 }
 
 /** Bloodview commandline options. */
@@ -213,17 +219,23 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!sdl_init(options.path_resources,
-			options.path_config,
-			options.file_config,
-			options.path_font)) {
+	if (!device_init(NULL, bloodview_device_state_change_cb, NULL)) {
 		dpp_fini();
 		return EXIT_FAILURE;
 	}
 
-	if (!device_init(NULL, bloodview_device_state_change_cb, NULL)) {
-		goto cleanup;
+	if (!sdl_init(options.path_resources,
+			options.path_config,
+			options.file_config,
+			options.path_font)) {
+		device_fini();
+		dpp_fini();
+		return EXIT_FAILURE;
 	}
+
+	bloodview_g.started = true;
+	main_menu_set_acq_available(
+			bloodview_g.device_state != DEVICE_STATE_ACTIVE);
 
 	while (!bloodview_g.quit && sdl_handle_input()) {
 		sdl_present();
@@ -231,7 +243,6 @@ int main(int argc, char *argv[])
 
 	ret = EXIT_SUCCESS;
 
-cleanup:
 	device_fini();
 	sdl_fini();
 	dpp_fini();
