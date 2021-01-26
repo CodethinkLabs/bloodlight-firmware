@@ -140,6 +140,20 @@ run: build/bloodview
 			-C bloodview/config \
 			$(BV_ARGS)
 
+# Run variant that load the default conifg for the device
+rund: build/bloodview
+	@sudo $(BLOODVIEW_ENV) build/bloodview -d \
+			-R bloodview/resources \
+			-C bloodview/config \
+			$(BV_ARGS)
+
+# Run variant that reloads the previous config
+runp: build/bloodview
+	@sudo $(BLOODVIEW_ENV) build/bloodview -p \
+			-R bloodview/resources \
+			-C bloodview/config \
+			$(BV_ARGS)
+
 docs:
 	$(MKDIR) build/docs
 	doxygen bloodview/docs/doxygen.conf
