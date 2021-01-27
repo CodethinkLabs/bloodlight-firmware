@@ -101,11 +101,7 @@ setup:
     graphs:
     - label: G1
       name: Photodiode 1
-      colour:
-        hsv:
-          h: 0
-          s: 100
-          v: 100
+      colour: { hsv: { h: 0, s: 100, v: 100 } }
   - pipeline: Cleanup
     channels:
     - label: C1
@@ -113,11 +109,7 @@ setup:
     graphs:
     - label: G1
       name: Photodiode 2
-      colour:
-        hsv:
-          h: 90
-          s: 100
-          v: 100
+      colour: { hsv: { h: 90, s: 100, v: 100 } }
   - pipeline: Cleanup
     channels:
     - label: C1
@@ -125,11 +117,7 @@ setup:
     graphs:
     - label: G1
       name: Photodiode 3
-      colour:
-        hsv:
-          h: 180
-          s: 100
-          v: 100
+      colour: { hsv: { h: 180, s: 100, v: 100 } }
   - pipeline: Cleanup
     channels:
     - label: C1
@@ -137,11 +125,8 @@ setup:
     graphs:
     - label: G1
       name: Photodiode 4
-      colour:
-        hsv:
-          h: 270
-          s: 100
-          v: 100
+      colour: { hsv: { h: 270, s: 100, v: 100 } }
+
 - name: Green & red
   mode: Flash
   contexts:
@@ -152,11 +137,7 @@ setup:
     graphs:
     - label: G1
       name: Green
-      colour:
-        hsv:
-          h: 110
-          s: 100
-          v: 100
+      colour: { hsv: { h: 110, s: 100, v: 100 } }
   - pipeline: Cleanup
     channels:
     - label: C1
@@ -164,8 +145,4 @@ setup:
     graphs:
     - label: G1
       name: Red
-      colour:
-        hsv:
-          h: 0
-          s: 100
-          v: 100
+      colour: { hsv: { h: 0, s: 100, v: 100 } }
