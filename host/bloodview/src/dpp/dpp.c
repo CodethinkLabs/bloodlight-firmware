@@ -1249,10 +1249,10 @@ enum bl_acq_flash_mode dpp_get_emission_mode(unsigned dpp_index)
 }
 
 /* Exported interface, documented in dpp.h */
-uint16_t dpp_get_source_mask(unsigned dpp_index)
+unsigned dpp_get_channel_mask(unsigned dpp_index)
 {
 	const struct bv_setup *s;
-	uint16_t mask = 0;
+	unsigned mask = 0;
 
 	assert(dpp_index < dpp_g.dpp->setup_count);
 	s = &dpp_g.dpp->setup[dpp_index];
