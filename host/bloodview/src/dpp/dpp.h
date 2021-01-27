@@ -223,11 +223,14 @@ bool dpp_process(struct bv_value *pipeline);
 enum bl_acq_flash_mode dpp_get_emission_mode(unsigned dpp_index);
 
 /**
- * Get which sources a pipeline uses.
+ * Get which acquisition channels a pipeline uses.
+ *
+ * Depending on whether the pipeline is in continuous or flash emission mode,
+ * these channels correspond to sources (e.g. photodiodes) or channels (LEDs).
  *
  * \param[in]  dpp_index     The data processing pipeline setup to interrogate.
- * \return the mask of sources that the pipeline uses.
+ * \return the channel mask that the pipeline uses.
  */
-uint16_t dpp_get_source_mask(unsigned dpp_index);
+unsigned dpp_get_channel_mask(unsigned dpp_index);
 
 #endif

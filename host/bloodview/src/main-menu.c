@@ -642,6 +642,65 @@ static void main_menu_toggle_cb(
 }
 
 /**
+ * Set up the channels / sources for the selected DPP.
+ */
+static void main_menu__set_up_from_dpp(void)
+{
+	enum bv_setup_mode setup = main_menu_get_setup_mode();
+	struct desc_widget *desc_mode = NULL;
+	struct desc_widget *desc = NULL;
+	enum bl_acq_flash_mode mode;
+	unsigned mask;
+	unsigned dpp;
+
+	if (setup != BV_SETUP_DPP) {
+		return;
+	}
+
+	dpp = main_menu_get_data_proccessing_pipeline_index();
+	mode = dpp_get_emission_mode(dpp);
+	mask = dpp_get_channel_mask(dpp);
+
+	desc_mode = main_menu__get_desc_fmt(bl_main_menu,
+				"Config/Acquisition/Emission mode");
+
+	assert(desc_mode != NULL);
+	assert(desc_mode->type == WIDGET_TYPE_SELECT);
+
+	if (!sdl_tk_widget_select_set_value(desc_mode->widget, mode)) {
+		fprintf(stderr, "Failed to emission mode up for DPP.\n");
+		return;
+	}
+
+	switch (mode) {
+	case BL_ACQ_CONTINUOUS:
+		desc = main_menu__get_desc_fmt(bl_main_menu,
+				"Config/Acquisition/Continuous/Sources");
+		break;
+
+	case BL_ACQ_FLASH:
+		desc = main_menu__get_desc_fmt(bl_main_menu,
+				"Config/Acquisition/Flash/LEDs");
+		break;
+	}
+
+	assert(desc != NULL);
+	assert(desc->type == WIDGET_TYPE_MENU);
+
+	for (unsigned i = 0; i < desc->menu.entry_count; i++) {
+		assert(desc->menu.entry[i] != NULL);
+		assert(desc->menu.entry[i]->type == WIDGET_TYPE_TOGGLE);
+
+		if (!sdl_tk_widget_toggle_set_value(
+				desc->menu.entry[i]->widget,
+				(1u << i) & mask)) {
+			fprintf(stderr, "Failed to set channels up for DPP.\n");
+			return;
+		}
+	}
+}
+
+/**
  * Callback for the select widgets.
  *
  * \param[in]  pw         Client private context data.
@@ -688,6 +747,7 @@ static void main_menu_select_cb(
 
 		sdl_tk_widget_enable(desc_dpp->widget,
 				new_value == BV_SETUP_DPP);
+		main_menu__set_up_from_dpp();
 		break;
 
 	case INPUT_TYPE_ACQ_DETECTION_MODE:
@@ -700,6 +760,9 @@ static void main_menu_select_cb(
 
 	case INPUT_TYPE_UNSIGNED:
 		value->select.value.type_unsigned = new_value;
+		if (value == desc_dpp) {
+			main_menu__set_up_from_dpp();
+		}
 		break;
 
 	default:
@@ -1461,12 +1524,8 @@ uint16_t main_menu_config_get_led_mask(void)
 	return main_menu__config_get_led_mask_helper(desc);
 }
 
-/**
- * Get the source mask.
- *
- * \return the configured source mask.
- */
-uint16_t main_menu__config_get_source_mask_internal(void)
+/* Exported interface, documented in main-menu.h */
+uint16_t main_menu_config_get_source_mask(void)
 {
 	struct desc_widget *sources = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/%s/Sources",
@@ -1487,20 +1546,6 @@ uint16_t main_menu__config_get_source_mask_internal(void)
 	}
 
 	return src_mask;
-}
-
-/* Exported interface, documented in main-menu.h */
-uint16_t main_menu_config_get_source_mask(void)
-{
-	enum bv_setup_mode setup = main_menu_get_setup_mode();
-
-	if (setup == BV_SETUP_DPP) {
-		unsigned dpp = main_menu_get_data_proccessing_pipeline_index();
-
-		return dpp_get_source_mask(dpp);
-	}
-
-	return main_menu__config_get_source_mask_internal();
 }
 
 /* Exported interface, documented in main-menu.h */
