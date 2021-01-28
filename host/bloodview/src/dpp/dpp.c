@@ -719,7 +719,12 @@ static bool dpp__imbue_filter(
 		}
 
 		assert(index < filter->input_count);
-		assert(filter->input[index].set == false);
+
+		if (filter->input[index].set != false) {
+			fprintf(stderr, "Error: Filter %s input already set!\n",
+					filter->filter->filter);
+			return false;
+		}
 
 		if (!dpp__pipeline_get_node_slot(ctx, from, &dpp_offset)) {
 			return false;
@@ -737,11 +742,12 @@ static bool dpp__imbue_filter(
 		}
 
 		assert(index < filter->output_count);
-		assert(filter->output[index].set == false);
 
-		filter->output[index].name = node->filter.endpoint;
-		filter->output[index].dpp_offset = dpp__next_dpp_offset();
-		filter->output[index].set = true;
+		if (filter->output[index].set == false) {
+			filter->output[index].name = node->filter.endpoint;
+			filter->output[index].dpp_offset = dpp__next_dpp_offset();
+			filter->output[index].set = true;
+		}
 	}
 
 	return true;

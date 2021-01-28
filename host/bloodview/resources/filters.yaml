@@ -86,6 +86,67 @@ pipelines:
       graph:
         label: G1
 
+- name: Cleanup & Derivative
+  filters:
+  - label: F1
+    filter: Average
+    parameters:
+    - name: normalise
+      value:
+        bool: true
+    - name: frequency
+      value:
+        double: 0.5
+  - label: F2
+    filter: Average
+    parameters:
+    - name: normalise
+      value:
+        bool: false
+    - name: frequency
+      value:
+        double: 50
+  - label: F3
+    filter: Derivative
+  stages:
+  - from:
+      channel:
+        label: C1
+    to:
+      filter:
+        label: F1
+        endpoint: samples
+  - from:
+      filter:
+        label: F1
+        endpoint: averaged
+    to:
+      filter:
+        label: F2
+        endpoint: samples
+  - from:
+      filter:
+        label: F2
+        endpoint: averaged
+    to:
+      filter:
+        label: F3
+        endpoint: in
+  - from:
+      filter:
+        label: F2
+        endpoint: averaged
+    to:
+      graph:
+        label: G1
+  - from:
+      filter:
+        label: F3
+        endpoint: out
+    to:
+      graph:
+        label: G2
+
 # Data processing pipeline setups.
 #
 # These describe how pipelines are applied to the data.  Any channel or
@@ -127,7 +188,7 @@ setup:
       name: Photodiode 4
       colour: { hsv: { h: 270, s: 100, v: 100 } }
 
-- name: Green & red
+- name: Green & Red
   mode: Flash
   contexts:
   - pipeline: Cleanup
@@ -146,3 +207,29 @@ setup:
     - label: G1
       name: Red
       colour: { hsv: { h: 0, s: 100, v: 100 } }
+
+- name: PD1 & PD3 (with derivatives)
+  mode: Continuous
+  contexts:
+  - pipeline: Cleanup & Derivative
+    channels:
+    - label: C1
+      channel: 0
+    graphs:
+    - label: G1
+      name: Photodiode 1
+      colour: { hsv: { h: 0, s: 100, v: 100 } }
+    - label: G2
+      name: Photodiode 1 (Derivative)
+      colour: { hsv: { h: 0, s: 100, v: 100 } }
+  - pipeline: Cleanup & Derivative
+    channels:
+    - label: C1
+      channel: 2
+    graphs:
+    - label: G1
+      name: Photodiode 3
+      colour: { hsv: { h: 90, s: 100, v: 100 } }
+    - label: G2
+      name: Photodiode 3 (Derivative)
+      colour: { hsv: { h: 90, s: 100, v: 100 } }
