@@ -321,7 +321,8 @@ static const cyaml_schema_field_t bv_pipeline_filter_fields[] = {
 	CYAML_FIELD_STRING_PTR("filter", CYAML_FLAG_POINTER,
 			struct bv_pipeline_filter, filter,
 			0, CYAML_UNLIMITED),
-	CYAML_FIELD_SEQUENCE("parameters", CYAML_FLAG_POINTER,
+	CYAML_FIELD_SEQUENCE("parameters",
+			CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL,
 			struct bv_pipeline_filter, parameters,
 			&bv_params, 0, CYAML_UNLIMITED),
 	CYAML_FIELD_END
