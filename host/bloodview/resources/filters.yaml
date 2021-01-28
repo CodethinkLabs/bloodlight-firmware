@@ -188,7 +188,7 @@ setup:
       name: Photodiode 4
       colour: { hsv: { h: 270, s: 100, v: 100 } }
 
-- name: Green & red
+- name: Green & Red
   mode: Flash
   contexts:
   - pipeline: Cleanup
@@ -207,3 +207,29 @@ setup:
     - label: G1
       name: Red
       colour: { hsv: { h: 0, s: 100, v: 100 } }
+
+- name: PD1 & PD3 (with derivatives)
+  mode: Continuous
+  contexts:
+  - pipeline: Cleanup & Derivative
+    channels:
+    - label: C1
+      channel: 0
+    graphs:
+    - label: G1
+      name: Photodiode 1
+      colour: { hsv: { h: 0, s: 100, v: 100 } }
+    - label: G2
+      name: Photodiode 1 (Derivative)
+      colour: { hsv: { h: 0, s: 100, v: 100 } }
+  - pipeline: Cleanup & Derivative
+    channels:
+    - label: C1
+      channel: 2
+    graphs:
+    - label: G1
+      name: Photodiode 3
+      colour: { hsv: { h: 90, s: 100, v: 100 } }
+    - label: G2
+      name: Photodiode 3 (Derivative)
+      colour: { hsv: { h: 90, s: 100, v: 100 } }
