@@ -158,7 +158,9 @@ static inline void filter_average__add_sample(
 {
 	assert(ctx->fifo->used < ctx->fifo->capacity);
 
-	fifo_write(ctx->fifo, value);
+	if (!fifo_write(ctx->fifo, value)) {
+		assert(0 && "filter_average__add_sample: fifo_write failed");
+	}
 
 	ctx->sum += bv_value_unsigned(value);
 }
@@ -175,7 +177,9 @@ static inline void filter_average__drop_sample(
 
 	assert(ctx->fifo->used > 0);
 
-	fifo_read(ctx->fifo, &old);
+	if (!fifo_read(ctx->fifo, &old)) {
+		assert(0 && "filter_average__drop_sample: fifo_read failed");
+	}
 
 	ctx->sum -= bv_value_unsigned(&old);
 }
