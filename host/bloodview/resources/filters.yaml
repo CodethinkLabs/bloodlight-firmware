@@ -218,10 +218,10 @@ setup:
     graphs:
     - label: G1
       name: Photodiode 1
-      colour: { hsv: { h: 0, s: 100, v: 100 } }
+      colour: { hsv: { h: 90, s: 100, v: 100 } }
     - label: G2
       name: Photodiode 1 (Derivative)
-      colour: { hsv: { h: 0, s: 100, v: 100 } }
+      colour: { hsv: { h: 90, s: 50, v: 90 } }
   - pipeline: Cleanup & Derivative
     channels:
     - label: C1
@@ -229,7 +229,7 @@ setup:
     graphs:
     - label: G1
       name: Photodiode 3
-      colour: { hsv: { h: 90, s: 100, v: 100 } }
+      colour: { hsv: { h: 0, s: 100, v: 100 } }
     - label: G2
       name: Photodiode 3 (Derivative)
-      colour: { hsv: { h: 90, s: 100, v: 100 } }
+      colour: { hsv: { h: 0, s: 50, v: 90 } }
