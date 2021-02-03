@@ -109,3 +109,121 @@ Using the horizontal mouse scroll wheel will alter the horizontal scaling of
 the selected graph (or all graphs, if <kbd>Shift</kbd> is pressed).
 
 Clicking the <kbd>MIDDLE</kbd> mouse button will flip a graph upside-down.
+
+Recording data from a Bloodlight device
+---------------------------------------
+
+### Setup
+
+First make sure your Bloodlight has been flashed with the firmware and
+connected to the host computer via USB.  On startup, Bloodview should
+automatically detect the device, and print out details on the command
+line.  For example:
+
+    Using device: /dev/ttyACM0 (ct-bloodlight:000000).
+
+If you have multiple Bloodlight devices connected via USB, you can select
+which one to use by running with the `-D` or `--device-path` command line
+argument:
+
+    make run BV_ARGS="-D /dev/ttyACM2"
+
+Once connected, Bloodview will send some requests to the device to
+discover things like the device version and hardware capabilities.
+
+Bloodview starts up, opening a new window showing the the main menu.
+
+### Configuration
+
+If you loaded a config file, the device will already be set up for use.
+The `Config` menu entry allows any aspect of the device setup to be tweaked.
+
+The actual acquisition options can be set up in the `Config > Acquisition`
+menu.  The sampling rate of the acquisition can be set here, as well as the
+emission mode and the detection mode.
+
+#### Emission mode
+
+This refers to whether the device is set up in `Continuous` mode
+or `Flash` mode.  In `Continuous` mode, the chosen LEDs remain on constantly,
+and the selected photo-diodes are sampled continuously.  In `Flash` mode, the
+LEDs are flashed in sequence, and the sampling for each LED is done in sequence.
+`Flash` mode is good for performing multi-spectral analysis of different
+wavelengths.  `Continuous` mode is good for simply viewing a pulse.
+
+The number of output channels for an acquisition depends on the emission mode.
+In `Continuous` mode, the number of output channels is equal to the number of
+enabled sources (photo-diodes, etc).  In `Flash` mode, the number of output
+channels depends on the number of LEDs configured in the flash pattern; one
+output channel per LED.
+
+#### Detection mode
+
+This determines whether to operate in `Reflective` mode or `Transmissive`
+mode.  In `Transmissive` mode, a second device must be connected via the SPI
+pins. In this mode, one Bloodlight device emits light and the other device
+detects it.  In `Reflective` mode, emission and detection are done on the same
+device.
+
+#### Source configuration
+
+Sources directly relate to the sources that the hardware acquires samples from.
+For example, the photo-diodes.  These configuration options are used to tune the
+sensitivity and amplification for each source.  Software oversample is the
+number of samples from the hardware that are summed into a single reading.
+
+Whether op-amps are available for any given source is determined by the
+hardware.  Information about each source's hardware capabilities is provided
+by the device in response to source capability requests sent when Bloodview
+is started.
+
+#### Channel configuration
+
+Channels are a logical layer that Bloodlight provides to help distinguish the
+origin of samples.  In `Continuous` mode, channels map directly to sources.  In
+`Flash` mode, channels map the particular LEDs.  Multiple channels may map to
+the same physical source, and there may be more channels than sources.
+
+Channel configuration controls whether samples should be returned as 16-bit
+values (by shifting and offsetting them), or as 32-bit values.  Using 16-bit
+samples allows a higher sample rate to be achieved before the USB link is
+saturated.  The shift and offset values to apply can be configured.  If 32-bit
+sample mode is enabled, the shift and offset values are ignored and zero is
+used.
+
+You can also choose whether the channel should be inverted (vertically flipped).
+
+#### Primitive filtering
+
+There are a few basic sample filtering options available in the `Filtering`
+submenu.  This allows denoising (such as for removing 50Hz AC noise),
+normalization (which attempts to reduce the low frequency variations),
+and derivative (which allows the derivatives of the graphs to be rendered).
+
+For more advanced filtering, see the data processing pipeline section below.
+
+### Calibration
+
+Finding the best settings for configuring the sources and channels to get the
+most accurate recordings can be fiddly, so Bloodview has a calibration mode.
+
+This is what happens when you choose `Calibrate` on the main top-level menu.
+It starts a 32-bit acquisition, waits two seconds (for the values to settle),
+and then starts tracking the minimum and maximum values seen for each of the
+channels.
+
+You can stop the calibration by choosing `Stop` from the main menu.  When the
+calibration is stopped, the calibration mode will automatically configure the
+channel and source settings to achieve optimal readings.
+
+### Acquisition
+
+An acquisition can be run after calibration.  It is started with the
+`Acquisition` menu option, and stopped with the `Stop` option.
+
+Both calibration runs and acquisitions will save the messages sent to and
+from the Bloodlight device to a YAML file, which can be used for off-line
+data processing.
+
+During a calibration or an acquisition, Bloodview will render graphs of the
+samples on screen, so you can see what is going on.
