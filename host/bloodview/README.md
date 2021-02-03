@@ -52,8 +52,13 @@ Or use the `rund` target as a shorthand:
 
     make rund
 
-The main menu
--------------
+User Interface
+--------------
+
+Bloodview supports user interaction using both keyboard and mouse input.
+The controls depend on the context.
+
+### The main menu
 
 The main menu can be opened at any time, and it is though the main
 menu that Bloodview and the device are configured.
@@ -76,8 +81,7 @@ The <kbd>LEFT</kbd> mouse button selects a given menu entry. If you're in a
 sub-menu, clicking the <kbd>RIGHT</kbd> mouse button over the menu navigates
 back to the parent menu.
 
-The graph view
---------------
+### The graph view
 
 During an acquisition, graphs are drawn in real time, to show the progress
 of the acquisition.
