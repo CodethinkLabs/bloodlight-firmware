@@ -711,6 +711,7 @@ static void main_menu_select_cb(
 		unsigned  new_value)
 {
 	struct desc_widget *desc_continuous;
+	struct desc_widget *desc_filtering;
 	struct desc_widget *desc_flash;
 	struct desc_widget *desc_dpp;
 	struct desc_widget *value = pw;
@@ -723,6 +724,9 @@ static void main_menu_select_cb(
 	desc_continuous = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Continuous");
 
+	desc_filtering = main_menu__get_desc_fmt(bl_main_menu,
+			"Config/Filtering");
+
 	desc_flash = main_menu__get_desc_fmt(bl_main_menu,
 			"Config/Acquisition/Flash");
 
@@ -730,7 +734,9 @@ static void main_menu_select_cb(
 			"Config/Data processing pipeline");
 
 	assert(desc_continuous != NULL);
+	assert(desc_filtering != NULL);
 	assert(desc_flash != NULL);
+	assert(desc_dpp != NULL);
 
 	switch (value->select.value.type) {
 	case INPUT_TYPE_ACQ_EMISSION_MODE:
@@ -745,6 +751,8 @@ static void main_menu_select_cb(
 	case INPUT_TYPE_SETUP_MODE:
 		value->select.value.type_setup_mode = new_value;
 
+		sdl_tk_widget_enable(desc_filtering->widget,
+				new_value != BV_SETUP_DPP);
 		sdl_tk_widget_enable(desc_dpp->widget,
 				new_value == BV_SETUP_DPP);
 		main_menu__set_up_from_dpp();
