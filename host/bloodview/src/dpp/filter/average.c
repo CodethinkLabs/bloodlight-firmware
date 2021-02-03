@@ -140,7 +140,7 @@ static inline unsigned filter_average__get_average(
  */
 static inline unsigned filter_average__get_normalised(
 		const struct average_ctx *ctx,
-		struct bv_value *value)
+		const struct bv_value *value)
 {
 	return INT_MAX + bv_value_unsigned(value) -
 			filter_average__get_average(ctx);
@@ -154,7 +154,7 @@ static inline unsigned filter_average__get_normalised(
  */
 static inline void filter_average__add_sample(
 		struct average_ctx *ctx,
-		struct bv_value *value)
+		const struct bv_value *value)
 {
 	assert(ctx->fifo->used < ctx->fifo->capacity);
 
