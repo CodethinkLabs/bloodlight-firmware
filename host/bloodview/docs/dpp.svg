@@ -376,7 +376,8 @@
   <g
      id="layer1">
     <g
-       id="g4792">
+       id="g4792"
+       transform="translate(-2.6458334)">
       <g
          id="g919"
          transform="translate(37.570811,-20.108334)">
@@ -555,7 +556,8 @@
       </g>
     </g>
     <g
-       id="g4878">
+       id="g4878"
+       transform="translate(-2.6458334)">
       <path
          style="fill:none;stroke:#d45500;stroke-width:2.565;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker2294)"
          d="m 151.34148,35.454103 c 31.75,10.583334 31.75,29.104165 0,60.854147"
@@ -608,62 +610,62 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#00d700;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="10.429409"
+       x="6.1960773"
        y="29.8762"
        id="text4230"><tspan
          id="tspan4228"
-         x="10.429409"
+         x="6.1960773"
          y="29.8762"
-         style="font-size:10.5833px;fill:#00d700;fill-opacity:1;stroke-width:0.264583">Channel 0</tspan></text>
+         style="font-size:10.5833px;fill:#00d700;fill-opacity:1;stroke-width:0.264583">Channel: 0</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#00d700;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="10.429409"
+       x="6.1960773"
        y="69.563805"
        id="text4230-9"><tspan
-         id="tspan4228-0"
-         x="10.429409"
+         x="6.1960773"
          y="69.563805"
-         style="font-size:10.5833px;fill:#00d700;fill-opacity:1;stroke-width:0.264583">Channel 1</tspan></text>
+         style="font-size:10.5833px;fill:#00d700;fill-opacity:1;stroke-width:0.264583"
+         id="tspan1121">Channel: 2</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#0087d8;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="210.36621"
+       x="207.72041"
        y="148.99898"
        id="text4394"><tspan
          id="tspan4392"
-         x="210.36621"
+         x="207.72041"
          y="148.99898"
-         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: Photodiode 1</tspan></text>
+         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: &quot;Photodiode 1&quot;</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#0087d8;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="210.36621"
+       x="207.72041"
        y="188.68616"
        id="text4394-4"><tspan
          id="tspan4392-0"
-         x="210.36621"
+         x="207.72041"
          y="188.68616"
-         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: Photodiode 1 (Derivative)</tspan></text>
+         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: &quot;Photodiode 1 (Derivative)&quot;</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#0087d8;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="210.36621"
+       x="207.72041"
        y="268.06161"
        id="text4394-9"><tspan
          id="tspan4392-1"
-         x="210.36621"
+         x="207.72041"
          y="268.06161"
-         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: Photodiode 3</tspan></text>
+         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: &quot;Photodiode 3&quot;</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#0087d8;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="210.36621"
+       x="207.72041"
        y="307.74908"
        id="text4394-4-9"><tspan
          id="tspan4392-0-6"
-         x="210.36621"
+         x="207.72041"
          y="307.74908"
-         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: Photodiode 3 (Derivative)</tspan></text>
+         style="fill:#0087d8;fill-opacity:1;stroke-width:0.264583">Graph: &quot;Photodiode 3 (Derivative)&quot;</tspan></text>
   </g>
 </svg>

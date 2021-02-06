@@ -420,7 +420,9 @@ values.  The number of entries in the array is equal to the number of channels
 plus the number of filter outputs defined by the chosen setup's pipelines.
 Any slot in the pipeline can be graphed.
 
-![Data Processing Pipeline](docs/dpp.svg)
+| ![Data Processing Pipeline](docs/dpp.svg) |
+|:--:|
+| **Visual representation of the "PD1 & PD3 (with derivatives)" setup**<br><br>*Unlabeled arrows represent the filters. All of the filters in this simple pipeline have a single input and a single output. However, the architecture allows far more sophisticated data processing pipelines to be defined and run efficiently. As well as running filters with an arbitrary number of inputs and outputs, there can be an arbitrary number of input channels and any value in the pipeline can be graphed.* |
 
 This array is created at the start of the acquisition and all the data is fed
 through the same array, so there is no excessive memory allocation / free
