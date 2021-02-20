@@ -234,13 +234,14 @@ Data processing pipelines
 In the `Config` menu, you can change the `Setup mode` from `Custom` to
 `Data processing pipeline`.  This allows various predefined data processing
 setups to be selected, and disables the primitive filters.  These predefined
-setups are loaded from a YAML file ([resources/filters.yaml]) on startup.
+setups are loaded from a YAML file
+([resources/filters.yaml](resources/filters.yaml)) on startup.
 
 ### Filters
 
 There are two components to filters.  There is the implementation of the
-filter in [src/dpp/filter] and there is the filter definition in the filters
-section of [resources/filters.yaml].
+filter in [src/dpp/filter](src/dpp/filter) and there is the filter definition
+in the filters section of [resources/filters.yaml](resources/filters.yaml).
 
 The filter definition states the parameters that the filter takes, the number
 of inputs and the number of outputs.  Each input, output, and parameter has a
@@ -279,7 +280,8 @@ over the data, and a finalisation function that destroys the filter instance.
 
 ### Pipelines
 
-Pipelines are defined in the pipelines section of [resources/filters.yaml].
+Pipelines are defined in the pipelines section of
+[resources/filters.yaml](resources/filters.yaml).
 Pipelines have unique names and they define two things: a filter list
 and a list of pipeline stages.
 
