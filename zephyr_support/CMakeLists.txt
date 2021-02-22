@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+cmake_minimum_required(VERSION 3.13.1)
+# Re-direct the directory where the 'boards' directory is found from
+# $ZEPHYR_BASE to this directory.
+set(BOARD_ROOT /home/ikerperez/zephyrproject/bloodlight-firmware)
+
+
+
+
+set(BOARD bloodlight_rev2)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(out_of_tree_board)
+
+target_sources(app PRIVATE src/main.c)
