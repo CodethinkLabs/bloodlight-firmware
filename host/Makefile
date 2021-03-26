@@ -4,6 +4,8 @@ BUILDDIR = build/$(VARIANT)
 
 CFLAGS = -Wall -Wextra -pedantic --std=gnu11 -I..
 
+CFLAGS += -MMD -MP
+
 CFLAGS += $(shell pkg-config libudev --cflags)
 LDFLAGS += $(shell pkg-config libudev --libs)
 
@@ -57,6 +59,7 @@ BV_SRC = $(BV_DPP_SRC) \
 	bloodview/src/sdl.c
 
 BV_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(BV_SRC)))
+BV_DEP = $(patsubst %.c,%.d, $(addprefix $(BUILDDIR)/,$(BV_SRC)))
 
 BV_DEPS = \
 	bloodview/libcyaml/$(BUILDDIR)/libcyaml.a \
@@ -69,6 +72,7 @@ COMMON_SRC = \
 	common/sig.c
 
 COMMON_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(COMMON_SRC)))
+COMMON_DEP = $(patsubst %.c,%.d, $(addprefix $(BUILDDIR)/,$(COMMON_SRC)))
 
 TOOLS_SRC = \
 	tools/bl.c \
@@ -80,6 +84,7 @@ TOOLS_SRC = \
 	tools/normalize.c
 
 TOOLS_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(TOOLS_SRC)))
+TOOLS_DEP = $(patsubst %.c,%.d, $(addprefix $(BUILDDIR)/,$(TOOLS_SRC)))
 
 all: tools build/bloodview
 clean:
@@ -157,5 +162,7 @@ runp: build/bloodview
 docs:
 	$(MKDIR) build/docs
 	doxygen bloodview/docs/doxygen.conf
+
+-include $(BV_DEP) $(COMMON_DEP) $(TOOLS_DEP)
 
 .PHONY: all clean docs
