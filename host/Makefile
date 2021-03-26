@@ -104,15 +104,15 @@ build/bloodview: $(BV_OBJ) $(BV_DEPS) $(COMMON_OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS) $(BV_LDFLAGS)
 
 $(BV_OBJ): $(BUILDDIR)/%.o : %.c
-	@$(MKDIR) $(BUILDDIR)/bloodview/src/dpp/filter
+	@$(MKDIR) $(dir $@)
 	$(CC) $(CFLAGS) $(BV_CFLAGS) -c -o $@ $<
 
 $(COMMON_OBJ): $(BUILDDIR)/%.o : %.c
-	@$(MKDIR) $(BUILDDIR)/common
+	@$(MKDIR) $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(TOOLS_OBJ): $(BUILDDIR)/%.o : %.c
-	@$(MKDIR) $(BUILDDIR)/tools
+	@$(MKDIR) $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 build/bl: $(BUILDDIR)/tools/bl.o $(BUILDDIR)/tools/util.o $(COMMON_OBJ)
