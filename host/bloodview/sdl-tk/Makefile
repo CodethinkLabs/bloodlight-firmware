@@ -5,6 +5,8 @@ BUILDDIR = build/$(VARIANT)
 CFLAGS = -Wall -Wextra -pedantic --std=gnu11 -Iinclude -I../..
 LDFLAGS =
 
+CFLAGS += -MMD -MP
+
 CFLAGS += $(shell pkg-config sdl2 SDL2_ttf --cflags)
 LDFLAGS += $(shell pkg-config sdl2 SDL2_ttf --libs)
 
@@ -28,6 +30,7 @@ LIB_SRC = \
 	src/widget/toggle.c
 
 LIB_OBJ = $(patsubst %.c,%.o, $(addprefix $(BUILDDIR)/,$(LIB_SRC)))
+LIB_DEP = $(patsubst %.c,%.d, $(addprefix $(BUILDDIR)/,$(LIB_SRC)))
 
 all: sdl-tk.a
 clean:
@@ -43,5 +46,7 @@ $(LIB_OBJ): $(BUILDDIR)/%.o : %.c
 docs:
 	$(MKDIR) build/docs
 	doxygen docs/doxygen.conf
+
+-include $(LIB_DEP)
 
 .PHONY: all clean docs
