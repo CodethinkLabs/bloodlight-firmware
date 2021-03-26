@@ -37,7 +37,7 @@ sdl-tk.a: $(LIB_OBJ)
 	$(AR) -rcs $@ $^
 
 $(LIB_OBJ): $(BUILDDIR)/%.o : %.c
-	@$(MKDIR) $(BUILDDIR)/src/widget
+	@$(MKDIR) $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 docs:
