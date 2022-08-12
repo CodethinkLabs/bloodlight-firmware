@@ -161,6 +161,17 @@ Reset the device and load on the firmware:
 
 Now the device is flashed with the `bloodlight-firmware.elf` firmware.
 
+You can run GDB, instruct it to connect to the debugger, reset the
+device, and load the new firmware in one command with:
+
+```
+gdb-multiarch \
+        -ex 'target extended-remote localhost:3333' \
+        -ex 'monitor reset halt' \
+        -ex 'load' \
+        bloodlight-firmware.elf
+```
+
 Run the firmware with:
 
 ```
